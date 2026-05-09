@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getImageModelFactory } from "@/server/model-factory";
+import { ensureModelsInitialized } from "@/server/services/model-init";
+
+export async function POST(request: NextRequest) {
+  ensureModelsInitialized();
+
+  const encoder = new TextEncoder();
+
+  try {
+    const body = await request.json();
+    const { alias, payload } = body;
+
+    if (!alias || !payload) {
+      return NextResponse.json(
+        { success: false, error: { code: "PARAM_INVALID", message: "alias and payload are required" } },
+        { status: 400 }
+      );
+    }
+
+    const factory = getImageModelFactory();
+    const strategy = factory.get(alias);
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const result = await strategy.generateStream(
+            {
+              prompt: payload.prompt,
+              negativePrompt: payload.negativePrompt,
+              size: payload.size,
+              quality: payload.quality,
+              style: payload.style,
+              seed: payload.seed,
+              headers: payload.headers,
+            },
+            (chunk) => {
+              const sseData = `data: ${JSON.stringify(chunk)}\n\n`;
+              controller.enqueue(encoder.encode(sseData));
+            }
+          );
+
+          const finalEvent = `data: ${JSON.stringify({ type: "done", result })}\n\n`;
+          controller.enqueue(encoder.encode(finalEvent));
+          controller.close();
+        } catch (err: any) {
+          const errorEvent = `data: ${JSON.stringify({ type: "error", error: { message: err.message ?? "Stream error" } })}\n\n`;
+          controller.enqueue(encoder.encode(errorEvent));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: err.message ?? "Unknown error" } },
+      { status: 500 }
+    );
+  }
+}
