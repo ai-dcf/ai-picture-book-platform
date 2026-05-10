@@ -1,0 +1,23 @@
+{
+  "skill_name": "nextjs-project-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我想从 0 搭一个 Next.js SaaS 项目，第一期需要首页、价格页、登录页、用户后台和设置页。你帮我给出一套完整的项目初始化方案，包含技术栈、目录结构、路由分组、页面骨架和开发顺序。",
+      "expected_output": "应给出完整的 Next.js 项目搭建方案，包含技术栈选择、目录结构、页面与路由设计，以及可执行的初始化步骤。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "帮我快速设计一个 Next.js 的 AI 应用项目，要求有聊天页、历史记录页、模型设置页，并且服务端要通过 Route Handler 对接大模型，支持流式输出。请直接告诉我项目结构、关键目录和接口组织方式。",
+      "expected_output": "应围绕 Next.js AI 项目给出完整结构方案，包含 App Router 路由设计、AI 接口组织、流式输出思路和服务端分层建议。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "我想做一个 Next.js 管理后台，包含仪表盘、用户管理、订单管理和系统设置。请按能直接开工的标准，帮我规划完整项目结构，包括 `src/app`、`components`、`features`、`lib` 分层，以及哪些页面适合 Server Components，哪些必须 Client Components。",
+      "expected_output": "应给出一个可直接落地的 Next.js 后台项目结构方案，并说明页面分层、Server/Client Component 边界和工程组织建议。",
+      "files": []
+    }
+  ]
+}

@@ -30,6 +30,18 @@ type GenerateResult<T> = {
   error?: GenerateError;
 };
 
+const LOG_PREFIX = "[生成服务]";
+
+function summarizeProjectInfo(projectInfo: ProjectInfo): Record<string, unknown> {
+  return {
+    title: projectInfo.title || "待定",
+    targetAge: projectInfo.targetAge,
+    artStyle: projectInfo.artStyle,
+    aspectRatio: projectInfo.aspectRatio,
+    pageCount: projectInfo.pageCount,
+  };
+}
+
 function noModelError(): GenerateError {
   return { code: "NO_MODEL_CONFIGURED", message: "未配置任何模型，请先在设置中添加模型" };
 }
@@ -42,10 +54,18 @@ function get_default_text_strategy(): TextStrategy | null {
   ensureModelsInitialized();
   const factory = getTextModelFactory();
   const enabled = factory.listEnabled();
-  if (enabled.length === 0) return null;
+  if (enabled.length === 0) {
+    console.warn(`${LOG_PREFIX} 未找到启用的文本模型`);
+    return null;
+  }
   try {
+    console.info(`${LOG_PREFIX} 使用文本模型`, { alias: enabled[0] });
     return factory.get(enabled[0]);
-  } catch {
+  } catch (error) {
+    console.error(`${LOG_PREFIX} 获取文本策略失败`, {
+      alias: enabled[0],
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -244,8 +264,14 @@ function parseStoryboardResponse(raw: string, pageCount: number): StoryboardData
 export async function generateStory(
   projectInfo: ProjectInfo
 ): Promise<GenerateResult<StoryData>> {
+  const startTime = Date.now();
+  console.info(`${LOG_PREFIX} 故事生成开始`, summarizeProjectInfo(projectInfo));
+
   const strategy = get_default_text_strategy();
-  if (!strategy) return { success: false, error: noModelError() };
+  if (!strategy) {
+    console.warn(`${LOG_PREFIX} 故事生成中止：无可用策略`);
+    return { success: false, error: noModelError() };
+  }
 
   try {
     const result = await strategy.generate({
@@ -256,6 +282,10 @@ export async function generateStory(
     });
 
     if (!result.success || !result.text) {
+      console.warn(`${LOG_PREFIX} 故事生成失败`, {
+        durationMs: Date.now() - startTime,
+        error: result.error?.message || "模型返回为空",
+      });
       return {
         success: false,
         error: generationFailedError(result.error?.message || "故事生成失败"),
@@ -263,8 +293,19 @@ export async function generateStory(
     }
 
     const story = parseStoryResponse(result.text);
+    console.info(`${LOG_PREFIX} 故事生成成功`, {
+      durationMs: Date.now() - startTime,
+      outputLength: result.text.length,
+      characterCount: story.characters.length,
+      sceneCount: story.scenes.length,
+      emotionPointCount: story.emotionCurve.length,
+    });
     return { success: true, data: story };
   } catch (err) {
+    console.error(`${LOG_PREFIX} 故事生成异常`, {
+      durationMs: Date.now() - startTime,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {
       success: false,
       error: generationFailedError(
