@@ -1,13 +1,13 @@
 ﻿"use client";
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStudio } from '@/hooks/use-studio';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { exportAllPagesAsZip, exportPageAsPng } from '@/lib/export-book';
+import { exportAllPagesAsZip, exportPageAsPng } from '@/modules/studio/infrastructure/export-book';
 import { PAGE_STATUS_LABELS } from '@/types/picturebook';
 import {
   ArrowRight,
@@ -307,3 +307,4 @@ export default function Stage6Finalize() {
     </div>
   );
 }
+

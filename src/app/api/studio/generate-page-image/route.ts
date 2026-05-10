@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generatePageImage } from "@/server/services/generate-service";
+import { generatePageImage } from "@/modules/studio/application/use-cases/generate-page-image";
 import type { AssetItem, AssetsData, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {

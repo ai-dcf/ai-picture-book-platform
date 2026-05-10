@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateStory } from "@/server/services/generate-service";
+import { generateStory } from "@/modules/studio/application/use-cases/generate-story";
 import type { ProjectInfo } from "@/types/picturebook";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

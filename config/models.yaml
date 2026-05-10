@@ -1,16 +1,25 @@
 textModels:
   enabledOrder:
-    - '111'
+    - 阿里云百炼
   items:
     - alias: '111'
       strategy: openai-compatible-text
-      enabled: true
+      enabled: false
       credentials:
         apiKey: ark-bab9dd9c-8576-460e-9c65-eb309afdf1cd-ff4fe
         endpoint: https://ark.cn-beijing.volces.com/api/plan/v3
       params:
         vendor: volcengine_agent_plan
         model: glm-5.1
+    - alias: 阿里云百炼
+      strategy: openai-compatible-text
+      enabled: true
+      credentials:
+        apiKey: sk-5f7f8ba546a3486184766b8f34c56820
+        endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1
+      params:
+        vendor: aliyun
+        model: qwen3.6-flash
 imageModels:
   enabledOrder:
     - 图像模型1

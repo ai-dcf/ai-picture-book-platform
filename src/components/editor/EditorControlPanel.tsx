@@ -1,6 +1,6 @@
 ﻿"use client";
-import { useStudio } from '@/hooks/use-studio';
-import { simulateGeneration } from '@/lib/simulation';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { simulateGeneration } from '@/modules/studio/infrastructure/simulation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
@@ -297,3 +297,4 @@ export default function EditorControlPanel({ pageIndex }: Props) {
     </div>
   );
 }
+

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTextModelFactory } from "@/server/model-factory";
-import { ensureModelsInitialized } from "@/server/services/model-init";
+import { getTextModelFactory } from "@/platform/ai/registry/model-factory";
+import { ensureModelsInitialized } from "@/platform/ai/registry/model-init";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {

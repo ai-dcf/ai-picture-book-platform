@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTextModelFactory, getImageModelFactory } from "@/server/model-factory";
-import { ensureModelsInitialized } from "@/server/services/model-init";
+import { getTextModelFactory, getImageModelFactory } from "@/platform/ai/registry/model-factory";
+import { ensureModelsInitialized } from "@/platform/ai/registry/model-init";
+
+export const runtime = "nodejs";
 
 type HealthError = {
   code: string;

@@ -1,6 +1,6 @@
 ﻿"use client";
-import { useStudio } from '@/hooks/use-studio';
-import { simulateGeneration, simulateMultiple } from '@/lib/simulation';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { simulateGeneration, simulateMultiple } from '@/modules/studio/infrastructure/simulation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,7 +18,7 @@ import {
   Users,
   Wand2,
 } from 'lucide-react';
-import { buildAssetPrompt } from '@/lib/prompt-builders';
+import { buildAssetPrompt } from '@/modules/studio/domain/services/prompt';
 
 function AssetStatusBadge({ asset }: { asset: AssetItem }) {
   return (
@@ -519,3 +519,4 @@ export default function Stage4Assets() {
     </div>
   );
 }
+

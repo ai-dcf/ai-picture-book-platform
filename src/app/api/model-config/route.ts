@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getModelsConfig, loadRawModelsConfig, readModelsConfigYaml } from "@/server/loaders/model-loader";
-import { ensureModelsInitialized, reloadModelsConfig, getEnabledTextModels, getEnabledImageModels } from "@/server/services/model-init";
+import { getModelsConfig, loadRawModelsConfig, readModelsConfigYaml } from "@/platform/config/loaders/model-loader";
+import { ensureModelsInitialized, reloadModelsConfig, getEnabledTextModels, getEnabledImageModels } from "@/platform/ai/registry/model-init";
 import { resolve } from "path";
 import { writeFileSync } from "fs";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   try {

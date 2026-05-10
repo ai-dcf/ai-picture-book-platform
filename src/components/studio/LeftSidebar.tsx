@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useState } from 'react';
-import { useStudio } from '@/hooks/use-studio';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';

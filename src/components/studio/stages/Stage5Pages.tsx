@@ -1,8 +1,8 @@
 ﻿"use client";
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStudio } from '@/hooks/use-studio';
-import { simulateGeneration } from '@/lib/simulation';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { simulateGeneration } from '@/modules/studio/infrastructure/simulation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Wand2,
 } from 'lucide-react';
-import { buildPagePrompt } from '@/lib/prompt-builders';
+import { buildPagePrompt } from '@/modules/studio/domain/services/prompt';
 
 function arraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
@@ -352,3 +352,4 @@ export default function Stage5Pages() {
     </div>
   );
 }
+

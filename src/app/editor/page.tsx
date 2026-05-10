@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useStudio } from "@/hooks/use-studio";
+import { useStudio } from "@/modules/studio/presentation/hooks/use-studio";
 import { useToast } from "@/hooks/use-toast";
 import EditorCanvas from "@/components/editor/EditorCanvas";
 import EditorControlPanel from "@/components/editor/EditorControlPanel";
@@ -13,8 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, use } from "react";
-import { simulateGeneration } from "@/lib/simulation";
-import { exportAllPagesAsZip, exportPageAsPng } from "@/lib/export-book";
+import { simulateGeneration } from "@/modules/studio/infrastructure/simulation";
+import { exportAllPagesAsZip, exportPageAsPng } from "@/modules/studio/infrastructure/export-book";
 import {
   ArrowLeft,
   BookOpen,
@@ -229,3 +229,4 @@ export default function EditorPage() {
     </div>
   );
 }
+

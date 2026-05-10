@@ -1,4 +1,4 @@
-import Studio from "@/features/studio/StudioPage";
+﻿import Studio from "@/modules/studio/presentation/components/StudioPage";
 
 export default function Home() {
   return <Studio />;

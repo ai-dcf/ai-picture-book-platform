@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useStudio } from '@/hooks/use-studio';
-import { useStudioGenerate } from '@/hooks/use-studio-generate';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

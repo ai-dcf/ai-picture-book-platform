@@ -2,7 +2,7 @@
 
 import { AppQueryProvider } from "@/providers/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { StudioProvider } from "@/context/StudioContext";
+import { StudioProvider } from "@/modules/studio/presentation/context/StudioContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 

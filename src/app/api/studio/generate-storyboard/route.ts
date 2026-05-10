@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateStoryboard } from "@/server/services/generate-service";
+import { generateStoryboard } from "@/modules/studio/application/use-cases/generate-storyboard";
 import type { ProjectInfo, StoryData } from "@/types/picturebook";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {

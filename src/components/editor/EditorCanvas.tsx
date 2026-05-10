@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useRef, useCallback, CSSProperties } from 'react';
-import { useStudio } from '@/hooks/use-studio';
+import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { TextBoxLayout } from '@/types/picturebook';
 import { cn } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
