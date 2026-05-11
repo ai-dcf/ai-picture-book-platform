@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { Button } from '@/components/ui/button';

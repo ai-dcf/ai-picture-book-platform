@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { PageStatus, PAGE_STATUS_LABELS } from '@/types/picturebook';
+import { PageStatus, PAGE_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  Expand,
   ImageIcon,
   Loader2,
   Pencil,
@@ -37,12 +39,23 @@ function pageStatusIcon(s: PageStatus) {
   return map[s];
 }
 
+function getAspectClass(ratio: AspectRatio) {
+  const map: Record<AspectRatio, string> = {
+    '3:4': 'aspect-[3/4]',
+    '9:16': 'aspect-[9/16]',
+    '16:9': 'aspect-[16/9]',
+    '1:1': 'aspect-square',
+  };
+  return map[ratio];
+}
+
 export default function Stage5Pages() {
   const { state, dispatch, triggerSave } = useStudio();
   const { generatePageImage } = useStudioGenerate();
   const router = useRouter();
   const { pages, storyboard, assets, projectInfo } = state;
   const [currentPage, setCurrentPage] = useState(0);
+  const [previewState, setPreviewState] = useState<{ open: boolean; imageUrl: string; alt: string }>({ open: false, imageUrl: '', alt: '' });
   const generatedCount = pages.filter(item => Boolean(item.imageUrl)).length;
   const allGenerated = pages.length > 0 && pages.every(item => Boolean(item.imageUrl));
   const finalizedCount = pages.filter(item => item.pageStatus === 'finalized').length;
@@ -273,7 +286,7 @@ export default function Stage5Pages() {
         </div>
 
         <div className="flex-1 p-4 flex flex-col gap-4">
-          <div className="aspect-square w-full rounded-xl border border-border overflow-hidden bg-muted relative">
+          <div className={cn('w-full rounded-xl border border-border overflow-hidden bg-muted relative group', getAspectClass(projectInfo.aspectRatio))}>
             {page.generating && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/90 z-10">
                 <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center animate-pulse-soft">
@@ -283,7 +296,12 @@ export default function Stage5Pages() {
               </div>
             )}
             {page.imageUrl && !page.generating ? (
-              <img src={page.imageUrl} alt="插画" className="w-full h-full object-cover" />
+              <>
+                <img src={page.imageUrl} alt="插画" className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => setPreviewState({ open: true, imageUrl: page.imageUrl!, alt: `第 ${currentPage + 1} 页插画` })} />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100">
+                  <Expand className="w-6 h-6 text-white drop-shadow-md" />
+                </div>
+              </>
             ) : !page.generating ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                 <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
@@ -354,6 +372,18 @@ export default function Stage5Pages() {
           </div>
         </div>
       </div>
+
+      <Dialog open={previewState.open} onOpenChange={open => setPreviewState(s => ({ ...s, open }))}>
+        <DialogContent className="max-w-[95vw] w-auto p-0 border-0 bg-transparent shadow-none">
+          {previewState.imageUrl && (
+            <img
+              src={previewState.imageUrl}
+              alt={previewState.alt}
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

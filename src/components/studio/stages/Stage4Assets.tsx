@@ -1,15 +1,19 @@
-﻿"use client";
+"use client";
+import { useState } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { AssetItem, ASSET_STATUS_LABELS } from '@/types/picturebook';
+import { AssetItem, ASPECT_RATIOS, ASSET_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {
   ArrowRight,
   Check,
+  Expand,
   ImageIcon,
   Loader2,
   MapPin,
@@ -19,6 +23,47 @@ import {
   Wand2,
 } from 'lucide-react';
 import { buildAssetPrompt } from '@/modules/studio/domain/services/prompt';
+
+type PreviewPayload = {
+  imageUrl: string;
+  alt: string;
+};
+
+function getAspectClass(ratio: AspectRatio) {
+  const map: Record<AspectRatio, string> = {
+    '3:4': 'aspect-[3/4]',
+    '9:16': 'aspect-[9/16]',
+    '16:9': 'aspect-[16/9]',
+    '1:1': 'aspect-square',
+  };
+  return map[ratio];
+}
+
+function ImagePreviewDialog({
+  open,
+  onOpenChange,
+  imageUrl,
+  alt,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  imageUrl: string;
+  alt: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] w-auto p-0 border-0 bg-transparent shadow-none">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={alt}
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-md"
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function AssetStatusBadge({ asset }: { asset: AssetItem }) {
   return (
@@ -63,7 +108,7 @@ function AssetPromptEditor({
           kind: assetType === 'characters' ? 'character' : 'scene',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         }),
         userEdited: false,
       },
@@ -102,7 +147,7 @@ function AssetPromptEditor({
   );
 }
 
-function LoadingTiles({ count = 3, aspect = 'square' }: { count?: number; aspect?: 'square' | 'video' }) {
+function LoadingTiles({ count = 3, aspectRatio = '1:1' }: { count?: number; aspectRatio?: AspectRatio }) {
   return (
     <div className={cn('grid gap-2', count === 1 ? 'grid-cols-1' : 'grid-cols-3')}>
       {Array.from({ length: count }).map((_, index) => (
@@ -110,7 +155,7 @@ function LoadingTiles({ count = 3, aspect = 'square' }: { count?: number; aspect
           key={index}
           className={cn(
             'rounded-lg bg-muted overflow-hidden relative',
-            aspect === 'video' ? 'aspect-video' : 'aspect-square',
+            getAspectClass(aspectRatio),
           )}
           style={{ animationDelay: `${index * 0.15}s` }}
         >
@@ -123,15 +168,15 @@ function LoadingTiles({ count = 3, aspect = 'square' }: { count?: number; aspect
 
 function EmptyPreview({
   label,
-  aspect = 'square',
+  aspectRatio = '1:1',
 }: {
   label: string;
-  aspect?: 'square' | 'video';
+  aspectRatio?: AspectRatio;
 }) {
   return (
     <div className={cn(
       'rounded-lg border border-dashed border-border flex flex-col items-center justify-center gap-1 bg-muted/30',
-      aspect === 'video' ? 'aspect-video' : 'aspect-square',
+      getAspectClass(aspectRatio),
     )}>
       <ImageIcon className="w-6 h-6 text-muted-foreground" />
       <span className="text-xs font-body text-muted-foreground">{label}</span>
@@ -139,7 +184,13 @@ function EmptyPreview({
   );
 }
 
-function CharacterCard({ asset }: { asset: AssetItem }) {
+function CharacterCard({
+  asset,
+  onPreview,
+}: {
+  asset: AssetItem;
+  onPreview: (payload: PreviewPayload) => void;
+}) {
   const { state, dispatch, triggerSave } = useStudio();
   const { generateAssetImage } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
@@ -157,7 +208,7 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
           kind: 'character',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         }),
         userEdited: false,
       },
@@ -171,7 +222,7 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
           kind: 'character',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         });
 
     ensurePrompt();
@@ -209,7 +260,7 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
           kind: 'character',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         });
     const viewPrompts = [
       `${basePrompt}\n\n请输出角色三视图中的正面视图，保持角色设定一致，背景简洁。`,
@@ -244,12 +295,23 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
     triggerSave();
   }
 
+  function handleAspectRatioChange(nextAspectRatio: string) {
+    dispatch({
+      type: 'UPDATE_ASSET_ASPECT_RATIO',
+      payload: { type: 'characters', id: asset.id, aspectRatio: nextAspectRatio as AspectRatio },
+    });
+    triggerSave();
+  }
+
   return (
     <div className="border border-border rounded-xl p-4 bg-card shadow-card space-y-4 animate-fade-in">
       <div className="flex items-center gap-2">
         <h4 className="text-sm font-body font-semibold text-foreground flex-1 truncate">{asset.name}</h4>
         <AssetStatusBadge asset={asset} />
       </div>
+      {asset.status === 'review' && (
+        <p className="text-[11px] font-body text-amber-600">画面比例已变更，建议重新生成</p>
+      )}
 
       <AssetPromptEditor asset={asset} assetType="characters" />
 
@@ -257,22 +319,41 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-body text-muted-foreground">基础形象</p>
+            <div className="flex items-center gap-2">
+              <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+                <SelectTrigger className="h-7 w-[94px] text-[11px] font-body">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASPECT_RATIOS.map(ratio => (
+                    <SelectItem key={ratio} value={ratio} className="font-body text-xs">
+                      {ratio}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             {baseConfirmed && (
               <div className="flex items-center gap-1 text-[11px] text-green-600 font-body">
                 <Check className="w-3 h-3" />
                 已确认
               </div>
             )}
+            </div>
           </div>
 
           {asset.generating && asset.generatingPhase === 'character_base' ? (
-            <LoadingTiles count={1} />
+            <LoadingTiles count={1} aspectRatio={asset.aspectRatio} />
           ) : asset.baseImageUrl ? (
-            <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-              <img src={asset.baseImageUrl} alt={`${asset.name} 基础形象`} className="w-full h-full object-cover" />
+            <div className={cn(getAspectClass(asset.aspectRatio), 'rounded-lg overflow-hidden border border-border bg-muted')}>
+              <img
+                src={asset.baseImageUrl}
+                alt={`${asset.name} 基础形象`}
+                className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform"
+                onClick={() => onPreview({ imageUrl: asset.baseImageUrl!, alt: `${asset.name} 基础形象` })}
+              />
             </div>
           ) : (
-            <EmptyPreview label="暂无基础形象图" />
+            <EmptyPreview label="暂无基础形象图" aspectRatio={asset.aspectRatio} />
           )}
 
           <div className="grid grid-cols-1 gap-2">
@@ -318,13 +399,18 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
           </div>
 
           {asset.generating && asset.generatingPhase === 'character_turnaround' ? (
-            <LoadingTiles count={3} />
+            <LoadingTiles count={3} aspectRatio={asset.aspectRatio} />
           ) : turnaroundReady ? (
             <div className="grid grid-cols-3 gap-2">
               {asset.turnaroundImages.map((url, index) => (
                 <div key={index} className="space-y-1">
-                  <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                    <img src={url} alt={`${asset.name} 视图 ${index + 1}`} className="w-full h-full object-cover" />
+                  <div className={cn(getAspectClass(asset.aspectRatio), 'rounded-lg overflow-hidden border border-border bg-muted')}>
+                    <img
+                      src={url}
+                      alt={`${asset.name} 视图 ${index + 1}`}
+                      className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform"
+                      onClick={() => onPreview({ imageUrl: url, alt: `${asset.name} 视图 ${index + 1}` })}
+                    />
                   </div>
                   <p className="text-[11px] text-center font-body text-muted-foreground">
                     {['正面', '侧面', '背面'][index] || `视图 ${index + 1}`}
@@ -336,7 +422,7 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
             <div className="grid grid-cols-3 gap-2">
               {['正面', '侧面', '背面'].map(label => (
                 <div key={label} className="space-y-1">
-                  <EmptyPreview label={label} />
+                  <EmptyPreview label={label} aspectRatio={asset.aspectRatio} />
                 </div>
               ))}
             </div>
@@ -368,7 +454,13 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
   );
 }
 
-function SceneCard({ asset }: { asset: AssetItem }) {
+function SceneCard({
+  asset,
+  onPreview,
+}: {
+  asset: AssetItem;
+  onPreview: (payload: PreviewPayload) => void;
+}) {
   const { state, dispatch, triggerSave } = useStudio();
   const { generateAssetImage } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
@@ -384,7 +476,7 @@ function SceneCard({ asset }: { asset: AssetItem }) {
           kind: 'scene',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         }),
         userEdited: false,
       },
@@ -398,7 +490,7 @@ function SceneCard({ asset }: { asset: AssetItem }) {
           kind: 'scene',
           name: asset.name,
           description: asset.description,
-          projectInfo: state.projectInfo,
+          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
         });
     const candidatePrompts = [
       `${basePrompt}\n\n候选图版本 A：在保持主体一致前提下，突出空间结构与构图层次。`,
@@ -438,12 +530,35 @@ function SceneCard({ asset }: { asset: AssetItem }) {
     triggerSave();
   }
 
+  function handleAspectRatioChange(nextAspectRatio: string) {
+    dispatch({
+      type: 'UPDATE_ASSET_ASPECT_RATIO',
+      payload: { type: 'scenes', id: asset.id, aspectRatio: nextAspectRatio as AspectRatio },
+    });
+    triggerSave();
+  }
+
   return (
     <div className="border border-border rounded-xl p-4 bg-card shadow-card space-y-4 animate-fade-in">
       <div className="flex items-center gap-2">
         <h4 className="text-sm font-body font-semibold text-foreground flex-1 truncate">{asset.name}</h4>
+        <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+          <SelectTrigger className="h-7 w-[94px] text-[11px] font-body">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ASPECT_RATIOS.map(ratio => (
+              <SelectItem key={ratio} value={ratio} className="font-body text-xs">
+                {ratio}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <AssetStatusBadge asset={asset} />
       </div>
+      {asset.status === 'review' && (
+        <p className="text-[11px] font-body text-amber-600">画面比例已变更，建议重新生成</p>
+      )}
 
       <AssetPromptEditor asset={asset} assetType="scenes" />
 
@@ -465,15 +580,14 @@ function SceneCard({ asset }: { asset: AssetItem }) {
       </Button>
 
       {asset.generating && asset.generatingPhase === 'scene_candidates' ? (
-        <LoadingTiles count={3} aspect="video" />
+        <LoadingTiles count={3} aspectRatio={asset.aspectRatio} />
       ) : asset.candidates.length > 0 ? (
         <div className="space-y-2">
           <p className="text-xs font-body text-muted-foreground">选择正式版本</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {asset.candidates.map((url, index) => (
-              <button
+              <div
                 key={index}
-                onClick={() => handleSetOfficial(index)}
                 className={cn(
                   'rounded-lg overflow-hidden relative border-2 transition-smooth group',
                   asset.officialIndex === index
@@ -481,17 +595,35 @@ function SceneCard({ asset }: { asset: AssetItem }) {
                     : 'border-transparent hover:border-primary/40'
                 )}
               >
-                <div className="aspect-video">
-                  <img src={url} alt={`${asset.name} 候选图 ${index + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  className={cn(getAspectClass(asset.aspectRatio), 'w-full overflow-hidden bg-muted')}
+                  onClick={() => onPreview({ imageUrl: url, alt: `${asset.name} 候选图 ${index + 1}` })}
+                >
+                  <img
+                    src={url}
+                    alt={`${asset.name} 候选图 ${index + 1}`}
+                    className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform"
+                  />
+                </button>
+                <div className="p-2 border-t border-border bg-card/90">
+                  <Button
+                    size="sm"
+                    variant={asset.officialIndex === index ? 'secondary' : 'outline'}
+                    className="w-full text-xs font-body"
+                    onClick={() => handleSetOfficial(index)}
+                  >
+                    {asset.officialIndex === index ? '已设为正式版本' : '设为正式版本'}
+                  </Button>
                 </div>
                 {asset.officialIndex === index && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center pointer-events-none">
                     <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                       <Check className="w-3.5 h-3.5 text-primary-foreground" />
                     </div>
                   </div>
                 )}
-              </button>
+              </div>
             ))}
           </div>
           {asset.officialIndex !== null ? (
@@ -504,7 +636,7 @@ function SceneCard({ asset }: { asset: AssetItem }) {
           )}
         </div>
       ) : (
-        <EmptyPreview label="暂无候选图" aspect="video" />
+        <EmptyPreview label="暂无候选图" aspectRatio={asset.aspectRatio} />
       )}
     </div>
   );
@@ -513,6 +645,7 @@ function SceneCard({ asset }: { asset: AssetItem }) {
 export default function Stage4Assets() {
   const { state, dispatch, triggerSave } = useStudio();
   const { assets } = state;
+  const [preview, setPreview] = useState<PreviewPayload | null>(null);
 
   const charactersReady = assets.characters.every(asset => Boolean(asset.baseImageUrl));
   const allOfficialSet = charactersReady;
@@ -564,7 +697,11 @@ export default function Stage4Assets() {
             <ScrollArea className="h-full -mr-4 pr-4">
               <div className="grid grid-cols-1 gap-4 pb-4">
                 {assets.characters.map(asset => (
-                  <CharacterCard key={asset.id} asset={asset} />
+                  <CharacterCard
+                    key={asset.id}
+                    asset={asset}
+                    onPreview={setPreview}
+                  />
                 ))}
               </div>
             </ScrollArea>
@@ -574,13 +711,26 @@ export default function Stage4Assets() {
             <ScrollArea className="h-full -mr-4 pr-4">
               <div className="grid grid-cols-1 gap-4 pb-4">
                 {assets.scenes.map(asset => (
-                  <SceneCard key={asset.id} asset={asset} />
+                  <SceneCard
+                    key={asset.id}
+                    asset={asset}
+                    onPreview={setPreview}
+                  />
                 ))}
               </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
       )}
+
+      <ImagePreviewDialog
+        open={Boolean(preview)}
+        onOpenChange={(open) => {
+          if (!open) setPreview(null);
+        }}
+        imageUrl={preview?.imageUrl || ''}
+        alt={preview?.alt || '素材预览'}
+      />
 
       <div className="pt-4 mt-auto border-t border-border flex items-center justify-between gap-4">
         <div className="text-xs font-body text-muted-foreground">

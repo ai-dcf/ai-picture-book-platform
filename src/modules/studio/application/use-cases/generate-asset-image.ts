@@ -22,7 +22,7 @@ export async function generateAssetImage(
             kind,
             name: asset.name,
             description: asset.description,
-            projectInfo,
+            projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
           });
 
     const sizeMap: Record<string, string> = {
@@ -34,7 +34,7 @@ export async function generateAssetImage(
 
     const result = await strategy.generate({
       prompt,
-      size: sizeMap[projectInfo.aspectRatio] || "1024x1024",
+      size: sizeMap[asset.aspectRatio] || "1024x1024",
     });
 
     if (!result.success || !result.imageUrl) {

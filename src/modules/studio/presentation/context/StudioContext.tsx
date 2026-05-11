@@ -258,6 +258,7 @@ type Action =
   | { type: 'SET_SCENE_CANDIDATES'; payload: { id: string; candidates: string[] } }
   | { type: 'CONFIRM_CHARACTER_BASE'; payload: { id: string } }
   | { type: 'SET_SCENE_OFFICIAL'; payload: { id: string; index: number } }
+  | { type: 'UPDATE_ASSET_ASPECT_RATIO'; payload: { type: 'characters' | 'scenes'; id: string; aspectRatio: ProjectInfo['aspectRatio'] } }
   | { type: 'UPDATE_ASSET_DESCRIPTION'; payload: { type: 'characters' | 'scenes'; id: string; description: string } }
   | { type: 'UPDATE_ASSET_PROMPT'; payload: { type: 'characters' | 'scenes'; id: string; prompt: string; userEdited?: boolean } }
   | { type: 'SET_PAGE_GENERATING'; payload: { index: number; generating: boolean } }
@@ -393,6 +394,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         prompt: buildAssetPromptFromEntry('character', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
+        aspectRatio: state.projectInfo.aspectRatio,
         baseImageUrl: null,
         turnaroundImages: [],
         candidates: [],
@@ -408,6 +410,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         prompt: buildAssetPromptFromEntry('scene', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
+        aspectRatio: state.projectInfo.aspectRatio,
         baseImageUrl: null,
         turnaroundImages: [],
         candidates: [],
@@ -552,6 +555,27 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       };
     }
 
+    case 'UPDATE_ASSET_ASPECT_RATIO': {
+      const key = action.payload.type;
+      return {
+        ...state,
+        assets: {
+          ...state.assets,
+          [key]: state.assets[key].map(a => {
+            if (a.id !== action.payload.id) return a;
+            const hasGeneratedImages = Boolean(
+              a.baseImageUrl || a.turnaroundImages.length > 0 || a.candidates.length > 0 || a.officialImageUrl
+            );
+            return {
+              ...a,
+              aspectRatio: action.payload.aspectRatio,
+              status: hasGeneratedImages ? ('review' as AssetStatus) : a.status,
+            };
+          }),
+        },
+      };
+    }
+
     case 'UPDATE_ASSET_DESCRIPTION': {
       const key = action.payload.type;
       return {
@@ -570,7 +594,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
                         kind: key === 'characters' ? 'character' : 'scene',
                         name: a.name,
                         description: action.payload.description,
-                        projectInfo: state.projectInfo,
+                        projectInfo: { ...state.projectInfo, aspectRatio: a.aspectRatio },
                       }),
                 }
               : a

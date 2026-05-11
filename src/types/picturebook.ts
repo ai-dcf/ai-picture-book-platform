@@ -199,6 +199,7 @@ export interface AssetItem {
   prompt: string;
   promptUserEdited: boolean;
   status: AssetStatus;
+  aspectRatio: AspectRatio;
   baseImageUrl: string | null;
   turnaroundImages: string[];
   candidates: string[];
