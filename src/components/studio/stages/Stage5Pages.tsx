@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
-import { simulateGeneration } from '@/modules/studio/infrastructure/simulation';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,7 @@ function pageStatusIcon(s: PageStatus) {
 
 export default function Stage5Pages() {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generatePageImage } = useStudioGenerate();
   const router = useRouter();
   const { pages, storyboard, assets, projectInfo } = state;
   const [currentPage, setCurrentPage] = useState(0);
@@ -119,10 +120,14 @@ export default function Stage5Pages() {
       });
     }
     dispatch({ type: 'SET_PAGE_GENERATING', payload: { index: currentPage, generating: true } });
-    const url = await simulateGeneration(2800);
+    const url = await generatePageImage(page, assets, projectInfo, sbPage);
+    if (!url) {
+      dispatch({ type: 'SET_PAGE_GENERATING', payload: { index: currentPage, generating: false } });
+      return;
+    }
     dispatch({ type: 'SET_PAGE_IMAGE', payload: { index: currentPage, imageUrl: url } });
     triggerSave();
-  }, [assets, currentPage, dispatch, effectiveCharacterRefs, effectiveSceneRefs, page, projectInfo, sbPage, triggerSave]);
+  }, [assets, currentPage, dispatch, effectiveCharacterRefs, effectiveSceneRefs, generatePageImage, page, projectInfo, sbPage, triggerSave]);
 
   function handleTextChange(text: string) {
     dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, storyText: text } });

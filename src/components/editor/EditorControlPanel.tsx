@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
-import { simulateGeneration } from '@/modules/studio/infrastructure/simulation';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
@@ -38,6 +38,7 @@ interface Props {
 
 export default function EditorControlPanel({ pageIndex }: Props) {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generatePageImage } = useStudioGenerate();
   const editor = state.editorStates[pageIndex];
   const page = state.pages[pageIndex];
   const [regenerating, setRegenerating] = useState(false);
@@ -59,9 +60,15 @@ export default function EditorControlPanel({ pageIndex }: Props) {
   }
 
   async function handleRegenerate() {
+    if (!page) return;
     setRegenerating(true);
     setPrevImage(page?.imageUrl || null);
-    const url = await simulateGeneration(2500);
+    const storyboardPage = state.storyboard.pages[pageIndex];
+    const url = await generatePageImage(page, state.assets, state.projectInfo, storyboardPage);
+    if (!url) {
+      setRegenerating(false);
+      return;
+    }
     dispatch({ type: 'SET_PAGE_IMAGE', payload: { index: pageIndex, imageUrl: url } });
     triggerSave();
     setRegenerating(false);

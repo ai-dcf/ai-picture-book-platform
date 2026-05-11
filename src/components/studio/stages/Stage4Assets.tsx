@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
-import { simulateGeneration, simulateMultiple } from '@/modules/studio/infrastructure/simulation';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -141,6 +141,7 @@ function EmptyPreview({
 
 function CharacterCard({ asset }: { asset: AssetItem }) {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generateAssetImage } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
   const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
   const turnaroundReady = asset.turnaroundImages.length > 0;
@@ -164,12 +165,34 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
   }
 
   async function handleGenerateBase() {
+    const prompt = hasPrompt
+      ? asset.prompt
+      : buildAssetPrompt({
+          kind: 'character',
+          name: asset.name,
+          description: asset.description,
+          projectInfo: state.projectInfo,
+        });
+
     ensurePrompt();
     dispatch({
       type: 'SET_ASSET_GENERATING',
       payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_base' },
     });
-    const imageUrl = await simulateGeneration(2200);
+    const imageUrl = await generateAssetImage(
+      {
+        ...asset,
+        prompt,
+      },
+      state.projectInfo
+    );
+    if (!imageUrl) {
+      dispatch({
+        type: 'SET_ASSET_GENERATING',
+        payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+      });
+      return;
+    }
     dispatch({ type: 'SET_CHARACTER_BASE_IMAGE', payload: { id: asset.id, imageUrl } });
     triggerSave();
   }
@@ -180,12 +203,43 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
   }
 
   async function handleGenerateTurnaround() {
+    const basePrompt = hasPrompt
+      ? asset.prompt
+      : buildAssetPrompt({
+          kind: 'character',
+          name: asset.name,
+          description: asset.description,
+          projectInfo: state.projectInfo,
+        });
+    const viewPrompts = [
+      `${basePrompt}\n\n请输出角色三视图中的正面视图，保持角色设定一致，背景简洁。`,
+      `${basePrompt}\n\n请输出角色三视图中的侧面视图，保持角色设定一致，背景简洁。`,
+      `${basePrompt}\n\n请输出角色三视图中的背面视图，保持角色设定一致，背景简洁。`,
+    ];
+
     ensurePrompt();
     dispatch({
       type: 'SET_ASSET_GENERATING',
       payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_turnaround' },
     });
-    const images = await simulateMultiple(3, 2600);
+    const images: string[] = [];
+    for (const prompt of viewPrompts) {
+      const imageUrl = await generateAssetImage(
+        {
+          ...asset,
+          prompt,
+        },
+        state.projectInfo
+      );
+      if (!imageUrl) {
+        dispatch({
+          type: 'SET_ASSET_GENERATING',
+          payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+        });
+        return;
+      }
+      images.push(imageUrl);
+    }
     dispatch({ type: 'SET_CHARACTER_TURNAROUNDS', payload: { id: asset.id, images } });
     triggerSave();
   }
@@ -316,6 +370,7 @@ function CharacterCard({ asset }: { asset: AssetItem }) {
 
 function SceneCard({ asset }: { asset: AssetItem }) {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generateAssetImage } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
 
   function ensurePrompt() {
@@ -337,12 +392,43 @@ function SceneCard({ asset }: { asset: AssetItem }) {
   }
 
   async function handleGenerateCandidates() {
+    const basePrompt = hasPrompt
+      ? asset.prompt
+      : buildAssetPrompt({
+          kind: 'scene',
+          name: asset.name,
+          description: asset.description,
+          projectInfo: state.projectInfo,
+        });
+    const candidatePrompts = [
+      `${basePrompt}\n\n候选图版本 A：在保持主体一致前提下，突出空间结构与构图层次。`,
+      `${basePrompt}\n\n候选图版本 B：在保持主体一致前提下，突出光影氛围与色彩情绪。`,
+      `${basePrompt}\n\n候选图版本 C：在保持主体一致前提下，突出镜头景别与叙事张力。`,
+    ];
+
     ensurePrompt();
     dispatch({
       type: 'SET_ASSET_GENERATING',
       payload: { type: 'scenes', id: asset.id, generating: true, phase: 'scene_candidates' },
     });
-    const images = await simulateMultiple(3, 2500);
+    const images: string[] = [];
+    for (const prompt of candidatePrompts) {
+      const imageUrl = await generateAssetImage(
+        {
+          ...asset,
+          prompt,
+        },
+        state.projectInfo
+      );
+      if (!imageUrl) {
+        dispatch({
+          type: 'SET_ASSET_GENERATING',
+          payload: { type: 'scenes', id: asset.id, generating: false, phase: null },
+        });
+        return;
+      }
+      images.push(imageUrl);
+    }
     dispatch({ type: 'SET_SCENE_CANDIDATES', payload: { id: asset.id, candidates: images } });
     triggerSave();
   }

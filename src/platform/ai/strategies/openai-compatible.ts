@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ChatOpenAI, DallEAPIWrapper } from "@langchain/openai";
+import { imageModelConfigs, type ImageAspectRatio } from "@/lib/image-vendor-presets";
 import {
   registerImageStrategy,
   registerTextStrategy,
@@ -18,6 +19,16 @@ import type {
 } from "../contracts";
 
 const LOG_PREFIX = "[OpenAI兼容策略]";
+const DEFAULT_ASPECT_RATIOS: Array<{ key: ImageAspectRatio; value: number }> = [
+  { key: "1:1", value: 1 },
+  { key: "4:3", value: 4 / 3 },
+  { key: "3:4", value: 3 / 4 },
+  { key: "16:9", value: 16 / 9 },
+  { key: "9:16", value: 9 / 16 },
+  { key: "3:2", value: 3 / 2 },
+  { key: "2:3", value: 2 / 3 },
+  { key: "21:9", value: 21 / 9 },
+];
 
 function normalizeImageQuality(quality?: string): "standard" | "hd" | undefined {
   if (quality === "hd" || quality === "standard") return quality;
@@ -27,6 +38,56 @@ function normalizeImageQuality(quality?: string): "standard" | "hd" | undefined 
 function normalizeImageStyle(style?: string): "natural" | "vivid" | undefined {
   if (style === "natural" || style === "vivid") return style;
   return undefined;
+}
+
+function mapImageSizeForModel(size: string | undefined, modelName: string): string | undefined {
+  if (!size) return size;
+
+  const config = imageModelConfigs[modelName];
+  if (!config || config.sizeStrategy !== "tiered-ratio-table") {
+    return size;
+  }
+
+  const parsedSize = parseSize(size);
+  const ratio = parsedSize
+    ? findClosestAspectRatio(
+        parsedSize.width / parsedSize.height,
+        config.supportedAspectRatios.map((key) => ({ key, value: aspectRatioToNumber(key) }))
+      )
+    : config.supportedAspectRatios[0];
+
+  return config.sizeTable[config.defaultTier][ratio];
+}
+
+function parseSize(size: string): { width: number; height: number } | null {
+  const match = /^(\d+)x(\d+)$/.exec(size.trim());
+  if (!match) return null;
+
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!isPositiveNumber(width) || !isPositiveNumber(height)) return null;
+
+  return { width, height };
+}
+
+function isPositiveNumber(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function findClosestAspectRatio(
+  target: number,
+  candidates: Array<{ key: ImageAspectRatio; value: number }>
+): ImageAspectRatio {
+  return candidates.reduce((best, current) => {
+    const bestDistance = Math.abs(best.value - target);
+    const currentDistance = Math.abs(current.value - target);
+    return currentDistance < bestDistance ? current : best;
+  }).key;
+}
+
+function aspectRatioToNumber(aspectRatio: ImageAspectRatio): number {
+  const [width, height] = aspectRatio.split(":").map(Number);
+  return width / height;
 }
 
 function extractTextFromResponseContent(content: unknown): string {
@@ -219,14 +280,19 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
     const { apiKey, endpoint } = this.config.credentials;
     const model = (this.config.params?.model as string) || "dall-e-3";
     const startTime = Date.now();
+    const resolvedSize = mapImageSizeForModel(params.size, model);
     console.info(`${LOG_PREFIX} 图片生成开始`, {
       alias: this.config.alias,
       model,
       endpoint,
       promptChars: params.prompt.length,
-      size: params.size,
+      size: resolvedSize,
+      originalSize: params.size,
       quality: params.quality,
       style: params.style,
+      prompt: params.prompt,
+      negativePrompt: params.negativePrompt,
+      seed: params.seed,
     });
 
     try {
@@ -236,12 +302,38 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
         model,
         n: 1,
         dallEResponseFormat: "url",
-        size: params.size as any,
+        size: resolvedSize as any,
         quality: normalizeImageQuality(params.quality),
         style: normalizeImageStyle(params.style),
       });
 
+      console.info(`${LOG_PREFIX} 图片请求发送中`, {
+        alias: this.config.alias,
+        model,
+        endpoint,
+        request: {
+          prompt: params.prompt,
+          size: resolvedSize,
+          originalSize: params.size,
+          quality: normalizeImageQuality(params.quality),
+          style: normalizeImageStyle(params.style),
+          n: 1,
+          responseFormat: "url",
+        },
+      });
+      const invokeStartAt = Date.now();
       const output = await imageTool.invoke(params.prompt);
+      console.info(`${LOG_PREFIX} 图片请求已返回`, {
+        alias: this.config.alias,
+        model,
+        invokeDurationMs: Date.now() - invokeStartAt,
+      });
+      console.info(`${LOG_PREFIX} 图片原始响应`, {
+        alias: this.config.alias,
+        model,
+        outputType: Array.isArray(output) ? "array" : typeof output,
+        output,
+      });
       let imageUrl = "";
 
       if (typeof output === "string") {
@@ -266,6 +358,12 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
           imageUrl = imageItem.image_url.url;
         }
       }
+      console.info(`${LOG_PREFIX} 图片解析结果`, {
+        alias: this.config.alias,
+        model,
+        hasImageUrl: Boolean(imageUrl),
+        imageUrl,
+      });
 
       if (!imageUrl) {
         console.warn(`${LOG_PREFIX} 图片生成失败`, {
@@ -273,6 +371,8 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
           model,
           durationMs: Date.now() - startTime,
           error: "未返回可用图片 URL",
+          outputType: Array.isArray(output) ? "array" : typeof output,
+          output,
         });
         return {
           success: false,
@@ -284,6 +384,7 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
         alias: this.config.alias,
         model,
         durationMs: Date.now() - startTime,
+        imageUrl,
       });
       return { success: true, imageUrl };
     } catch (error) {
@@ -291,7 +392,13 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
         alias: this.config.alias,
         model,
         durationMs: Date.now() - startTime,
+        prompt: params.prompt,
+        size: resolvedSize,
+        originalSize: params.size,
+        quality: params.quality,
+        style: params.style,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return {
         success: false,

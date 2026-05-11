@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useStudio } from "@/modules/studio/presentation/hooks/use-studio";
+import { useStudioGenerate } from "@/modules/studio/presentation/hooks/use-studio-generate";
 import { useToast } from "@/hooks/use-toast";
 import EditorCanvas from "@/components/editor/EditorCanvas";
 import EditorControlPanel from "@/components/editor/EditorControlPanel";
@@ -13,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, use } from "react";
-import { simulateGeneration } from "@/modules/studio/infrastructure/simulation";
 import { exportAllPagesAsZip, exportPageAsPng } from "@/modules/studio/infrastructure/export-book";
 import {
   ArrowLeft,
@@ -31,6 +31,7 @@ export default function EditorPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { state, dispatch, triggerSave } = useStudio();
+  const { generatePageImage } = useStudioGenerate();
   const { toast } = useToast();
   const { pages, editorStates, projectInfo } = state;
 
@@ -49,8 +50,16 @@ export default function EditorPage() {
   }
 
   async function handleRegenerate() {
+    const page = pages[currentPage];
+    if (!page) return;
+
     setRegenerating(true);
-    const url = await simulateGeneration(2500);
+    const storyboardPage = state.storyboard.pages[currentPage];
+    const url = await generatePageImage(page, state.assets, projectInfo, storyboardPage);
+    if (!url) {
+      setRegenerating(false);
+      return;
+    }
     dispatch({ type: "SET_PAGE_IMAGE", payload: { index: currentPage, imageUrl: url } });
     triggerSave();
     setRegenerating(false);
