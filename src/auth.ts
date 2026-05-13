@@ -8,6 +8,7 @@ const loginSchema = z.object({
 });
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET || "development-secret-key-change-in-production",
   providers: [
     Credentials({
       name: "credentials",
@@ -25,8 +26,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const { username, password } = parsed.data;
 
         if (
-          username === process.env.AUTH_ADMIN_USERNAME &&
-          password === process.env.AUTH_ADMIN_PASSWORD
+          username === (process.env.AUTH_ADMIN_USERNAME || "admin") &&
+          password === (process.env.AUTH_ADMIN_PASSWORD || "admin123")
         ) {
           return {
             id: "1",
@@ -37,8 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (
-          username === process.env.AUTH_USER_USERNAME &&
-          password === process.env.AUTH_USER_PASSWORD
+          username === (process.env.AUTH_USER_USERNAME || "user") &&
+          password === (process.env.AUTH_USER_PASSWORD || "user123")
         ) {
           return {
             id: "2",
