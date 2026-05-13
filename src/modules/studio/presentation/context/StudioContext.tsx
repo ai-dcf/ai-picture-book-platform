@@ -813,19 +813,38 @@ export { StudioContext };
 
 const PROJECT_STORAGE_KEY = 'ai_picturebook_project_';
 
+async function triggerSaveToServer(state: PictureBookState): Promise<boolean> {
+  if (!state.projectInfo.projectId) return false;
+
+  try {
+    const response = await fetch(`/api/projects/${state.projectInfo.projectId}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to save project to server:', response.statusText);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to save project to server:', error);
+    return false;
+  }
+}
+
 function saveProjectToStorage(state: PictureBookState) {
   if (!state.projectInfo.projectId) return;
 
-  // Save full project state
   try {
     localStorage.setItem(`${PROJECT_STORAGE_KEY}${state.projectInfo.projectId}`, JSON.stringify(state));
 
-    // Save to project history
     const historyEntry: ProjectHistoryEntry = {
       ...state.projectInfo,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      // Try to get a thumbnail from the first page
       thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl,
     };
 
@@ -886,10 +905,10 @@ export function StudioProvider({ children, projectId }: { children: React.ReactN
     }, 800);
   }, []);
 
-  // Save project whenever state changes
   useEffect(() => {
     if (state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
       saveProjectToStorage(state);
+      triggerSaveToServer(state);
       lastSavedStateRef.current = state;
     }
   }, [state]);
