@@ -4,6 +4,7 @@ import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   Loader2,
   XCircle,
+  Menu,
 } from 'lucide-react';
 import {
   StageNumber,
@@ -45,40 +47,13 @@ function PageStatusDot({ status }: { status: PageStatus }) {
   return <span className={cn('w-2 h-2 rounded-full flex-shrink-0', cls)} />;
 }
 
-export default function LeftSidebar() {
+function SidebarContent() {
   const { state, dispatch } = useStudio();
   const { currentStage, stageStatuses, pages, projectInfo } = state;
-  const [collapsed, setCollapsed] = useState(false);
 
   function handleStageClick(id: StageNumber) {
     if (stageStatuses[id] === 'idle') return;
     dispatch({ type: 'SET_STAGE', payload: id });
-  }
-
-  if (collapsed) {
-    return (
-      <aside className="w-12 flex flex-col items-center py-3 gap-3 border-r border-border bg-sidebar flex-shrink-0">
-        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setCollapsed(false)}>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-        {STAGES.map(s => (
-          <button
-            key={s}
-            onClick={() => handleStageClick(s)}
-            className={cn(
-              'w-8 h-8 rounded-lg text-xs font-display flex items-center justify-center transition-smooth',
-              currentStage === s
-                ? 'gradient-hero text-primary-foreground shadow-glow'
-                : stageStatuses[s] === 'idle'
-                ? 'text-muted-foreground cursor-not-allowed opacity-40'
-                : 'hover:bg-sidebar-accent text-sidebar-foreground'
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </aside>
-    );
   }
 
   const finalizedCount = pages.filter(p => p.pageStatus === 'finalized').length;
@@ -86,14 +61,7 @@ export default function LeftSidebar() {
   const completedStages = STAGES.filter(s => stageStatuses[s] === 'done').length;
 
   return (
-    <aside className="w-56 flex flex-col border-r border-border bg-sidebar flex-shrink-0">
-      <div className="flex items-center justify-between px-3 py-3 border-b border-sidebar-border">
-        <span className="text-xs font-body font-medium text-muted-foreground tracking-wide uppercase">创作进度</span>
-        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setCollapsed(true)}>
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </Button>
-      </div>
-
+    <div className="flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {STAGES.map(s => {
@@ -165,6 +133,75 @@ export default function LeftSidebar() {
           )}
         </div>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+export default function LeftSidebar() {
+  const { state, dispatch } = useStudio();
+  const { currentStage, stageStatuses } = state;
+  const [collapsed, setCollapsed] = useState(false);
+
+  function handleStageClick(id: StageNumber) {
+    if (stageStatuses[id] === 'idle') return;
+    dispatch({ type: 'SET_STAGE', payload: id });
+  }
+
+  if (collapsed) {
+    return (
+      <aside className="w-12 flex flex-col items-center py-3 gap-3 border-r border-border bg-sidebar flex-shrink-0">
+        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setCollapsed(false)}>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+        {STAGES.map(s => (
+          <button
+            key={s}
+            onClick={() => handleStageClick(s)}
+            className={cn(
+              'w-8 h-8 rounded-lg text-xs font-display flex items-center justify-center transition-smooth',
+              currentStage === s
+                ? 'gradient-hero text-primary-foreground shadow-glow'
+                : stageStatuses[s] === 'idle'
+                ? 'text-muted-foreground cursor-not-allowed opacity-40'
+                : 'hover:bg-sidebar-accent text-sidebar-foreground'
+            )}
+          >
+            {s}
+          </button>
+        ))}
+      </aside>
+    );
+  }
+
+  return (
+    <>
+      <aside className="hidden lg:flex w-56 flex-col border-r border-border bg-sidebar flex-shrink-0">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-sidebar-border">
+          <span className="text-xs font-body font-medium text-muted-foreground tracking-wide uppercase">创作进度</span>
+          <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setCollapsed(true)}>
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        <SidebarContent />
+      </aside>
+
+      <div className="lg:hidden fixed bottom-4 left-4 z-40">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button size="icon" className="w-12 h-12 rounded-full shadow-elevated gradient-hero text-primary-foreground">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72 p-0">
+            <SheetHeader className="px-3 py-3 border-b border-sidebar-border">
+              <SheetTitle className="text-sm font-body font-medium text-muted-foreground uppercase tracking-wide">
+                创作进度
+              </SheetTitle>
+            </SheetHeader>
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
   );
 }

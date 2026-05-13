@@ -41,7 +41,7 @@ export default function StudioPage() {
     <div className="flex flex-col h-full bg-background">
       <TopBar />
       {needsBanner && state.currentStage > 1 && (
-        <div className="px-4 pt-2">
+        <div className="px-2 sm:px-4 pt-2">
           <ModelConfigBanner missingText={!hasTextModel} missingImage={!hasImageModel} />
         </div>
       )}
@@ -53,7 +53,7 @@ export default function StudioPage() {
           </main>
         ) : (
           <main className="flex-1 min-h-0 overflow-y-auto">
-            <div className="max-w-3xl mx-auto p-6 h-full flex flex-col">
+            <div className="max-w-3xl mx-auto p-3 sm:p-6 h-full flex flex-col">
               <StageContent />
             </div>
           </main>

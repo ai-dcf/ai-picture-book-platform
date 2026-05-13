@@ -158,12 +158,16 @@ export default function Stage5Pages() {
   const StatusIcon = meta.icon;
 
   return (
-    <div className="flex h-full gap-0 min-h-0">
-      <div className="w-36 flex-shrink-0 border-r border-border flex flex-col">
-        <div className="px-3 py-2 border-b border-border">
+    <div className="flex flex-col lg:flex-row h-full gap-0 min-h-0">
+      <div className="w-full lg:w-36 lg:flex-shrink-0 lg:border-r lg:border-border lg:flex lg:flex-col border-b border-border">
+        <div className="px-3 py-2 border-b border-border hidden lg:block">
           <span className="text-xs font-body text-muted-foreground uppercase tracking-wide">页面列表</span>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="lg:hidden px-3 py-2 flex items-center justify-between">
+          <span className="text-xs font-body text-muted-foreground">页面列表</span>
+          <span className="text-xs font-body text-muted-foreground">{currentPage + 1} / {pages.length}</span>
+        </div>
+        <ScrollArea className="lg:flex-1">
           <div className="p-1.5 space-y-0.5">
             {pages.map(p => {
               const m = pageStatusIcon(p.pageStatus);
@@ -198,7 +202,7 @@ export default function Stage5Pages() {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-border">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 lg:border-r lg:border-border">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <h3 className="font-display text-lg text-foreground">第 {currentPage + 1} 页生成</h3>
           <Badge
@@ -280,7 +284,7 @@ export default function Stage5Pages() {
         </ScrollArea>
       </div>
 
-      <div className="w-64 flex-shrink-0 flex flex-col">
+      <div className="w-full lg:w-64 lg:flex-shrink-0 flex flex-col">
         <div className="px-4 py-3 border-b border-border">
           <span className="text-sm font-body font-medium text-foreground">本页插画</span>
         </div>

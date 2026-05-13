@@ -58,20 +58,20 @@ export default function TopBar() {
 
   return (
     <header className="topbar-ink">
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="topbar-logo">
           <BookOpen className="w-4 h-4 text-primary-foreground" />
         </div>
-        <h1 className="font-display text-lg text-foreground truncate max-w-[160px] sm:max-w-[200px]">
+        <h1 className="font-display text-base sm:text-lg text-foreground truncate max-w-[100px] sm:max-w-[160px] md:max-w-[200px]">
           {projectInfo.title || '未命名绘本'}
         </h1>
       </div>
 
-      <div className="hidden lg:flex items-center gap-2 flex-1 min-w-0">
-        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge">{projectInfo.targetAge}</Badge>
-        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge">{projectInfo.artStyle}</Badge>
-        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge">{projectInfo.pageCount} 页</Badge>
-        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge">{projectInfo.aspectRatio}</Badge>
+      <div className="hidden md:flex items-center gap-2 flex-1 min-w-0">
+        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge hidden sm:block">{projectInfo.targetAge}</Badge>
+        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge hidden sm:block">{projectInfo.artStyle}</Badge>
+        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge hidden lg:block">{projectInfo.pageCount} 页</Badge>
+        <Badge variant="secondary" className="text-xs font-body shrink-0 topbar-badge hidden lg:block">{projectInfo.aspectRatio}</Badge>
         <Badge
           variant="outline"
           className={cn(
@@ -84,7 +84,7 @@ export default function TopBar() {
         </Badge>
       </div>
 
-      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-body ml-auto">
+      <div className="flex items-center gap-1 text-muted-foreground text-xs font-body ml-auto">
         <span className={cn(
           'save-indicator',
           projectInfo.saveStatus === 'saving' && 'text-amber-500',
@@ -108,7 +108,7 @@ export default function TopBar() {
               <Settings className="w-4 h-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md topbar-dialog">
+          <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto topbar-dialog">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">项目设置</DialogTitle>
             </DialogHeader>
@@ -180,7 +180,7 @@ export default function TopBar() {
           <Button
             variant="ghost"
             size="icon"
-            className="topbar-btn-icon"
+            className="topbar-btn-icon hidden sm:flex"
             title="模型配置"
           >
             <Cpu className="w-4 h-4" />
@@ -194,7 +194,7 @@ export default function TopBar() {
           className="topbar-btn-back"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">返回首页</span>
+          <span className="hidden md:inline">返回首页</span>
         </Button>
       </div>
     </header>

@@ -17,12 +17,12 @@ function CreateNewProjectCard() {
       className="group cursor-pointer card-ink hover:card-ink-hover transition-all duration-300"
       onClick={() => router.push("/studio")}
     >
-      <CardContent className="flex flex-col items-center justify-center py-12 px-6">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[hsl(16,72%,52%)] to-[hsl(35,85%,58%)] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-card">
-          <Plus className="w-8 h-8 text-white" />
+      <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-[hsl(16,72%,52%)] to-[hsl(35,85%,58%)] flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-card">
+          <Plus className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" />
         </div>
-        <h3 className="text-xl font-display mb-2 text-foreground">创建新项目</h3>
-        <p className="text-muted-foreground text-center">开始创作你的下一本精彩绘本</p>
+        <h3 className="text-lg sm:text-xl font-display mb-2 text-foreground">创建新项目</h3>
+        <p className="text-sm text-muted-foreground text-center">开始创作你的下一本精彩绘本</p>
       </CardContent>
     </Card>
   );
@@ -109,20 +109,20 @@ export default function HeroPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(38,40%,97%)] to-[hsl(38,30%,94%)]">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="text-center mb-16">
-          <h1 className="text-6xl md:text-7xl font-display mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="text-center mb-10 sm:mb-16">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)]">
             AI 绘本工作室
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-8 px-4">
             用人工智能的力量，将你的想象变成精美的绘本
           </p>
-          <div className="divider-ink mx-auto max-w-md" />
+          <div className="divider-ink mx-auto max-w-xs sm:max-w-md" />
         </div>
 
-        <div className="space-y-12">
+        <div className="space-y-8 sm:space-y-12">
           <section>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               <CreateNewProjectCard />
 
               {isLoading ? (
@@ -152,10 +152,10 @@ export default function HeroPage() {
             </div>
 
             {!isLoading && projects.length === 0 && (
-              <div className="col-span-full text-center py-16">
+              <div className="col-span-full text-center py-8 sm:py-16">
                 <div className="text-muted-foreground">
-                  <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-lg font-display">还没有项目，开始你的第一个创作吧！</p>
+                  <BookOpen className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-20" />
+                  <p className="text-base sm:text-lg font-display">还没有项目，开始你的第一个创作吧！</p>
                 </div>
               </div>
             )}
