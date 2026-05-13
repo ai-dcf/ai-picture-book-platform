@@ -71,7 +71,12 @@ export default function EditorPage() {
   }
 
   function handleReturnStudio() {
-    router.push("/");
+    const { projectId } = state.projectInfo;
+    if (projectId) {
+      router.push(`/studio?projectId=${projectId}`);
+    } else {
+      router.push("/studio");
+    }
   }
 
   async function handleExportCurrentPage() {
@@ -212,8 +217,8 @@ export default function EditorPage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleReturnStudio} className="gap-1.5 font-body text-xs">
-            返回主流程
+          <Button variant="outline" size="sm" onClick={() => router.push("/")} className="gap-1.5 font-body text-xs">
+            返回首页
           </Button>
           {projectInfo.projectStatus === "exportable" && (
             <DropdownMenu>

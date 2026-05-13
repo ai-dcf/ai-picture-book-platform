@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useReducer, useCallback, useRef } from 'react';
+import React, { createContext, useReducer, useCallback, useRef, useEffect } from 'react';
 import {
   PictureBookState,
   ProjectInfo,
@@ -28,6 +28,7 @@ import {
   CandidateHistoryEntry,
 } from '@/types/picturebook';
 import { buildAssetPrompt, buildAssetPromptFromEntry, buildPagePrompt } from '@/modules/studio/domain/services/prompt';
+import type { ProjectHistoryEntry } from '@/modules/project-history/types';
 
 function buildInitialPages(count: number): PageItem[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -810,9 +811,72 @@ interface StudioContextValue {
 const StudioContext = createContext<StudioContextValue | null>(null);
 export { StudioContext };
 
-export function StudioProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+const PROJECT_STORAGE_KEY = 'ai_picturebook_project_';
+
+function saveProjectToStorage(state: PictureBookState) {
+  if (!state.projectInfo.projectId) return;
+
+  // Save full project state
+  try {
+    localStorage.setItem(`${PROJECT_STORAGE_KEY}${state.projectInfo.projectId}`, JSON.stringify(state));
+
+    // Save to project history
+    const historyEntry: ProjectHistoryEntry = {
+      ...state.projectInfo,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      // Try to get a thumbnail from the first page
+      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl,
+    };
+
+    const existingHistoryStr = localStorage.getItem('ai-picturebook-projects');
+    let history: ProjectHistoryEntry[] = [];
+    if (existingHistoryStr) {
+      try {
+        history = JSON.parse(existingHistoryStr);
+      } catch {
+        history = [];
+      }
+    }
+
+    const existingIndex = history.findIndex(p => p.projectId === state.projectInfo.projectId);
+    if (existingIndex >= 0) {
+      history[existingIndex] = {
+        ...historyEntry,
+        createdAt: history[existingIndex].createdAt,
+      };
+    } else {
+      history.unshift(historyEntry);
+    }
+
+    localStorage.setItem('ai-picturebook-projects', JSON.stringify(history));
+  } catch (error) {
+    console.error('Failed to save project:', error);
+  }
+}
+
+function loadProjectFromStorage(projectId: string): PictureBookState | null {
+  try {
+    const data = localStorage.getItem(`${PROJECT_STORAGE_KEY}${projectId}`);
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Failed to load project:', error);
+  }
+  return null;
+}
+
+export function StudioProvider({ children, projectId }: { children: React.ReactNode; projectId?: string }) {
+  const [state, dispatch] = useReducer(reducer, initialState, (initial) => {
+    if (projectId) {
+      const loaded = loadProjectFromStorage(projectId);
+      if (loaded) return loaded;
+    }
+    return initial;
+  });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedStateRef = useRef<PictureBookState | null>(null);
 
   const triggerSave = useCallback(() => {
     dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
@@ -821,6 +885,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
     }, 800);
   }, []);
+
+  // Save project whenever state changes
+  useEffect(() => {
+    if (state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
+      saveProjectToStorage(state);
+      lastSavedStateRef.current = state;
+    }
+  }, [state]);
+
+  // Initialize project if no projectId and no existing project
+  useEffect(() => {
+    if (!projectId && !state.projectInfo.projectId) {
+      dispatch({ type: 'CREATE_DRAFT' });
+    }
+  }, [projectId, state.projectInfo.projectId]);
 
   return (
     <StudioContext.Provider value={{ state, dispatch, triggerSave }}>

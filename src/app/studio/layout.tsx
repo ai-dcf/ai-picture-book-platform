@@ -1,15 +1,9 @@
 "use client";
 
-import type { Metadata } from "next";
 import { useSearchParams } from "next/navigation";
 import { StudioProvider } from "@/modules/studio/presentation/context/StudioContext";
 
-export const metadata: Metadata = {
-  title: "页面编辑 - AI 绘本工作室",
-  description: "编辑绘本页面文字样式、布局和插画",
-};
-
-export default function EditorLayout({
+export default function StudioLayout({
   children,
 }: {
   children: React.ReactNode;

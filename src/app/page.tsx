@@ -1,5 +1,5 @@
-﻿import Studio from "@/modules/studio/presentation/components/StudioPage";
+﻿import HeroPage from "./components/HeroPage";
 
 export default function Home() {
-  return <Studio />;
+  return <HeroPage />;
 }
