@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useProjectHistory } from "@/modules/project-history/use-project-history";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PROJECT_STATUS_LABELS, ART_STYLES, TARGET_AGES } from "@/types/picturebook";
+import { PROJECT_STATUS_LABELS, ART_STYLES, TARGET_AGES, type ProjectStatus } from "@/types/picturebook";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -54,7 +54,7 @@ function ProjectCard({ project, onOpen, onDelete }: {
           <div className="flex-1 min-w-0 mr-2">
             <CardTitle className="text-lg truncate">{project.title}</CardTitle>
             <CardDescription className="truncate">
-              {PROJECT_STATUS_LABELS[project.projectStatus]} · {ART_STYLES.find((s) => s === project.artStyle) || project.artStyle}
+              {PROJECT_STATUS_LABELS[project.projectStatus as ProjectStatus]} · {ART_STYLES.find((s) => s === project.artStyle) || project.artStyle}
             </CardDescription>
           </div>
           <Button

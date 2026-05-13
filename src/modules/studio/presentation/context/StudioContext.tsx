@@ -845,7 +845,7 @@ function saveProjectToStorage(state: PictureBookState) {
       ...state.projectInfo,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl,
+      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl ?? undefined,
     };
 
     const existingHistoryStr = localStorage.getItem('ai-picturebook-projects');

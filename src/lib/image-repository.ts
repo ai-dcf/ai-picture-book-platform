@@ -1,10 +1,23 @@
 import { getDb, withTransaction } from './db';
-import { getNextVersionNumber, generateId } from './utils';
 import type {
   BaseImageHistoryEntry,
   CandidateHistoryEntry,
 } from '@/types/picturebook';
 import type { DbImageVersion, DbSceneCandidateGroup, DbSceneCandidate } from './db/types';
+
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function getNextVersionNumber(db: any, ownerType: string, ownerId: string): number {
+  const result = db.prepare(`
+    SELECT MAX(version_number) as max_version
+    FROM image_versions
+    WHERE owner_type = ? AND owner_id = ?
+  `).get(ownerType, ownerId) as { max_version: number | null };
+  
+  return (result?.max_version || 0) + 1;
+}
 
 export type ImageOwnerType = 'page' | 'character_base' | 'scene_candidate';
 
