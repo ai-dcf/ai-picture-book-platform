@@ -41,7 +41,6 @@ import {
   ImageIcon,
   Loader2,
   MapPin,
-  Sparkles,
   Star,
   Users,
   Wand2,
@@ -319,7 +318,7 @@ function SwitchBaseImageDialog({
                 />
               </div>
               <p className="text-sm font-body text-muted-foreground">
-                切换后，当前三视图将被清除，需要重新生成。确定切换？
+                切换后，当前已确认的基础形象将被替换。确定切换？
               </p>
               <p className="text-xs font-body text-muted-foreground">
                 生成时间：{formatTimestamp(timestamp)}
@@ -585,7 +584,6 @@ function CharacterCard({
   const { generateAssetImage } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
   const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
-  const turnaroundReady = asset.turnaroundImages.length > 0;
 
   function ensurePrompt() {
     if (hasPrompt) return;
@@ -643,48 +641,6 @@ function CharacterCard({
     triggerSave();
   }
 
-  async function handleGenerateTurnaround() {
-    const basePrompt = hasPrompt
-      ? asset.prompt
-      : buildAssetPrompt({
-          kind: 'character',
-          name: asset.name,
-          description: asset.description,
-          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
-        });
-    const viewPrompts = [
-      `${basePrompt}\n\n请输出角色三视图中的正面视图，保持角色设定一致，背景简洁。`,
-      `${basePrompt}\n\n请输出角色三视图中的侧面视图，保持角色设定一致，背景简洁。`,
-      `${basePrompt}\n\n请输出角色三视图中的背面视图，保持角色设定一致，背景简洁。`,
-    ];
-
-    ensurePrompt();
-    dispatch({
-      type: 'SET_ASSET_GENERATING',
-      payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_turnaround' },
-    });
-    const images: string[] = [];
-    for (const prompt of viewPrompts) {
-      const imageUrl = await generateAssetImage(
-        {
-          ...asset,
-          prompt,
-        },
-        state.projectInfo
-      );
-      if (!imageUrl) {
-        dispatch({
-          type: 'SET_ASSET_GENERATING',
-          payload: { type: 'characters', id: asset.id, generating: false, phase: null },
-        });
-        return;
-      }
-      images.push(imageUrl);
-    }
-    dispatch({ type: 'SET_CHARACTER_TURNAROUNDS', payload: { id: asset.id, images } });
-    triggerSave();
-  }
-
   function handleAspectRatioChange(nextAspectRatio: string) {
     dispatch({
       type: 'UPDATE_ASSET_ASPECT_RATIO',
@@ -705,8 +661,7 @@ function CharacterCard({
 
       <AssetPromptEditor asset={asset} assetType="characters" />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-3">
-        <div className="space-y-2">
+      <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-body text-muted-foreground">基础形象</p>
             <div className="flex items-center gap-2">
@@ -782,70 +737,6 @@ function CharacterCard({
             onPreview={onPreview}
           />
         </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-body text-muted-foreground">三视图</p>
-            {turnaroundReady && (
-              <div className="flex items-center gap-1 text-[11px] text-green-600 font-body">
-                <Sparkles className="w-3 h-3" />
-                已生成
-              </div>
-            )}
-          </div>
-
-          {asset.generating && asset.generatingPhase === 'character_turnaround' ? (
-            <LoadingTiles count={3} aspectRatio={asset.aspectRatio} />
-          ) : turnaroundReady ? (
-            <div className="grid grid-cols-3 gap-2">
-              {asset.turnaroundImages.map((url, index) => (
-                <div key={index} className="space-y-1">
-                  <div className={cn(getAspectClass(asset.aspectRatio), 'rounded-lg overflow-hidden border border-border bg-muted')}>
-                    <img
-                      src={url}
-                      alt={`${asset.name} 视图 ${index + 1}`}
-                      className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform"
-                      onClick={() => onPreview({ imageUrl: url, alt: `${asset.name} 视图 ${index + 1}` })}
-                    />
-                  </div>
-                  <p className="text-[11px] text-center font-body text-muted-foreground">
-                    {['正面', '侧面', '背面'][index] || `视图 ${index + 1}`}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {['正面', '侧面', '背面'].map(label => (
-                <div key={label} className="space-y-1">
-                  <EmptyPreview label={label} aspectRatio={asset.aspectRatio} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <Button
-            onClick={handleGenerateTurnaround}
-            disabled={!baseConfirmed || asset.generating}
-            size="sm"
-            variant={turnaroundReady ? 'outline' : 'default'}
-            className={cn(
-              'w-full gap-2 font-body text-xs',
-              !turnaroundReady && 'gradient-hero text-primary-foreground border-0'
-            )}
-          >
-            {asset.generating && asset.generatingPhase === 'character_turnaround' ? (
-              <><Loader2 className="w-3.5 h-3.5 animate-spin" />生成三视图中…</>
-            ) : (
-              <><Sparkles className="w-3.5 h-3.5" />{turnaroundReady ? '重新生成三视图' : '确认基础形象，生成三视图'}</>
-            )}
-          </Button>
-
-          <p className="text-[11px] font-body text-muted-foreground">
-            先确认基础形象，再生成三视图，确保后续逐页生成保持角色一致。
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1066,7 +957,7 @@ export default function Stage4Assets() {
         </div>
         <h2 className="font-display text-2xl text-foreground">素材设定</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">
-          角色基础形象为必填项，三视图和场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成
+          角色基础形象为必填项，场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成
         </p>
       </div>
 
@@ -1138,7 +1029,7 @@ export default function Stage4Assets() {
           {allOfficialSet ? (
             <span className="text-green-600">所有角色基础形象已生成，可进入逐页生成</span>
           ) : (
-            <span className="text-amber-600">所有角色都需要先生成基础形象；三视图和场景视图可稍后补充</span>
+            <span className="text-amber-600">所有角色都需要先生成基础形象；场景视图可稍后补充</span>
           )}
         </div>
         <Button

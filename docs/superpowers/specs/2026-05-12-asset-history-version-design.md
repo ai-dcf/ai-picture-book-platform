@@ -111,8 +111,7 @@ export const CANDIDATE_HISTORY_LIMIT = 10;
 1. 从 `baseImageHistory[historyIndex]` 取出 imageUrl
 2. 将当前 `baseImageUrl` 推入历史头部（排在最前面）
 3. 移除该历史条目（historyIndex 处）
-4. 清空 `turnaroundImages`（三视图需重新生成）
-5. 将 `status` 设为 `candidates_generated`
+4. 将 `status` 设为 `candidates_generated`
 
 **`SELECT_CANDIDATE_FROM_HISTORY`**
 
@@ -154,7 +153,7 @@ export const CANDIDATE_HISTORY_LIMIT = 10;
 
 **角色基础形象：**
 - 标题：切换基础形象
-- 内容：预览所选图片 + "切换后，当前三视图将被清除，需要重新生成。确定切换？"
+- 内容：预览所选图片 + "切换后，当前已确认的基础形象将被替换。确定切换？"
 - 按钮：[取消] [确认切换]
 
 **场景候选图：**
@@ -223,4 +222,3 @@ function useLazyImage(imgRef: RefObject<HTMLImageElement>) {
 - 不处理历史版本的手动删除（只通过 FIFO 自动淘汰）
 - 不处理历史版本的编辑/备注
 - 不引入额外数据持久化（与当前内存 useReducer 一致）
-- 三视图不单独做历史管理（选择历史基础形象时清空，重新生成后覆盖）

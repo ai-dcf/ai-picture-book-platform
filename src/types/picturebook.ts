@@ -78,7 +78,7 @@ export const PAGE_STATUS_LABELS: Record<PageStatus, string> = {
 
 // ─── Asset Status (PRD §7.3) ─────────────────────────────────────────────────
 export type AssetStatus = 'not_generated' | 'candidates_generated' | 'official_confirmed' | 'pending_update' | 'review';
-export type AssetGenerationPhase = 'character_base' | 'character_turnaround' | 'scene_candidates' | null;
+export type AssetGenerationPhase = 'character_base' | 'scene_candidates' | null;
 
 export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   not_generated: '未生成',
@@ -214,7 +214,6 @@ export interface AssetItem {
   status: AssetStatus;
   aspectRatio: AspectRatio;
   baseImageUrl: string | null;
-  turnaroundImages: string[];
   candidates: string[];
   officialImageUrl: string | null;
   officialIndex: number | null;

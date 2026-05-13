@@ -258,7 +258,6 @@ type Action =
   | { type: 'INIT_ASSETS' }
   | { type: 'SET_ASSET_GENERATING'; payload: { type: 'characters' | 'scenes'; id: string; generating: boolean; phase: AssetItem['generatingPhase'] } }
   | { type: 'SET_CHARACTER_BASE_IMAGE'; payload: { id: string; imageUrl: string } }
-  | { type: 'SET_CHARACTER_TURNAROUNDS'; payload: { id: string; images: string[] } }
   | { type: 'SET_SCENE_CANDIDATES'; payload: { id: string; candidates: string[] } }
   | { type: 'CONFIRM_CHARACTER_BASE'; payload: { id: string } }
   | { type: 'SET_SCENE_OFFICIAL'; payload: { id: string; index: number } }
@@ -402,7 +401,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         status: 'not_generated' as AssetStatus,
         aspectRatio: state.projectInfo.aspectRatio,
         baseImageUrl: null,
-        turnaroundImages: [],
         candidates: [],
         officialImageUrl: null,
         officialIndex: null,
@@ -420,7 +418,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         status: 'not_generated' as AssetStatus,
         aspectRatio: state.projectInfo.aspectRatio,
         baseImageUrl: null,
-        turnaroundImages: [],
         candidates: [],
         officialImageUrl: null,
         officialIndex: null,
@@ -483,26 +480,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       };
     }
 
-    case 'SET_CHARACTER_TURNAROUNDS': {
-      return {
-        ...state,
-        assets: {
-          ...state.assets,
-          characters: state.assets.characters.map(a =>
-            a.id === action.payload.id
-              ? {
-                  ...a,
-                  turnaroundImages: action.payload.images,
-                  generating: false,
-                  generatingPhase: null,
-                  status: 'official_confirmed' as AssetStatus,
-                }
-              : a
-          ),
-        },
-      };
-    }
-
     case 'SET_SCENE_CANDIDATES': {
       return {
         ...state,
@@ -541,7 +518,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           ? {
               ...a,
               officialImageUrl: a.baseImageUrl,
-              turnaroundImages: [],
               status: 'official_confirmed' as AssetStatus,
             }
           : a
@@ -586,7 +562,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           [key]: state.assets[key].map(a => {
             if (a.id !== action.payload.id) return a;
             const hasGeneratedImages = Boolean(
-              a.baseImageUrl || a.turnaroundImages.length > 0 || a.candidates.length > 0 || a.officialImageUrl
+              a.baseImageUrl || a.candidates.length > 0 || a.officialImageUrl
             );
             return {
               ...a,
@@ -778,7 +754,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
                   ...a,
                   baseImageUrl: selectedEntry.imageUrl,
                   baseImageHistory: newHistory,
-                  turnaroundImages: [],
                   status: 'candidates_generated' as AssetStatus,
                 }
               : a
