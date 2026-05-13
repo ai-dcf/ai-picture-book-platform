@@ -14,14 +14,14 @@ function CreateNewProjectCard() {
   const router = useRouter();
   return (
     <Card
-      className="group cursor-pointer hover:border-primary/50 transition-all hover:shadow-md"
+      className="group cursor-pointer card-ink hover:card-ink-hover transition-all duration-300"
       onClick={() => router.push("/studio")}
     >
       <CardContent className="flex flex-col items-center justify-center py-12 px-6">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-          <Plus className="w-8 h-8 text-primary" />
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[hsl(16,72%,52%)] to-[hsl(35,85%,58%)] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-card">
+          <Plus className="w-8 h-8 text-white" />
         </div>
-        <h3 className="text-xl font-semibold mb-2">创建新项目</h3>
+        <h3 className="text-xl font-display mb-2 text-foreground">创建新项目</h3>
         <p className="text-muted-foreground text-center">开始创作你的下一本精彩绘本</p>
       </CardContent>
     </Card>
@@ -34,9 +34,9 @@ function ProjectCard({ project, onOpen, onDelete }: {
   onDelete: () => void;
 }) {
   return (
-    <Card className="overflow-hidden group">
+    <Card className="overflow-hidden card-ink group-hover:card-ink-hover transition-all duration-300">
       <div
-        className="aspect-video bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center cursor-pointer"
+        className="aspect-video bg-gradient-to-br from-[hsl(170,42%,45%)] via-[hsl(35,85%,58%)] to-[hsl(16,72%,52%)] flex items-center justify-center cursor-pointer relative overflow-hidden"
         onClick={onOpen}
       >
         {project.thumbnailUrl ? (
@@ -48,6 +48,7 @@ function ProjectCard({ project, onOpen, onDelete }: {
         ) : (
           <BookOpen className="w-12 h-12 text-white/50" />
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
@@ -81,7 +82,7 @@ function ProjectCard({ project, onOpen, onDelete }: {
           </span>
         </div>
         <Button
-          className="w-full mt-4"
+          className="w-full mt-4 btn-ink"
           onClick={onOpen}
         >
           继续创作
@@ -107,29 +108,27 @@ export default function HeroPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(38,40%,97%)] to-[hsl(38,30%,94%)]">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Hero Section */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-7xl font-display mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)]">
             AI 绘本工作室
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             用人工智能的力量，将你的想象变成精美的绘本
           </p>
+          <div className="divider-ink mx-auto max-w-md" />
         </div>
 
-        {/* Content Section */}
-        <div className="space-y-8">
-          {/* Create New Project */}
+        <div className="space-y-12">
           <section>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <CreateNewProjectCard />
 
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <div className="aspect-video bg-muted animate-pulse" />
+                  <Card key={i} className="overflow-hidden card-ink">
+                    <div className="aspect-video bg-gradient-to-br from-[hsl(38,30%,94%)] to-[hsl(38,25%,88%)] animate-pulse" />
                     <CardHeader className="pb-2">
                       <div className="h-6 bg-muted rounded animate-pulse mb-2" />
                       <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
@@ -156,7 +155,7 @@ export default function HeroPage() {
               <div className="col-span-full text-center py-16">
                 <div className="text-muted-foreground">
                   <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-lg">还没有项目，开始你的第一个创作吧！</p>
+                  <p className="text-lg font-display">还没有项目，开始你的第一个创作吧！</p>
                 </div>
               </div>
             )}
