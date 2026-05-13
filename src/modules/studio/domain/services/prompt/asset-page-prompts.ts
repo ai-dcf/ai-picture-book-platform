@@ -1,4 +1,5 @@
 import type { AssetItem, PageItem, ProjectInfo, StoryEntry, StoryboardPageData } from "@/types/picturebook";
+import { promptEnhancer } from "@/lib/prompt-enhancer";
 
 type AssetPromptKind = "character" | "scene";
 
@@ -33,15 +34,18 @@ function findAssetDescriptions(names: string[], assets: AssetItem[]) {
 }
 
 export function buildAssetPrompt({ kind, name, description, projectInfo }: BuildAssetPromptParams) {
-  const subjectLabel = kind === "character" ? "角色设定图" : "场景设定图";
-  const focusLabel = kind === "character" ? "突出角色外形、服饰、表情与辨识度" : "突出空间结构、时间氛围与关键陈设";
-
-  return [
-    `${subjectLabel}，主体：${name}。`,
-    `描述：${description || "延续上游故事设定，补足适合儿童绘本的细节。"}`,
-    `绘本风格：${projectInfo.artStyle}，目标年龄：${projectInfo.targetAge}，画面比例：${projectInfo.aspectRatio}。`,
-    `${focusLabel}，画面干净完整，适合后续全书复用，保持儿童绘本审美与一致性。`,
+  const baseContent = [
+    `主体 Subject: ${name}`,
+    `描述 Description: ${description || "延续上游故事设定，补足适合儿童绘本的细节。"}`,
   ].join("\n");
+
+  return promptEnhancer.buildProfessionalPrompt({
+    type: kind,
+    artStyle: projectInfo.artStyle,
+    targetAge: projectInfo.targetAge,
+    mood: 'warm',
+    layout: 'centered'
+  }, baseContent);
 }
 
 export function buildPagePrompt({
@@ -58,16 +62,21 @@ export function buildPagePrompt({
   const characterDetails = findAssetDescriptions(characterRefs, assets.characters);
   const sceneDetails = findAssetDescriptions(sceneRefs, assets.scenes);
 
-  return [
-    `绘本第 ${pageIndex + 1} 页插画，风格：${projectInfo.artStyle}，目标年龄：${projectInfo.targetAge}，画面比例：${projectInfo.aspectRatio}。`,
-    `本页正文：${storyText || "保持与当前分镜一致的叙事内容。"}`,
-    `画面目标：${visualGoal}。`,
-    `角色引用：${formatRefs(characterRefs, "无明确角色")}。${characterDetails ? `角色细节：${characterDetails}。` : ""}`,
-    `场景引用：${formatRefs(sceneRefs, "无明确场景")}。${sceneDetails ? `场景细节：${sceneDetails}。` : ""}`,
-    "请输出适合儿童绘本的完整单页插画，主体明确，构图稳定，色彩统一，保留故事情绪与阅读节奏。",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const baseContent = [
+    `页码 Page: ${pageIndex + 1}`,
+    `故事情节 Story Content: ${storyText || "保持与当前分镜一致的叙事内容。"}`,
+    `画面目标 Visual Goal: ${visualGoal}`,
+    characterRefs.length > 0 ? `角色 Characters: ${formatRefs(characterRefs, "无明确角色")}${characterDetails ? `\n角色细节 Character Details: ${characterDetails}` : ""}` : "",
+    sceneRefs.length > 0 ? `场景 Scenes: ${formatRefs(sceneRefs, "无明确场景")}${sceneDetails ? `\n场景细节 Scene Details: ${sceneDetails}` : ""}` : "",
+  ].filter(Boolean).join("\n");
+
+  return promptEnhancer.buildProfessionalPrompt({
+    type: 'page',
+    artStyle: projectInfo.artStyle,
+    targetAge: projectInfo.targetAge,
+    mood: 'warm',
+    layout: 'golden'
+  }, baseContent);
 }
 
 export function buildAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEntry, projectInfo: ProjectInfo) {
