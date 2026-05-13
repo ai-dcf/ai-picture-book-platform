@@ -165,6 +165,39 @@ CREATE TABLE editor_states (
     FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
 );
 
+-- 图片版本表 (用于历史记录)
+CREATE TABLE image_versions (
+    id TEXT PRIMARY KEY,
+    owner_type TEXT NOT NULL,                -- 'page', 'character_base', 'scene_candidate'
+    owner_id TEXT NOT NULL,                  -- 对应所有者ID
+    version_number INTEGER NOT NULL,
+    image_blob BLOB NOT NULL,
+    image_url TEXT,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (owner_id) REFERENCES pages(id) ON DELETE CASCADE
+    -- 注意：对于character_base和scene_candidate，owner_id关联assets_data中的JSON引用，通过repository处理
+);
+
+-- 场景候选组表 (一组候选图片)
+CREATE TABLE scene_candidate_groups (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    asset_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+-- 场景候选表 (单个候选)
+CREATE TABLE scene_candidates (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    index_in_group INTEGER NOT NULL,
+    image_blob BLOB NOT NULL,
+    image_url TEXT,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES scene_candidate_groups(id) ON DELETE CASCADE
+);
+
 -- 项目历史表 (用于首页快速查询)
 CREATE TABLE project_history (
     id TEXT PRIMARY KEY,
@@ -181,6 +214,9 @@ CREATE TABLE project_history (
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_projects_updated_at ON projects(updated_at DESC);
 CREATE INDEX idx_pages_project_id ON pages(project_id);
+CREATE INDEX idx_image_versions_owner ON image_versions(owner_type, owner_id, version_number DESC);
+CREATE INDEX idx_scene_candidate_groups_project ON scene_candidate_groups(project_id, asset_id);
+CREATE INDEX idx_scene_candidates_group ON scene_candidates(group_id, index_in_group);
 CREATE INDEX idx_project_history_user_id ON project_history(user_id);
 ```
 
@@ -248,20 +284,61 @@ Request: { ...PictureBookState }
 Response: { success: true }
 ```
 
-### 4.3 素材图片 API
+### 4.3 图片管理 API
 
-#### 上传图片
+#### 上传/保存页面图片 (支持历史记录)
 ```
 POST /api/projects/:id/pages/:pageIndex/image
 Content-Type: multipart/form-data
-Request: { image: File }
-Response: { imageUrl: string }
+Request: { image: File, saveToHistory?: boolean = true }
+Response: { imageUrl: string, versionId: string }
 ```
 
 #### 获取图片
 ```
 GET /api/images/:imageId
 Response: Binary image data
+```
+
+#### 获取页面图片历史
+```
+GET /api/projects/:id/pages/:pageIndex/image-versions
+Response: { versions: [{ id, versionNumber, createdAt, imageUrl }] }
+```
+
+#### 恢复图片版本
+```
+POST /api/projects/:id/pages/:pageIndex/restore-version
+Request: { versionId: string }
+Response: { success: true, imageUrl: string }
+```
+
+#### 上传角色基图 (支持历史)
+```
+POST /api/projects/:id/assets/characters/:assetId/base-image
+Content-Type: multipart/form-data
+Request: { image: File }
+Response: { imageUrl: string, versionId: string }
+```
+
+#### 获取角色基图历史
+```
+GET /api/projects/:id/assets/characters/:assetId/base-image-versions
+Response: { versions: [{ id, versionNumber, createdAt, imageUrl }] }
+```
+
+#### 上传场景候选图片组
+```
+POST /api/projects/:id/assets/scenes/:assetId/candidates
+Content-Type: multipart/form-data
+Request: { images: File[] }
+Response: { groupId: string, candidates: [{ index, imageUrl, id }] }
+```
+
+#### 获取场景候选历史
+```
+GET /api/projects/:id/assets/scenes/:assetId/candidate-groups
+Response: { groups: [{ id, createdAt, candidates: [...] }] }
 ```
 
 ---
@@ -285,6 +362,8 @@ npm install -D @types/better-sqlite3
 | `src/lib/db/migrations/` | 数据库迁移脚本 |
 | `src/lib/db/repositories/project-repository.ts` | 项目数据访问层 |
 | `src/lib/db/repositories/page-repository.ts` | 页面数据访问层 |
+| `src/lib/db/repositories/image-repository.ts` | 图片版本管理 |
+| `src/lib/db/repositories/asset-repository.ts` | 素材和候选图片管理 |
 
 #### 认证模块
 | 文件路径 | 描述 |
@@ -300,6 +379,12 @@ npm install -D @types/better-sqlite3
 | `src/app/api/projects/[id]/route.ts` | 单个项目 CRUD |
 | `src/app/api/projects/[id]/state/route.ts` | 完整状态保存 |
 | `src/app/api/projects/[id]/pages/[pageIndex]/image/route.ts` | 页面图片上传 |
+| `src/app/api/projects/[id]/pages/[pageIndex]/image-versions/route.ts` | 页面图片历史 |
+| `src/app/api/projects/[id]/pages/[pageIndex]/restore-version/route.ts` | 恢复图片版本 |
+| `src/app/api/projects/[id]/assets/characters/[assetId]/base-image/route.ts` | 角色基图上传 |
+| `src/app/api/projects/[id]/assets/characters/[assetId]/base-image-versions/route.ts` | 角色基图历史 |
+| `src/app/api/projects/[id]/assets/scenes/[assetId]/candidates/route.ts` | 场景候选上传 |
+| `src/app/api/projects/[id]/assets/scenes/[assetId]/candidate-groups/route.ts` | 场景候选历史 |
 | `src/app/api/images/[id]/route.ts` | 图片获取 |
 
 #### 前端改造
@@ -321,7 +406,31 @@ npm install -D @types/better-sqlite3
 - 数据更新时可只修改变更的部分
 - 符合数据库设计范式
 
-### 6.2 图片存储策略
+### 6.2 图片多版本存储策略
+
+**设计目标**：
+- 角色基图保留最多 10 个历史版本
+- 场景候选保留最多 10 组候选历史
+- 页面图片保留最多 10 个历史版本
+- 支持版本恢复功能
+
+**实现方案**：
+1. 使用 `image_versions` 表统一管理所有类型图片的历史版本
+   - `owner_type`: 'page'|'character_base'|'scene_candidate'
+   - `owner_id`: 关联对应的所有者ID
+   - `version_number`: 版本号，自动递增
+   - 自动限制保留版本数量，超出时删除最旧版本
+
+2. 使用 `scene_candidate_groups` 和 `scene_candidates` 表管理场景候选
+   - 每组候选存储为一个 `scene_candidate_groups` 记录
+   - 组内的候选图片存储为 `scene_candidates` 记录
+   - 每组可包含多个候选图片
+
+3. Repository 层处理 JSON 字段与数据库表的转换
+   - 读取时：从关系表构建 `AssetItem.baseImageHistory` 和 `AssetItem.candidateHistory`
+   - 保存时：写入关系表并更新 JSON 引用
+
+### 6.3 图片存储策略
 
 采用 BLOB 存储原因：
 - SQLite 支持直接存储二进制数据
@@ -334,7 +443,7 @@ npm install -D @types/better-sqlite3
 - 设置 `soft_heap_limit` 避免内存问题
 - 考虑 CDN 缓存优化访问
 
-### 6.3 认证集成
+### 6.4 认证集成
 
 使用 NextAuth.js 原因：
 - 支持多种登录提供商（GitHub, Google, 邮箱等）
