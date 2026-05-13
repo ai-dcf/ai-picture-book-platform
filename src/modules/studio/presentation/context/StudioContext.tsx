@@ -824,13 +824,15 @@ async function triggerSaveToServer(state: PictureBookState): Promise<boolean> {
     });
 
     if (!response.ok) {
-      console.error('Failed to save project to server:', response.statusText);
+      // Don't throw error, just log it and continue
+      console.warn('Server save failed (will use localStorage):', response.statusText);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Failed to save project to server:', error);
+    // Network errors are expected, just log and continue
+    console.warn('Server save unavailable (using localStorage):', error);
     return false;
   }
 }
