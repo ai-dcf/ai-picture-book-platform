@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, BookOpen, Check, ChevronLeft, CloudUpload, Cpu, Loader2, Settings } from 'lucide-react';
 import {
   TARGET_AGES,
@@ -22,6 +23,7 @@ import {
 } from '@/types/picturebook';
 
 export default function TopBar() {
+  const router = useRouter();
   const { state, dispatch, triggerSave } = useStudio();
   const { projectInfo } = state;
   const [open, setOpen] = useState(false);
@@ -177,9 +179,14 @@ export default function TopBar() {
         </Button>
       </Link>
 
-      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground font-body text-xs hidden sm:flex">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push("/")}
+        className="gap-1.5 text-muted-foreground font-body text-xs hidden sm:flex"
+      >
         <ChevronLeft className="w-3.5 h-3.5" />
-        返回列表
+        返回首页
       </Button>
     </header>
   );
