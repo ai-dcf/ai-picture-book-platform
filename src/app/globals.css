@@ -42,6 +42,9 @@
     --sidebar-border: 40 10% 88%;
     --sidebar-ring: 357 58% 52%;
 
+    --seal: 16 72% 52%;
+    --seal-foreground: 0 0% 100%;
+
     --gradient-hero: linear-gradient(135deg, hsl(357 58% 52%), hsl(38 85% 58%));
     --gradient-subtle: linear-gradient(180deg, hsl(40 13% 98%), hsl(40 10% 95%));
     --gradient-teal: linear-gradient(135deg, hsl(186 26% 58%), hsl(200 30% 55%));
@@ -79,6 +82,9 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 357 58% 55%;
+
+    --seal: 16 72% 52%;
+    --seal-foreground: 0 0% 100%;
   }
 }
 
@@ -114,6 +120,92 @@
   .bg-status-review { background-color: hsl(var(--status-review) / 0.12); }
   .bg-status-pending { background-color: hsl(var(--status-pending) / 0.12); }
   .bg-status-updating { background-color: hsl(var(--status-updating) / 0.12); }
+
+  .hover-ink-blur {
+    transition: filter 0.4s ease, transform 0.3s ease;
+    filter: blur(0px);
+  }
+
+  .hover-ink-blur:hover {
+    filter: blur(2px);
+    transform: scale(1.02);
+  }
+
+  .animate-ink-spread {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-ink-spread::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, hsl(16, 72%, 52% / 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: inkSpread 1.5s ease-out infinite;
+  }
+
+  @keyframes inkSpread {
+    0% {
+      width: 0;
+      height: 0;
+      opacity: 1;
+    }
+    100% {
+      width: 200%;
+      height: 200%;
+      opacity: 0;
+    }
+  }
+
+  .shadow-ink-light {
+    box-shadow: 
+      0 2px 8px hsl(16, 72%, 52% / 0.1),
+      0 1px 3px hsl(20, 30%, 15% / 0.05);
+  }
+
+  .shadow-ink-medium {
+    box-shadow: 
+      0 4px 16px hsl(16, 72%, 52% / 0.15),
+      0 2px 6px hsl(20, 30%, 15% / 0.08);
+  }
+
+  .shadow-ink-heavy {
+    box-shadow: 
+      0 8px 32px hsl(16, 72%, 52% / 0.2),
+      0 4px 12px hsl(20, 30%, 15% / 0.12),
+      0 0 24px hsl(16, 72%, 52% / 0.1);
+  }
+
+  .glow-seal {
+    position: relative;
+  }
+
+  .glow-seal::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    background: radial-gradient(
+      ellipse at center,
+      hsl(16, 72%, 52% / 0.2) 0%,
+      hsl(35, 85%, 58% / 0.1) 40%,
+      transparent 70%
+    );
+    border-radius: inherit;
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .glow-seal:hover::after {
+    opacity: 1;
+  }
 
   .divider-ink {
     position: relative;
