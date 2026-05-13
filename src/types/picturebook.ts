@@ -88,6 +88,19 @@ export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   review: '待复查',
 };
 
+export const BASE_IMAGE_HISTORY_LIMIT = 10;
+export const CANDIDATE_HISTORY_LIMIT = 10;
+
+export interface BaseImageHistoryEntry {
+  imageUrl: string;
+  timestamp: number;
+}
+
+export interface CandidateHistoryEntry {
+  candidates: string[];
+  timestamp: number;
+}
+
 // ─── Project Info ────────────────────────────────────────────────────────────
 export interface ProjectInfo {
   projectId: string;
@@ -207,6 +220,8 @@ export interface AssetItem {
   officialIndex: number | null;
   generating: boolean;
   generatingPhase: AssetGenerationPhase;
+  baseImageHistory: BaseImageHistoryEntry[];
+  candidateHistory: CandidateHistoryEntry[];
 }
 
 export interface AssetsData {

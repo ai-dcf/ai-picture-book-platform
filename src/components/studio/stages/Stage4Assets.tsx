@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { AssetItem, ASPECT_RATIOS, ASSET_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
+import {
+  AssetItem,
+  ASPECT_RATIOS,
+  ASSET_STATUS_LABELS,
+  AspectRatio,
+  BaseImageHistoryEntry,
+  CandidateHistoryEntry,
+} from '@/types/picturebook';
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   Expand,
+  History,
   ImageIcon,
   Loader2,
   MapPin,
@@ -37,6 +61,13 @@ function getAspectClass(ratio: AspectRatio) {
     '1:1': 'aspect-square',
   };
   return map[ratio];
+}
+
+function formatTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
 }
 
 function ImagePreviewDialog({
@@ -180,6 +211,365 @@ function EmptyPreview({
     )}>
       <ImageIcon className="w-6 h-6 text-muted-foreground" />
       <span className="text-xs font-body text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function useLazyImage() {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, isVisible };
+}
+
+function HistoryImageThumbnail({
+  imageUrl,
+  timestamp,
+  isSelected,
+  aspectRatio,
+  onClick,
+}: {
+  imageUrl: string;
+  timestamp: number;
+  isSelected: boolean;
+  aspectRatio: AspectRatio;
+  onClick: () => void;
+}) {
+  const { ref, isVisible } = useLazyImage();
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={cn(
+        'rounded-lg overflow-hidden relative border-2 transition-all group',
+        isSelected
+          ? 'border-primary shadow-glow'
+          : 'border-transparent hover:border-primary/40',
+      )}
+      onClick={onClick}
+    >
+      <div className={cn(getAspectClass(aspectRatio), 'w-full bg-muted')}>
+        {isVisible ? (
+          <img
+            src={imageUrl}
+            alt={`历史版本 ${formatTimestamp(timestamp)}`}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+      {isSelected && (
+        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+        </div>
+      )}
+      <p className="text-[10px] text-center font-body text-muted-foreground mt-0.5">
+        {formatTimestamp(timestamp)}
+      </p>
+    </button>
+  );
+}
+
+function SwitchBaseImageDialog({
+  open,
+  onOpenChange,
+  imageUrl,
+  timestamp,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  imageUrl: string;
+  timestamp: number;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-body">切换基础形象</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <div className="rounded-lg overflow-hidden border border-border bg-muted max-w-[240px] mx-auto">
+                <img
+                  src={imageUrl}
+                  alt="待切换的基础形象"
+                  className="w-full object-cover"
+                />
+              </div>
+              <p className="text-sm font-body text-muted-foreground">
+                切换后，当前三视图将被清除，需要重新生成。确定切换？
+              </p>
+              <p className="text-xs font-body text-muted-foreground">
+                生成时间：{formatTimestamp(timestamp)}
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="font-body">取消</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="font-body">确认切换</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function SwitchCandidateDialog({
+  open,
+  onOpenChange,
+  candidates,
+  timestamp,
+  roundIndex,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  candidates: string[];
+  timestamp: number;
+  roundIndex: number;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-body">切换候选图</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {candidates.map((url, i) => (
+                  <div key={i} className="rounded-lg overflow-hidden border border-border bg-muted">
+                    <img
+                      src={url}
+                      alt={`候选图 ${i + 1}`}
+                      className="w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm font-body text-muted-foreground">
+                切换后，当前已选的正式版本将被重置。确定切换？
+              </p>
+              <p className="text-xs font-body text-muted-foreground">
+                第 {roundIndex + 1} 轮 · {formatTimestamp(timestamp)}
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="font-body">取消</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="font-body">确认切换</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function BaseImageHistoryPanel({
+  asset,
+  assetType,
+  onPreview,
+}: {
+  asset: AssetItem;
+  assetType: 'characters' | 'scenes';
+  onPreview: (payload: PreviewPayload) => void;
+}) {
+  const { dispatch, triggerSave } = useStudio();
+  const [open, setOpen] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    open: boolean;
+    entry: BaseImageHistoryEntry | null;
+    index: number;
+  }>({ open: false, entry: null, index: -1 });
+
+  const history = asset.baseImageHistory;
+  if (history.length === 0) return null;
+
+  function handleSelect(historyIndex: number) {
+    const entry = history[historyIndex];
+    if (!entry) return;
+    setDialogState({ open: true, entry, index: historyIndex });
+  }
+
+  function handleConfirm() {
+    if (dialogState.index < 0) return;
+    dispatch({
+      type: 'SELECT_BASE_IMAGE_FROM_HISTORY',
+      payload: { type: assetType, id: asset.id, historyIndex: dialogState.index },
+    });
+    triggerSave();
+    setDialogState({ open: false, entry: null, index: -1 });
+  }
+
+  return (
+    <div>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-[11px] font-body text-muted-foreground hover:text-foreground transition-colors w-full py-1"
+          >
+            <History className="w-3 h-3" />
+            历史版本 ({history.length})
+            <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid grid-cols-5 gap-2 pt-2">
+            {history.map((entry, index) => {
+              const isOfficial = asset.officialImageUrl === entry.imageUrl;
+              return (
+                <HistoryImageThumbnail
+                  key={entry.timestamp}
+                  imageUrl={entry.imageUrl}
+                  timestamp={entry.timestamp}
+                  isSelected={isOfficial}
+                  aspectRatio={asset.aspectRatio}
+                  onClick={() => handleSelect(index)}
+                />
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {dialogState.entry && (
+        <SwitchBaseImageDialog
+          open={dialogState.open}
+          onOpenChange={(o) => setDialogState(prev => ({ ...prev, open: o }))}
+          imageUrl={dialogState.entry.imageUrl}
+          timestamp={dialogState.entry.timestamp}
+          onConfirm={handleConfirm}
+        />
+      )}
+    </div>
+  );
+}
+
+function CandidateHistoryPanel({
+  asset,
+  onPreview,
+}: {
+  asset: AssetItem;
+  onPreview: (payload: PreviewPayload) => void;
+}) {
+  const { dispatch, triggerSave } = useStudio();
+  const [open, setOpen] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    open: boolean;
+    entry: CandidateHistoryEntry | null;
+    index: number;
+  }>({ open: false, entry: null, index: -1 });
+
+  const history = asset.candidateHistory;
+  if (history.length === 0) return null;
+
+  function handleSelect(historyIndex: number) {
+    const entry = history[historyIndex];
+    if (!entry) return;
+    setDialogState({ open: true, entry, index: historyIndex });
+  }
+
+  function handleConfirm() {
+    if (dialogState.index < 0) return;
+    dispatch({
+      type: 'SELECT_CANDIDATE_FROM_HISTORY',
+      payload: { id: asset.id, historyIndex: dialogState.index },
+    });
+    triggerSave();
+    setDialogState({ open: false, entry: null, index: -1 });
+  }
+
+  return (
+    <div>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-[11px] font-body text-muted-foreground hover:text-foreground transition-colors w-full py-1"
+          >
+            <History className="w-3 h-3" />
+            候选图历史 ({history.length})
+            <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 pt-2">
+            {history.map((entry, index) => {
+              const isOfficial = asset.officialImageUrl && entry.candidates.includes(asset.officialImageUrl);
+              return (
+                <div
+                  key={entry.timestamp}
+                  className={cn(
+                    'rounded-lg border-2 p-2 transition-all cursor-pointer',
+                    isOfficial
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40',
+                  )}
+                  onClick={() => handleSelect(index)}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-body text-muted-foreground">
+                      第 {history.length - index} 轮 · {formatTimestamp(entry.timestamp)}
+                    </span>
+                    {isOfficial && (
+                      <span className="flex items-center gap-1 text-[10px] font-body text-primary">
+                        <Check className="w-3 h-3" />
+                        已确认
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {entry.candidates.map((url, i) => (
+                      <div key={i} className="rounded overflow-hidden border border-border bg-muted">
+                        <img
+                          src={url}
+                          alt={`第 ${history.length - index} 轮候选图 ${i + 1}`}
+                          loading="lazy"
+                          className="w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {dialogState.entry && (
+        <SwitchCandidateDialog
+          open={dialogState.open}
+          onOpenChange={(o) => setDialogState(prev => ({ ...prev, open: o }))}
+          candidates={dialogState.entry.candidates}
+          timestamp={dialogState.entry.timestamp}
+          roundIndex={dialogState.index}
+          onConfirm={handleConfirm}
+        />
+      )}
     </div>
   );
 }
@@ -385,6 +775,12 @@ function CharacterCard({
               确认基础形象
             </Button>
           </div>
+
+          <BaseImageHistoryPanel
+            asset={asset}
+            assetType="characters"
+            onPreview={onPreview}
+          />
         </div>
 
         <div className="space-y-2">
@@ -634,6 +1030,11 @@ function SceneCard({
           ) : (
             <p className="text-xs text-muted-foreground font-body">点击候选图设为正式版本</p>
           )}
+
+          <CandidateHistoryPanel
+            asset={asset}
+            onPreview={onPreview}
+          />
         </div>
       ) : (
         <EmptyPreview label="暂无候选图" aspectRatio={asset.aspectRatio} />
@@ -755,4 +1156,3 @@ export default function Stage4Assets() {
     </div>
   );
 }
-

@@ -22,6 +22,10 @@ import {
   ProjectStatus,
   defaultTextBoxStyle,
   defaultTextBoxLayout,
+  BASE_IMAGE_HISTORY_LIMIT,
+  CANDIDATE_HISTORY_LIMIT,
+  BaseImageHistoryEntry,
+  CandidateHistoryEntry,
 } from '@/types/picturebook';
 import { buildAssetPrompt, buildAssetPromptFromEntry, buildPagePrompt } from '@/modules/studio/domain/services/prompt';
 
@@ -270,7 +274,9 @@ type Action =
   | { type: 'UPDATE_EDITOR_STATE'; payload: { pageIndex: number; state: Partial<EditorPageState> } }
   | { type: 'UPDATE_EDITOR_STYLE'; payload: { pageIndex: number; style: Partial<TextBoxStyle> } }
   | { type: 'UPDATE_EDITOR_LAYOUT'; payload: { pageIndex: number; layout: Partial<TextBoxLayout> } }
-  | { type: 'CONFIRM_EDITOR_PAGE'; payload: number };
+  | { type: 'CONFIRM_EDITOR_PAGE'; payload: number }
+  | { type: 'SELECT_BASE_IMAGE_FROM_HISTORY'; payload: { type: 'characters' | 'scenes'; id: string; historyIndex: number } }
+  | { type: 'SELECT_CANDIDATE_FROM_HISTORY'; payload: { id: string; historyIndex: number } };
 
 export type { Action };
 
@@ -402,6 +408,8 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         officialIndex: null,
         generating: false,
         generatingPhase: null,
+        baseImageHistory: [],
+        candidateHistory: [],
       });
       const toSceneAsset = (entry: StoryEntry, idx: number): AssetItem => ({
         id: `${entry.name}-${idx}`,
@@ -418,6 +426,8 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         officialIndex: null,
         generating: false,
         generatingPhase: null,
+        baseImageHistory: [],
+        candidateHistory: [],
       });
       return {
         ...state,
@@ -456,6 +466,12 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
             a.id === action.payload.id
               ? {
                   ...a,
+                  baseImageHistory: [
+                    ...(a.baseImageUrl
+                      ? [{ imageUrl: a.baseImageUrl, timestamp: Date.now() } as BaseImageHistoryEntry]
+                      : []),
+                    ...a.baseImageHistory,
+                  ].slice(0, BASE_IMAGE_HISTORY_LIMIT),
                   baseImageUrl: action.payload.imageUrl,
                   generating: false,
                   generatingPhase: null,
@@ -496,6 +512,12 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
             a.id === action.payload.id
               ? {
                   ...a,
+                  candidateHistory: [
+                    ...(a.candidates.length > 0
+                      ? [{ candidates: a.candidates, timestamp: Date.now() } as CandidateHistoryEntry]
+                      : []),
+                    ...a.candidateHistory,
+                  ].slice(0, CANDIDATE_HISTORY_LIMIT),
                   candidates: action.payload.candidates,
                   officialIndex: null,
                   generating: false,
@@ -727,6 +749,75 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return {
         ...result,
         projectInfo: { ...result.projectInfo, projectStatus: 'exportable' },
+      };
+    }
+
+    case 'SELECT_BASE_IMAGE_FROM_HISTORY': {
+      const { type: assetType, id, historyIndex } = action.payload;
+      const key = assetType as 'characters' | 'scenes';
+      const targetAsset = state.assets[key].find(a => a.id === id);
+      if (!targetAsset || historyIndex < 0 || historyIndex >= targetAsset.baseImageHistory.length) {
+        return state;
+      }
+      const selectedEntry = targetAsset.baseImageHistory[historyIndex];
+      const currentBaseImage = targetAsset.baseImageUrl;
+      const newHistory = currentBaseImage
+        ? [
+            { imageUrl: currentBaseImage, timestamp: Date.now() } as BaseImageHistoryEntry,
+            ...targetAsset.baseImageHistory.filter((_, i) => i !== historyIndex),
+          ].slice(0, BASE_IMAGE_HISTORY_LIMIT)
+        : targetAsset.baseImageHistory.filter((_, i) => i !== historyIndex);
+
+      return {
+        ...state,
+        assets: {
+          ...state.assets,
+          [key]: state.assets[key].map(a =>
+            a.id === id
+              ? {
+                  ...a,
+                  baseImageUrl: selectedEntry.imageUrl,
+                  baseImageHistory: newHistory,
+                  turnaroundImages: [],
+                  status: 'candidates_generated' as AssetStatus,
+                }
+              : a
+          ),
+        },
+      };
+    }
+
+    case 'SELECT_CANDIDATE_FROM_HISTORY': {
+      const { id, historyIndex } = action.payload;
+      const targetAsset = state.assets.scenes.find(a => a.id === id);
+      if (!targetAsset || historyIndex < 0 || historyIndex >= targetAsset.candidateHistory.length) {
+        return state;
+      }
+      const selectedEntry = targetAsset.candidateHistory[historyIndex];
+      const currentCandidates = targetAsset.candidates;
+      const newHistory = currentCandidates.length > 0
+        ? [
+            { candidates: currentCandidates, timestamp: Date.now() } as CandidateHistoryEntry,
+            ...targetAsset.candidateHistory.filter((_, i) => i !== historyIndex),
+          ].slice(0, CANDIDATE_HISTORY_LIMIT)
+        : targetAsset.candidateHistory.filter((_, i) => i !== historyIndex);
+
+      return {
+        ...state,
+        assets: {
+          ...state.assets,
+          scenes: state.assets.scenes.map(a =>
+            a.id === id
+              ? {
+                  ...a,
+                  candidates: selectedEntry.candidates,
+                  candidateHistory: newHistory,
+                  officialIndex: null,
+                  status: 'candidates_generated' as AssetStatus,
+                }
+              : a
+          ),
+        },
       };
     }
 
