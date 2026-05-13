@@ -1,6 +1,7 @@
 import { getDb, withTransaction } from '@/lib/db';
-import type { DbProject, DbProjectHistory, ParsedProject } from '@/lib/db/types';
+import type { DbProject, ParsedProject } from '@/lib/db/types';
 import type { ProjectHistoryEntry } from '@/modules/project-history/types';
+import type { PictureBookState } from '@/types/picturebook';
 import { v4 as uuidv4 } from 'uuid';
 
 function parseProject(dbProject: DbProject): ParsedProject {
@@ -10,10 +11,7 @@ function parseProject(dbProject: DbProject): ParsedProject {
   };
 }
 
-function toProjectHistoryEntry(
-  dbProject: DbProject,
-  dbHistory?: DbProjectHistory | null
-): ProjectHistoryEntry {
+function toProjectHistoryEntry(dbProject: DbProject): ProjectHistoryEntry {
   return {
     projectId: dbProject.id,
     title: dbProject.title,
@@ -23,9 +21,7 @@ function toProjectHistoryEntry(
     aspectRatio: dbProject.aspect_ratio,
     currentStage: dbProject.current_stage,
     projectStatus: dbProject.project_status,
-    thumbnailUrl: dbHistory?.thumbnail_blob 
-      ? `data:image/jpeg;base64,${dbHistory.thumbnail_blob.toString('base64')}` 
-      : null,
+    thumbnailUrl: null,
     createdAt: dbProject.created_at,
     updatedAt: dbProject.updated_at,
   };
@@ -38,18 +34,19 @@ export const ProjectRepository = {
     const projectId = uuidv4();
     
     const defaultStageStatuses = JSON.stringify({
-      1: 'inactive',
-      2: 'inactive',
-      3: 'inactive',
-      4: 'inactive',
-      5: 'inactive',
+      1: 'in-progress',
+      2: 'idle',
+      3: 'idle',
+      4: 'idle',
+      5: 'idle',
+      6: 'idle',
     });
 
     db.prepare(
       `INSERT INTO projects (
         id, user_id, title, target_age, page_count, art_style, 
         aspect_ratio, project_status, current_stage, stage_statuses, 
-        save_status, created_at, updated_at
+        full_state, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       projectId,
@@ -62,15 +59,10 @@ export const ProjectRepository = {
       'draft',
       1,
       defaultStageStatuses,
-      'saved',
+      '{}',
       now,
       now
     );
-
-    db.prepare(
-      `INSERT INTO project_history (id, project_id, user_id, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(uuidv4(), projectId, userId, now, now);
 
     return this.getProjectById(projectId)!;
   },
@@ -84,17 +76,12 @@ export const ProjectRepository = {
   getProjectsByUserId(userId: string): ProjectHistoryEntry[] {
     const db = getDb();
     const projects = db.prepare(
-      `SELECT p.*, ph.thumbnail_blob 
-       FROM projects p 
-       LEFT JOIN project_history ph ON p.id = ph.project_id 
-       WHERE p.user_id = ? 
-       ORDER BY p.updated_at DESC`
-    ).all(userId) as (DbProject & { thumbnail_blob: Buffer | null })[];
+      `SELECT * FROM projects 
+       WHERE user_id = ? 
+       ORDER BY updated_at DESC`
+    ).all(userId) as DbProject[];
 
-    return projects.map(p => toProjectHistoryEntry(
-      { ...p, user_id: p.user_id, created_at: p.created_at, updated_at: p.updated_at },
-      { id: '', project_id: p.id, user_id: p.user_id, thumbnail_blob: p.thumbnail_blob, created_at: p.created_at, updated_at: p.updated_at }
-    ));
+    return projects.map(p => toProjectHistoryEntry(p));
   },
 
   saveProjectHistoryEntry(entry: ProjectHistoryEntry): ProjectHistoryEntry {
@@ -120,24 +107,21 @@ export const ProjectRepository = {
         now,
         entry.projectId
       );
-      
-      db.prepare(
-        `UPDATE project_history SET updated_at = ? WHERE project_id = ?`
-      ).run(now, entry.projectId);
     } else {
       const defaultStageStatuses = JSON.stringify({
-        1: 'inactive',
-        2: 'inactive',
-        3: 'inactive',
-        4: 'inactive',
-        5: 'inactive',
+        1: 'in-progress',
+        2: 'idle',
+        3: 'idle',
+        4: 'idle',
+        5: 'idle',
+        6: 'idle',
       });
 
       db.prepare(
         `INSERT INTO projects (
           id, user_id, title, target_age, page_count, art_style, 
           aspect_ratio, project_status, current_stage, stage_statuses, 
-          save_status, created_at, updated_at
+          full_state, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         entry.projectId,
@@ -150,15 +134,10 @@ export const ProjectRepository = {
         entry.projectStatus,
         entry.currentStage,
         defaultStageStatuses,
-        'saved',
+        '{}',
         entry.createdAt || now,
         entry.updatedAt || now
       );
-
-      db.prepare(
-        `INSERT INTO project_history (id, project_id, user_id, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(uuidv4(), entry.projectId, 'default-user', entry.createdAt || now, entry.updatedAt || now);
     }
 
     const updatedProject = this.getProjectById(entry.projectId);
@@ -173,5 +152,84 @@ export const ProjectRepository = {
     const db = getDb();
     const result = db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
     return result.changes > 0;
+  },
+
+  saveFullState(projectId: string, state: PictureBookState): void {
+    const db = getDb();
+    const now = Date.now();
+    
+    db.prepare(
+      `UPDATE projects 
+       SET 
+         title = ?,
+         target_age = ?,
+         page_count = ?,
+         art_style = ?,
+         aspect_ratio = ?,
+         project_status = ?,
+         current_stage = ?,
+         stage_statuses = ?,
+         full_state = ?,
+         updated_at = ?
+       WHERE id = ?`
+    ).run(
+      state.projectInfo.title,
+      state.projectInfo.targetAge,
+      state.projectInfo.pageCount,
+      state.projectInfo.artStyle,
+      state.projectInfo.aspectRatio,
+      state.projectInfo.projectStatus,
+      state.currentStage,
+      JSON.stringify(state.stageStatuses),
+      JSON.stringify(state),
+      now,
+      projectId
+    );
+  },
+
+  loadFullState(projectId: string): PictureBookState | null {
+    const db = getDb();
+    const result = db.prepare('SELECT full_state FROM projects WHERE id = ?').get(projectId) as { full_state: string } | undefined;
+    
+    if (!result || !result.full_state) {
+      return null;
+    }
+    
+    try {
+      return JSON.parse(result.full_state) as PictureBookState;
+    } catch {
+      return null;
+    }
+  },
+
+  createProjectWithState(userId: string, state: PictureBookState): ParsedProject {
+    const db = getDb();
+    const now = Date.now();
+    const projectId = state.projectInfo.projectId || uuidv4();
+    
+    db.prepare(
+      `INSERT INTO projects (
+        id, user_id, title, target_age, page_count, art_style, 
+        aspect_ratio, project_status, current_stage, stage_statuses, 
+        full_state, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      projectId,
+      userId,
+      state.projectInfo.title,
+      state.projectInfo.targetAge,
+      state.projectInfo.pageCount,
+      state.projectInfo.artStyle,
+      state.projectInfo.aspectRatio,
+      state.projectInfo.projectStatus,
+      state.currentStage,
+      JSON.stringify(state.stageStatuses),
+      JSON.stringify(state),
+      now,
+      now
+    );
+
+    const created = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as DbProject;
+    return parseProject(created);
   },
 };

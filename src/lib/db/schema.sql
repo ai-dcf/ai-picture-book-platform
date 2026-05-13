@@ -1,5 +1,5 @@
 -- SQLite Project Storage Schema
--- Design: docs/superpowers/specs/2026-05-13-sqlite-project-storage-design.md
+-- Design: docs/superpowers/specs/2026-05-13-project-persistence-design.md
 
 -- 项目主表
 CREATE TABLE IF NOT EXISTS projects (
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS projects (
   project_status TEXT NOT NULL DEFAULT 'draft',
   current_stage INTEGER NOT NULL DEFAULT 1,
   stage_statuses TEXT NOT NULL DEFAULT '{}',
-  save_status TEXT NOT NULL DEFAULT 'saved',
+  full_state TEXT NOT NULL DEFAULT '{}',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -116,16 +116,6 @@ CREATE TABLE IF NOT EXISTS scene_candidates (
   created_at INTEGER NOT NULL
 );
 
--- 项目历史表 (用于首页快速查询)
-CREATE TABLE IF NOT EXISTS project_history (
-  id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL UNIQUE,
-  user_id TEXT NOT NULL,
-  thumbnail_blob BLOB,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at DESC);
@@ -133,4 +123,3 @@ CREATE INDEX IF NOT EXISTS idx_pages_project_id ON pages(project_id);
 CREATE INDEX IF NOT EXISTS idx_image_versions_owner ON image_versions(owner_type, owner_id, version_number DESC);
 CREATE INDEX IF NOT EXISTS idx_scene_candidate_groups_project ON scene_candidate_groups(project_id, asset_id);
 CREATE INDEX IF NOT EXISTS idx_scene_candidates_group ON scene_candidates(group_id, index_in_group);
-CREATE INDEX IF NOT EXISTS idx_project_history_user_id ON project_history(user_id);

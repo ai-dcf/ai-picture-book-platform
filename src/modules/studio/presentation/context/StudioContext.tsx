@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useReducer, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import {
   PictureBookState,
   ProjectInfo,
@@ -276,12 +276,16 @@ type Action =
   | { type: 'UPDATE_EDITOR_LAYOUT'; payload: { pageIndex: number; layout: Partial<TextBoxLayout> } }
   | { type: 'CONFIRM_EDITOR_PAGE'; payload: number }
   | { type: 'SELECT_BASE_IMAGE_FROM_HISTORY'; payload: { type: 'characters' | 'scenes'; id: string; historyIndex: number } }
-  | { type: 'SELECT_CANDIDATE_FROM_HISTORY'; payload: { id: string; historyIndex: number } };
+  | { type: 'SELECT_CANDIDATE_FROM_HISTORY'; payload: { id: string; historyIndex: number } }
+  | { type: 'LOAD_STATE'; payload: PictureBookState };
 
 export type { Action };
 
 function reducer(state: PictureBookState, action: Action): PictureBookState {
   switch (action.type) {
+    case 'LOAD_STATE':
+      return action.payload;
+
     case 'SET_SAVE_STATUS':
       return { ...state, projectInfo: { ...state.projectInfo, saveStatus: action.payload } };
 
@@ -316,6 +320,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           ...state.projectInfo,
           projectId,
           saveStatus: 'saved',
+          createdAt: Date.now(),
         },
       };
     }
@@ -811,8 +816,6 @@ interface StudioContextValue {
 const StudioContext = createContext<StudioContextValue | null>(null);
 export { StudioContext };
 
-const PROJECT_STORAGE_KEY = 'ai_picturebook_project_';
-
 async function triggerSaveToServer(state: PictureBookState): Promise<boolean> {
   if (!state.projectInfo.projectId) return false;
 
@@ -824,80 +827,51 @@ async function triggerSaveToServer(state: PictureBookState): Promise<boolean> {
     });
 
     if (!response.ok) {
-      // Don't throw error, just log it and continue
-      console.warn('Server save failed (will use localStorage):', response.statusText);
+      console.warn('Server save failed:', response.statusText);
       return false;
     }
 
     return true;
   } catch (error) {
-    // Network errors are expected, just log and continue
-    console.warn('Server save unavailable (using localStorage):', error);
+    console.warn('Server save unavailable:', error);
     return false;
   }
 }
 
-function saveProjectToStorage(state: PictureBookState) {
-  if (!state.projectInfo.projectId) return;
+export function StudioProvider({ children, projectId }: { children: React.ReactNode; projectId?: string }) {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [isLoading, setIsLoading] = useState(true);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedStateRef = useRef<PictureBookState | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  try {
-    localStorage.setItem(`${PROJECT_STORAGE_KEY}${state.projectInfo.projectId}`, JSON.stringify(state));
+  // Load project from database on mount
+  useEffect(() => {
+    async function loadProject() {
+      if (!projectId) {
+        setIsLoading(false);
+        setInitialLoadComplete(true);
+        return;
+      }
 
-    const historyEntry: ProjectHistoryEntry = {
-      ...state.projectInfo,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl ?? undefined,
-    };
-
-    const existingHistoryStr = localStorage.getItem('ai-picturebook-projects');
-    let history: ProjectHistoryEntry[] = [];
-    if (existingHistoryStr) {
       try {
-        history = JSON.parse(existingHistoryStr);
-      } catch {
-        history = [];
+        const response = await fetch(`/api/projects/${projectId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            dispatch({ type: 'LOAD_STATE', payload: result.data });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load project from server:', error);
+      } finally {
+        setIsLoading(false);
+        setInitialLoadComplete(true);
       }
     }
 
-    const existingIndex = history.findIndex(p => p.projectId === state.projectInfo.projectId);
-    if (existingIndex >= 0) {
-      history[existingIndex] = {
-        ...historyEntry,
-        createdAt: history[existingIndex].createdAt,
-      };
-    } else {
-      history.unshift(historyEntry);
-    }
-
-    localStorage.setItem('ai-picturebook-projects', JSON.stringify(history));
-  } catch (error) {
-    console.error('Failed to save project:', error);
-  }
-}
-
-function loadProjectFromStorage(projectId: string): PictureBookState | null {
-  try {
-    const data = localStorage.getItem(`${PROJECT_STORAGE_KEY}${projectId}`);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('Failed to load project:', error);
-  }
-  return null;
-}
-
-export function StudioProvider({ children, projectId }: { children: React.ReactNode; projectId?: string }) {
-  const [state, dispatch] = useReducer(reducer, initialState, (initial) => {
-    if (projectId) {
-      const loaded = loadProjectFromStorage(projectId);
-      if (loaded) return loaded;
-    }
-    return initial;
-  });
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedStateRef = useRef<PictureBookState | null>(null);
+    loadProject();
+  }, [projectId]);
 
   const triggerSave = useCallback(() => {
     dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
@@ -908,19 +882,26 @@ export function StudioProvider({ children, projectId }: { children: React.ReactN
   }, []);
 
   useEffect(() => {
-    if (state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
-      saveProjectToStorage(state);
+    if (initialLoadComplete && state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
       triggerSaveToServer(state);
       lastSavedStateRef.current = state;
     }
-  }, [state]);
+  }, [state, initialLoadComplete]);
 
   // Initialize project if no projectId and no existing project
   useEffect(() => {
-    if (!projectId && !state.projectInfo.projectId) {
+    if (initialLoadComplete && !projectId && !state.projectInfo.projectId) {
       dispatch({ type: 'CREATE_DRAFT' });
     }
-  }, [projectId, state.projectInfo.projectId]);
+  }, [projectId, state.projectInfo.projectId, initialLoadComplete]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-muted-foreground">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <StudioContext.Provider value={{ state, dispatch, triggerSave }}>

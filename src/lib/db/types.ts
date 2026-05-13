@@ -3,7 +3,6 @@ import type {
   PageCount,
   AspectRatio,
   ArtStyle,
-  SaveStatus,
   ProjectStatus,
   StageNumber,
   StageStatus,
@@ -24,7 +23,6 @@ export type {
   PageCount,
   AspectRatio,
   ArtStyle,
-  SaveStatus,
   ProjectStatus,
   StageNumber,
   StageStatus,
@@ -46,7 +44,7 @@ export interface DbProject {
   project_status: ProjectStatus;
   current_stage: StageNumber;
   stage_statuses: string;
-  save_status: SaveStatus;
+  full_state: string;
   created_at: number;
   updated_at: number;
 }
@@ -140,15 +138,6 @@ export interface DbSceneCandidate {
   created_at: number;
 }
 
-export interface DbProjectHistory {
-  id: string;
-  project_id: string;
-  user_id: string;
-  thumbnail_blob: Buffer | null;
-  created_at: number;
-  updated_at: number;
-}
-
 export interface ParsedProject {
   id: string;
   user_id: string;
@@ -160,7 +149,7 @@ export interface ParsedProject {
   project_status: ProjectStatus;
   current_stage: StageNumber;
   stage_statuses: Record<StageNumber, StageStatus>;
-  save_status: SaveStatus;
+  full_state: string;
   created_at: number;
   updated_at: number;
 }

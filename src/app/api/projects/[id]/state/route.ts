@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initDatabase } from '@/lib/db';
 import { ProjectRepository } from '@/lib/db/repositories/project-repository';
+import type { PictureBookState } from '@/types/picturebook';
 
 // Initialize database on first request
 let dbInitialized = false;
@@ -19,7 +20,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { state } = body;
+    const { state }: { state: PictureBookState } = body;
     
     if (!state || !state.projectInfo) {
       return NextResponse.json(
@@ -28,19 +29,23 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Update project history entry
+    const existing = ProjectRepository.getProjectById(id);
+    if (existing) {
+      ProjectRepository.saveFullState(id, state);
+    } else {
+      ProjectRepository.createProjectWithState('default-user', state);
+    }
+
     const historyEntry = {
       ...state.projectInfo,
       createdAt: state.projectInfo.createdAt || Date.now(),
       updatedAt: Date.now(),
-      thumbnailUrl: state.pages.find((p: any) => p.imageUrl)?.imageUrl ?? null,
+      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl ?? null,
     };
-
-    const savedProject = ProjectRepository.saveProjectHistoryEntry(historyEntry);
 
     return NextResponse.json({
       success: true,
-      data: savedProject,
+      data: historyEntry,
     });
   } catch (error) {
     console.error('Failed to save project state:', error);
@@ -60,23 +65,18 @@ export async function GET(request: Request, { params }: RouteParams) {
       dbInitialized = true;
     }
 
-    // Get project from DB
-    const project = ProjectRepository.getProjectById(id);
+    const state = ProjectRepository.loadFullState(id);
     
-    if (!project) {
+    if (!state) {
       return NextResponse.json(
         { success: false, error: 'Project not found' },
         { status: 404 }
       );
     }
 
-    // For now, we only return basic project info
-    // Full state will be loaded from localStorage
     return NextResponse.json({
       success: true,
-      data: {
-        projectInfo: project,
-      },
+      data: state,
     });
   } catch (error) {
     console.error('Failed to load project state:', error);

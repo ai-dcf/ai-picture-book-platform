@@ -9,6 +9,37 @@ type RouteParams = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET(request: Request, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    
+    if (!dbInitialized) {
+      initDatabase();
+      dbInitialized = true;
+    }
+
+    const state = ProjectRepository.loadFullState(id);
+    
+    if (!state) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: state,
+    });
+  } catch (error) {
+    console.error('Failed to load project:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to load project' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
