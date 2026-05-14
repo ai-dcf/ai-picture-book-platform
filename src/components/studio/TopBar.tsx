@@ -1,15 +1,25 @@
 "use client";
 import { useState } from 'react';
+import { useSession, signOut } from "next-auth/react";
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, BookOpen, Check, ChevronLeft, CloudUpload, Cpu, Loader2, Settings } from 'lucide-react';
+import { AlertTriangle, BookOpen, Check, ChevronLeft, CloudUpload, Cpu, Loader2, Settings, User, LogOut } from 'lucide-react';
 import {
   TARGET_AGES,
   PAGE_COUNTS,
@@ -28,6 +38,7 @@ export default function TopBar() {
   const { projectInfo } = state;
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({ ...projectInfo });
+  const { data: session } = useSession();
 
   function handleSave() {
     dispatch({
@@ -196,6 +207,45 @@ export default function TopBar() {
           <ChevronLeft className="w-3.5 h-3.5" />
           <span className="hidden md:inline">返回首页</span>
         </Button>
+
+        {session?.user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={(session.user as any)?.avatarUrl} />
+                  <AvatarFallback>{((session.user as any)?.nickname || session.user.email || "U").charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>
+                {((session.user as any)?.nickname || session.user.email)}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer flex items-center">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>个人资料</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>设置</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => signOut()}
+                className="cursor-pointer flex items-center text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>退出登录</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   );
