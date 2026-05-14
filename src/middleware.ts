@@ -5,7 +5,7 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth;
 
-  const publicPaths = ["/login", "/api/auth", "/"];
+  const publicPaths = ["/login", "/register", "/api/auth", "/"];
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
 
   if (!isAuthenticated && !isPublicPath) {
@@ -14,7 +14,7 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthenticated && pathname === "/login") {
+  if (isAuthenticated && (pathname === "/login" || pathname === "/register")) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
