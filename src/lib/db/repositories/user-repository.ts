@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { getDrizzleDb } from '../db';
+import { getDrizzleDb } from '@/lib/db';
 import { users, type User, type NewUser } from '../schema-drizzle';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -1,9 +1,11 @@
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isAuthenticated = !!req.auth;
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET || "development-secret-key-change-in-production" });
+  const isAuthenticated = !!token;
 
   const publicPaths = ["/login", "/register", "/api/auth", "/"];
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
@@ -19,7 +21,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],

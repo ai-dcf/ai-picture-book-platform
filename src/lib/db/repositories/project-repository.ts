@@ -19,9 +19,10 @@ function toProjectHistoryEntry(dbProject: DbProject): ProjectHistoryEntry {
     pageCount: dbProject.page_count,
     artStyle: dbProject.art_style,
     aspectRatio: dbProject.aspect_ratio,
+    saveStatus: 'saved',
     currentStage: dbProject.current_stage,
     projectStatus: dbProject.project_status,
-    thumbnailUrl: null,
+    thumbnailUrl: undefined,
     createdAt: dbProject.created_at,
     updatedAt: dbProject.updated_at,
   };

@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from './schema-drizzle';
+import * as schema from './db/schema-drizzle';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DB_DIR, 'sqlite.db');

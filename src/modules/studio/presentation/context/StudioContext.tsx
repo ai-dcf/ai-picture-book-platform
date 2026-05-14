@@ -320,7 +320,6 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           ...state.projectInfo,
           projectId,
           saveStatus: 'saved',
-          createdAt: Date.now(),
         },
       };
     }

@@ -37,10 +37,16 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const historyEntry = {
-      ...state.projectInfo,
-      createdAt: state.projectInfo.createdAt || Date.now(),
+      projectId: state.projectInfo.projectId,
+      title: state.projectInfo.title,
+      targetAge: state.projectInfo.targetAge,
+      pageCount: state.projectInfo.pageCount,
+      artStyle: state.projectInfo.artStyle,
+      aspectRatio: state.projectInfo.aspectRatio,
+      projectStatus: state.projectInfo.projectStatus,
+      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl ?? undefined,
+      createdAt: Date.now(),
       updatedAt: Date.now(),
-      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl ?? null,
     };
 
     return NextResponse.json({
