@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './db/schema-drizzle';
@@ -7,11 +7,19 @@ import * as schema from './db/schema-drizzle';
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DB_DIR, 'sqlite.db');
 
+// Ensure database directory exists
+function ensureDbDir() {
+  if (!existsSync(DB_DIR)) {
+    mkdirSync(DB_DIR, { recursive: true });
+  }
+}
+
 let db: Database.Database | null = null;
 let drizzleDb: ReturnType<typeof drizzle> | null = null;
 
 export function getDb(): Database.Database {
   if (!db) {
+    ensureDbDir();
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
