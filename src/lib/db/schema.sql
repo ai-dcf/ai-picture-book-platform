@@ -123,3 +123,37 @@ CREATE INDEX IF NOT EXISTS idx_pages_project_id ON pages(project_id);
 CREATE INDEX IF NOT EXISTS idx_image_versions_owner ON image_versions(owner_type, owner_id, version_number DESC);
 CREATE INDEX IF NOT EXISTS idx_scene_candidate_groups_project ON scene_candidate_groups(project_id, asset_id);
 CREATE INDEX IF NOT EXISTS idx_scene_candidates_group ON scene_candidates(group_id, index_in_group);
+
+-- 用户表
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  username TEXT,
+  nickname TEXT,
+  password_hash TEXT,
+  avatar_url TEXT,
+  email_verified_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+-- 会话表
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- 验证令牌表
+CREATE TABLE IF NOT EXISTS verification_tokens (
+  id TEXT PRIMARY KEY,
+  identifier TEXT NOT NULL,
+  token TEXT UNIQUE NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
