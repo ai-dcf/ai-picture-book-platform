@@ -9,6 +9,80 @@ import { PROJECT_STATUS_LABELS, ART_STYLES, TARGET_AGES, type ProjectStatus } fr
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { useSession, signOut } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
+import { User, Settings, LogOut } from "lucide-react";
+
+function TopNav() {
+  const { data: session } = useSession();
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <Link href="/" className="flex items-center gap-2 mr-6">
+          <BookOpen className="h-5 w-5 text-primary" />
+          <span className="font-display text-lg font-bold">AI 绘本工作室</span>
+        </Link>
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          {session?.user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={(session.user as any)?.avatarUrl} />
+                    <AvatarFallback>
+                      {((session.user as any)?.nickname || session.user.email || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  {((session.user as any)?.nickname || session.user.email)}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="cursor-pointer flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>个人资料</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="cursor-pointer flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>设置</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => signOut()}
+                  className="cursor-pointer flex items-center text-red-600"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>退出登录</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild variant="default" size="sm">
+              <Link href="/login">登录</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
 
 function CreateNewProjectCard() {
   const router = useRouter();
@@ -109,6 +183,7 @@ export default function HeroPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(38,40%,97%)] to-[hsl(38,30%,94%)]">
+      <TopNav />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-10 sm:mb-16">
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)]">
