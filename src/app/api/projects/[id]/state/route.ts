@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { initDatabase } from '@/lib/db';
 import { ProjectRepository } from '@/lib/db/repositories/project-repository';
 import type { PictureBookState } from '@/types/picturebook';
-
-// Initialize database on first request
-let dbInitialized = false;
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -14,11 +10,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
     const body = await request.json();
     const { state }: { state: PictureBookState } = body;
     
@@ -66,11 +57,6 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
     const state = ProjectRepository.loadFullState(id);
     
     if (!state) {

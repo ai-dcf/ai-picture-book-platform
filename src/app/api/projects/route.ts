@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server';
-import { initDatabase } from '@/lib/db';
 import { ProjectRepository } from '@/lib/db/repositories/project-repository';
-
-// Initialize database on first request
-let dbInitialized = false;
 
 export async function GET() {
   try {
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
-    // Use default user ID for demo
     const userId = 'default-user';
     const projects = ProjectRepository.getProjectsByUserId(userId);
 
@@ -31,11 +21,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
     const body = await request.json();
     const savedProject = ProjectRepository.saveProjectHistoryEntry(body);
 

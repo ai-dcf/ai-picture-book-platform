@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import { initDatabase } from '@/lib/db';
 import { ProjectRepository } from '@/lib/db/repositories/project-repository';
-
-// Initialize database on first request
-let dbInitialized = false;
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -13,11 +9,6 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
     const state = ProjectRepository.loadFullState(id);
     
     if (!state) {
@@ -44,11 +35,6 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     
-    if (!dbInitialized) {
-      initDatabase();
-      dbInitialized = true;
-    }
-
     const deleted = ProjectRepository.deleteProject(id);
 
     if (deleted) {

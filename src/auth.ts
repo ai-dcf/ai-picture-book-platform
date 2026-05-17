@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { UserRepository } from "@/lib/db/repositories/user-repository";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const loginSchema = z.object({
   email: z.string().email("请输入有效的邮箱"),

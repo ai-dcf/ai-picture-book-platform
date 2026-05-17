@@ -23,6 +23,7 @@ export function getDb(): Database.Database {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    initDatabase();
   }
   return db;
 }

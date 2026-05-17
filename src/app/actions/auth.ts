@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { auth, signIn, signOut } from "@/auth";
 import { UserRepository } from "@/lib/db/repositories/user-repository";
 import { redirect } from "next/navigation";
