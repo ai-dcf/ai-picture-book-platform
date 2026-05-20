@@ -7,6 +7,7 @@ import { get_default_image_strategy } from "./_helpers";
 import type { AssetsData, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
 import type { ImageGenerateParams, ImageRefInput } from "@/platform/ai/contracts/image-model-gateway";
 import { replaceRefTagsWithDescription } from "@/lib/prompt-ref-parser";
+import { promptEnhancer } from "@/lib/prompt-enhancer";
 
 const MAX_REF_IMAGES = 14;
 
@@ -44,11 +45,21 @@ export async function generatePageImage(
       };
     }
 
-    const processedPrompt = replaceRefTagsWithDescription(
+    let processedPrompt = replaceRefTagsWithDescription(
       promptResult.prompt,
-      assets.characters,
-      assets.scenes
+      validImageRefs
     );
+
+    // 如果是用户编辑的友好提示词，转换为专业提示词
+    if (page.promptUserEdited && page.prompt) {
+      processedPrompt = promptEnhancer.convertUserPromptToProfessional(processedPrompt, {
+        type: 'page',
+        artStyle: projectInfo.artStyle,
+        targetAge: projectInfo.targetAge,
+        mood: 'warm',
+        layout: 'golden'
+      });
+    }
 
     const sizeMap: Record<string, string> = {
       "3:4": "768x1024",

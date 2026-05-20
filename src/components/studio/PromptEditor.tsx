@@ -18,7 +18,7 @@ interface PromptEditorProps {
   className?: string;
 }
 
-const REF_PATTERN = /\$\{([^}]+)\}/g;
+const REF_PATTERN = /@([^\s@]+)/g;
 
 export default function PromptEditor({
   value,
@@ -194,7 +194,7 @@ export default function PromptEditor({
     (assetName: string) => {
       setSelectorOpen(false);
       setSelectorPosition(null);
-      const tag = `\${${assetName}}`;
+      const tag = `@${assetName}`;
 
       const selection = window.getSelection();
       if (!selection || !selection.rangeCount || !editorRef.current) return;

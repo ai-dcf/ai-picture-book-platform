@@ -1,6 +1,6 @@
 import type { AssetItem, ImageRef } from '@/types/picturebook';
 
-const REF_TAG_PATTERN = /\$\{([^}]+)\}/g;
+const REF_TAG_PATTERN = /@([^\s@]+)/g;
 
 export interface ParsedRefTag {
   name: string;
@@ -78,14 +78,17 @@ function findAssetByName(
 
 export function replaceRefTagsWithDescription(
   text: string,
-  characters: AssetItem[],
-  scenes: AssetItem[]
+  imageRefs: ImageRef[]
 ): string {
+  const assetIndexMap = new Map<string, number>();
+  imageRefs.forEach((ref, index) => {
+    assetIndexMap.set(ref.assetName, index + 1); // 序号从1开始
+  });
+
   return text.replace(REF_TAG_PATTERN, (fullMatch, name: string) => {
-    const asset = findAssetByName(name, characters, scenes);
-    if (!asset) return fullMatch;
-    const desc = asset.description || '按既定设定保持一致';
-    return `${asset.name}（${desc}）`;
+    const index = assetIndexMap.get(name);
+    if (index === undefined) return fullMatch;
+    return `${name}（参考图片${index}）`;
   });
 }
 
@@ -103,7 +106,7 @@ export function injectRefTags(
     const asset = findAssetByName(name, characters, scenes);
     if (!asset) continue;
 
-    const tag = `\${${name}}`;
+    const tag = `@${name}`;
     if (result.includes(tag)) continue;
 
     const firstIndex = result.indexOf(name);
@@ -132,7 +135,7 @@ export function injectRefTags(
 }
 
 export function removeRefTag(text: string, name: string): string {
-  const tag = `\${${name}}`;
+  const tag = `@${name}`;
   return text.split(tag).join('');
 }
 

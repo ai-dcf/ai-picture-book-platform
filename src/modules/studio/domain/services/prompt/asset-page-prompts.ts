@@ -99,6 +99,15 @@ export function buildPagePrompt({
   return { prompt, imageRefs };
 }
 
+export function buildUserFriendlyAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEntry, projectInfo: ProjectInfo) {
+  return buildUserFriendlyAssetPrompt({
+    kind,
+    name: entry.name,
+    description: entry.description,
+    projectInfo,
+  });
+}
+
 export function buildAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEntry, projectInfo: ProjectInfo) {
   return buildAssetPrompt({
     kind,
@@ -106,4 +115,69 @@ export function buildAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEnt
     description: entry.description,
     projectInfo,
   });
+}
+
+/**
+ * 生成用户友好的角色/场景提示词（用于前端展示）
+ */
+export function buildUserFriendlyAssetPrompt({ kind, name, description, projectInfo }: BuildAssetPromptParams) {
+  return promptEnhancer.buildUserFriendlyPrompt({
+    type: kind,
+    artStyle: projectInfo.artStyle,
+    targetAge: projectInfo.targetAge,
+  }, {
+    name,
+    description: description || "延续上游故事设定，补足适合儿童绘本的细节。"
+  });
+}
+
+/**
+ * 生成用户友好的页面提示词（用于前端展示）
+ */
+export function buildUserFriendlyPagePrompt({
+  pageIndex,
+  page,
+  storyboardPage,
+  assets,
+  projectInfo,
+}: BuildPagePromptParams): { prompt: string; imageRefs: ImageRef[] } {
+  const visualGoal = storyboardPage?.visualGoal || "延续当前分镜设定";
+  const characterRefs = page.characterRefs.length > 0 ? page.characterRefs : (storyboardPage?.characterRefs || []);
+  const sceneRefs = page.sceneRefs.length > 0 ? page.sceneRefs : (storyboardPage?.sceneRefs || []);
+
+  const refNames = [...characterRefs, ...sceneRefs].filter(
+    name => {
+      const charAsset = assets.characters.find(a => a.name === name);
+      const sceneAsset = assets.scenes.find(a => a.name === name);
+      return (charAsset && charAsset.officialImageUrl) || (sceneAsset && sceneAsset.officialImageUrl);
+    }
+  );
+
+  // 给visualGoal插入@角色引用标记
+  const { text: processedVisualGoal, imageRefs } = refNames.length > 0
+    ? injectRefTags(visualGoal, refNames, assets.characters, assets.scenes)
+    : { text: visualGoal, imageRefs: [] as ImageRef[] };
+
+  // 取出场景信息
+  let sceneName: string | undefined;
+  let sceneDescription: string | undefined;
+  if (sceneRefs.length > 0) {
+    const sceneAsset = assets.scenes.find(s => s.name === sceneRefs[0]);
+    if (sceneAsset) {
+      sceneName = sceneAsset.name;
+      sceneDescription = sceneAsset.description;
+    }
+  }
+
+  const prompt = promptEnhancer.buildUserFriendlyPrompt({
+    type: 'page',
+    artStyle: projectInfo.artStyle,
+    targetAge: projectInfo.targetAge,
+  }, {
+    visualGoal: processedVisualGoal,
+    sceneName,
+    sceneDescription
+  });
+
+  return { prompt, imageRefs };
 }

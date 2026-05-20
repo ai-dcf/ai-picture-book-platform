@@ -179,6 +179,43 @@ ${baseContent}
     return `${baseInstructions}
 - 叙事: visual storytelling, emotional expression, narrative flow`;
   }
+
+  /**
+   * 生成用户友好的自然语言段落式提示词
+   */
+  buildUserFriendlyPrompt(params: PromptParams, data: {
+    visualGoal?: string;
+    sceneName?: string;
+    sceneDescription?: string;
+    name?: string;
+    description?: string;
+  }): string {
+    const { type, artStyle, targetAge } = params;
+
+    if (type === 'page') {
+      // 页面提示词
+      const parts = [`${artStyle}风格的儿童绘本画面，适合${targetAge}。`];
+      if (data.visualGoal) parts.push(data.visualGoal);
+      if (data.sceneName && data.sceneDescription) {
+        parts.push(`场景为${data.sceneName}——${data.sceneDescription}`);
+      }
+      return parts.join(' ');
+    } else if (type === 'character') {
+      // 角色提示词
+      return `${artStyle}风格的儿童绘本角色，适合${targetAge}。${data.name}：${data.description}`;
+    } else {
+      // 场景提示词
+      return `${artStyle}风格的儿童绘本场景，适合${targetAge}。${data.name}：${data.description}`;
+    }
+  }
+
+  /**
+   * 将用户编辑的友好提示词转换为专业提示词（用于API调用）
+   */
+  convertUserPromptToProfessional(userPrompt: string, params: PromptParams): string {
+    // 直接将用户编辑的提示词作为基础内容，加上专业绘画指导
+    return this.buildProfessionalPrompt(params, userPrompt);
+  }
 }
 
 export const promptEnhancer = new PromptEnhancer();

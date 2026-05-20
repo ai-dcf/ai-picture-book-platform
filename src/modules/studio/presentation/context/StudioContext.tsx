@@ -27,7 +27,7 @@ import {
   BaseImageHistoryEntry,
   CandidateHistoryEntry,
 } from '@/types/picturebook';
-import { buildAssetPrompt, buildAssetPromptFromEntry, buildPagePrompt } from '@/modules/studio/domain/services/prompt';
+import { buildUserFriendlyAssetPrompt, buildUserFriendlyPagePrompt, buildUserFriendlyAssetPromptFromEntry } from '@/modules/studio/domain/services/prompt';
 import { parseRefTags } from '@/lib/prompt-ref-parser';
 import type { ProjectHistoryEntry } from '@/modules/project-history/types';
 
@@ -192,7 +192,7 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
     const nextSceneRefs = storyboardPage?.sceneRefs || page.sceneRefs;
     const nextPromptResult = page.promptUserEdited
       ? { prompt: page.prompt, imageRefs: page.imageRefs }
-      : buildPagePrompt({
+      : buildUserFriendlyPagePrompt({
           pageIndex: page.index,
           page: {
             storyText: nextStoryText,
@@ -411,7 +411,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         id: `${entry.name}-${idx}`,
         name: entry.name,
         description: entry.description,
-        prompt: buildAssetPromptFromEntry('character', entry, state.projectInfo),
+        prompt: buildUserFriendlyAssetPromptFromEntry('character', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
         aspectRatio: state.projectInfo.aspectRatio,
@@ -428,7 +428,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         id: `${entry.name}-${idx}`,
         name: entry.name,
         description: entry.description,
-        prompt: buildAssetPromptFromEntry('scene', entry, state.projectInfo),
+        prompt: buildUserFriendlyAssetPromptFromEntry('scene', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
         aspectRatio: state.projectInfo.aspectRatio,
@@ -603,7 +603,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
                   status: nextAssetEditedStatus(a),
                   prompt: a.promptUserEdited
                     ? a.prompt
-                    : buildAssetPrompt({
+                    : buildUserFriendlyAssetPrompt({
                         kind: key === 'characters' ? 'character' : 'scene',
                         name: a.name,
                         description: action.payload.description,

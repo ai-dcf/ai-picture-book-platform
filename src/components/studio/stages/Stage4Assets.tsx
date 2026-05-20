@@ -45,7 +45,7 @@ import {
   Users,
   Wand2,
 } from 'lucide-react';
-import { buildAssetPrompt } from '@/modules/studio/domain/services/prompt';
+import { buildAssetPrompt, buildUserFriendlyAssetPrompt } from '@/modules/studio/domain/services/prompt';
 
 type PreviewPayload = {
   imageUrl: string;
@@ -134,7 +134,7 @@ function AssetPromptEditor({
       payload: {
         type: assetType,
         id: asset.id,
-        prompt: buildAssetPrompt({
+        prompt: buildUserFriendlyAssetPrompt({
           kind: assetType === 'characters' ? 'character' : 'scene',
           name: asset.name,
           description: asset.description,
@@ -592,7 +592,7 @@ function CharacterCard({
       payload: {
         type: 'characters',
         id: asset.id,
-        prompt: buildAssetPrompt({
+        prompt: buildUserFriendlyAssetPrompt({
           kind: 'character',
           name: asset.name,
           description: asset.description,
@@ -759,7 +759,7 @@ function SceneCard({
       payload: {
         type: 'scenes',
         id: asset.id,
-        prompt: buildAssetPrompt({
+        prompt: buildUserFriendlyAssetPrompt({
           kind: 'scene',
           name: asset.name,
           description: asset.description,

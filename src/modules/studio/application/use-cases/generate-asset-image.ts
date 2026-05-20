@@ -5,6 +5,7 @@ import { noModelError, generationFailedError } from "@/modules/studio/domain/err
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_image_strategy } from "./_helpers";
 import type { AssetItem, ProjectInfo } from "@/types/picturebook";
+import { promptEnhancer } from "@/lib/prompt-enhancer";
 
 export async function generateAssetImage(
   asset: AssetItem,
@@ -15,7 +16,7 @@ export async function generateAssetImage(
 
   try {
     const kind = asset.id.includes("scene") ? "scene" : "character";
-    const prompt =
+    let prompt =
       asset.promptUserEdited && asset.prompt
         ? asset.prompt
         : buildAssetPrompt({
@@ -24,6 +25,17 @@ export async function generateAssetImage(
             description: asset.description,
             projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
           });
+
+    // 如果是用户编辑的友好提示词，转换为专业提示词
+    if (asset.promptUserEdited && asset.prompt) {
+      prompt = promptEnhancer.convertUserPromptToProfessional(prompt, {
+        type: kind,
+        artStyle: projectInfo.artStyle,
+        targetAge: projectInfo.targetAge,
+        mood: 'warm',
+        layout: 'centered'
+      });
+    }
 
     const sizeMap: Record<string, string> = {
       "3:4": "768x1024",

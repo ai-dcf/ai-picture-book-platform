@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Wand2,
 } from 'lucide-react';
-import { buildPagePrompt } from '@/modules/studio/domain/services/prompt';
+import { buildPagePrompt, buildUserFriendlyPagePrompt } from '@/modules/studio/domain/services/prompt';
 
 function arraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
@@ -85,7 +85,7 @@ export default function Stage5Pages() {
         const nextSceneRefs = storyboardPage?.sceneRefs || item.sceneRefs;
         const nextPromptResult = item.promptUserEdited
           ? { prompt: item.prompt, imageRefs: item.imageRefs }
-          : buildPagePrompt({
+          : buildUserFriendlyPagePrompt({
               pageIndex: index,
               page: {
                 storyText: nextStoryText,
@@ -116,7 +116,7 @@ export default function Stage5Pages() {
   const handleGenerate = useCallback(async () => {
     if (!page) return;
     if (!(page.prompt || '').trim()) {
-      const promptResult = buildPagePrompt({
+      const promptResult = buildUserFriendlyPagePrompt({
         pageIndex: currentPage,
         page: {
           storyText: page.storyText,
