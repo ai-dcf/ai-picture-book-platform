@@ -230,41 +230,61 @@ export default function Stage5Pages() {
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">本页角色引用</label>
-              <div className="flex flex-wrap gap-1.5">
-                {assets.characters.map(c => (
-                  <span
-                    key={c.id}
-                    className={cn(
-                      'px-2.5 py-1 rounded-full text-xs font-body border',
-                      effectiveCharacterRefs.includes(c.name)
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-card border-border text-muted-foreground'
-                    )}
-                  >
-                    {c.name}
-                  </span>
-                ))}
+              <div className="flex flex-wrap gap-3">
+                {assets.characters
+                  .filter(c => effectiveCharacterRefs.includes(c.name) && c.officialImageUrl)
+                  .map(c => (
+                    <div key={c.id} className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewState({ open: true, imageUrl: c.officialImageUrl!, alt: c.name })}
+                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
+                      >
+                        <img
+                          src={c.officialImageUrl!}
+                          alt={c.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-primary text-primary-foreground border border-primary">
+                        {c.name}
+                      </span>
+                    </div>
+                  ))}
+                {effectiveCharacterRefs.length > 0 && assets.characters.filter(c => effectiveCharacterRefs.includes(c.name) && c.officialImageUrl).length === 0 && (
+                  <span className="text-xs text-muted-foreground font-body">暂无可预览的角色素材</span>
+                )}
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">本页场景引用</label>
-              <div className="flex flex-wrap gap-1.5">
-                {assets.scenes.map(s => (
-                  <span
-                    key={s.id}
-                    className={cn(
-                      'px-2.5 py-1 rounded-full text-xs font-body border',
-                      effectiveSceneRefs.includes(s.name)
-                        ? 'bg-accent text-accent-foreground border-accent'
-                        : 'bg-card border-border text-muted-foreground'
-                    )}
-                  >
-                    {s.name}
-                  </span>
-                ))}
+              <div className="flex flex-wrap gap-3">
+                {assets.scenes
+                  .filter(s => effectiveSceneRefs.includes(s.name) && s.officialImageUrl)
+                  .map(s => (
+                    <div key={s.id} className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewState({ open: true, imageUrl: s.officialImageUrl!, alt: s.name })}
+                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
+                      >
+                        <img
+                          src={s.officialImageUrl!}
+                          alt={s.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-accent text-accent-foreground border border-accent">
+                        {s.name}
+                      </span>
+                    </div>
+                  ))}
+                {effectiveSceneRefs.length > 0 && assets.scenes.filter(s => effectiveSceneRefs.includes(s.name) && s.officialImageUrl).length === 0 && (
+                  <span className="text-xs text-muted-foreground font-body">暂无可预览的场景素材</span>
+                )}
               </div>
             </div>
 
