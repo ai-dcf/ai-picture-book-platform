@@ -4,7 +4,11 @@ import { buildPagePrompt } from "@/modules/studio/domain/services/prompt";
 import { noModelError, generationFailedError } from "@/modules/studio/domain/errors";
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_image_strategy } from "./_helpers";
-import type { AssetsData, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
+import type { AssetsData, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
+import type { ImageGenerateParams, ImageRefInput } from "@/platform/ai/contracts/image-model-gateway";
+import { replaceRefTagsWithDescription } from "@/lib/prompt-ref-parser";
+
+const MAX_REF_IMAGES = 14;
 
 export async function generatePageImage(
   page: PageItem,
@@ -16,9 +20,9 @@ export async function generatePageImage(
   if (!strategy) return { success: false, error: noModelError() };
 
   try {
-    const prompt =
+    const promptResult =
       page.promptUserEdited && page.prompt
-        ? page.prompt
+        ? { prompt: page.prompt, imageRefs: page.imageRefs || [] }
         : buildPagePrompt({
             pageIndex: page.index,
             page,
@@ -27,6 +31,25 @@ export async function generatePageImage(
             projectInfo,
           });
 
+    const validImageRefs = (promptResult.imageRefs || []).filter(
+      (ref: ImageRef) => ref.imageUrl
+    );
+
+    if (validImageRefs.length > MAX_REF_IMAGES) {
+      return {
+        success: false,
+        error: generationFailedError(
+          `参考图不能超过 ${MAX_REF_IMAGES} 张，当前引用了 ${validImageRefs.length} 张`
+        ),
+      };
+    }
+
+    const processedPrompt = replaceRefTagsWithDescription(
+      promptResult.prompt,
+      assets.characters,
+      assets.scenes
+    );
+
     const sizeMap: Record<string, string> = {
       "3:4": "768x1024",
       "9:16": "768x1366",
@@ -34,10 +57,20 @@ export async function generatePageImage(
       "1:1": "1024x1024",
     };
 
-    const result = await strategy.generate({
-      prompt,
+    const generateParams: ImageGenerateParams = {
+      prompt: processedPrompt,
       size: sizeMap[projectInfo.aspectRatio] || "1024x1024",
-    });
+    };
+
+    if (validImageRefs.length > 0) {
+      generateParams.images = validImageRefs.map((ref: ImageRef): ImageRefInput => ({
+        url: ref.imageUrl,
+        name: ref.assetName,
+        type: ref.assetType,
+      }));
+    }
+
+    const result = await strategy.generate(generateParams);
 
     if (!result.success || !result.imageUrl) {
       return {

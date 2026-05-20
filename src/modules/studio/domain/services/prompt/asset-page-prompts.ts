@@ -1,5 +1,6 @@
-import type { AssetItem, PageItem, ProjectInfo, StoryEntry, StoryboardPageData } from "@/types/picturebook";
+import type { AssetItem, ImageRef, PageItem, ProjectInfo, StoryEntry, StoryboardPageData } from "@/types/picturebook";
 import { promptEnhancer } from "@/lib/prompt-enhancer";
+import { injectRefTags, buildImageRefsFromAssets } from "@/lib/prompt-ref-parser";
 
 type AssetPromptKind = "character" | "scene";
 
@@ -8,6 +9,11 @@ interface BuildAssetPromptParams {
   name: string;
   description: string;
   projectInfo: ProjectInfo;
+}
+
+export interface BuildPagePromptResult {
+  prompt: string;
+  imageRefs: ImageRef[];
 }
 
 interface BuildPagePromptParams {
@@ -54,7 +60,7 @@ export function buildPagePrompt({
   storyboardPage,
   assets,
   projectInfo,
-}: BuildPagePromptParams) {
+}: BuildPagePromptParams): BuildPagePromptResult {
   const storyText = page.storyText || storyboardPage?.text || "";
   const visualGoal = storyboardPage?.visualGoal || "延续当前分镜设定";
   const characterRefs = page.characterRefs.length > 0 ? page.characterRefs : (storyboardPage?.characterRefs || []);
@@ -62,21 +68,35 @@ export function buildPagePrompt({
   const characterDetails = findAssetDescriptions(characterRefs, assets.characters);
   const sceneDetails = findAssetDescriptions(sceneRefs, assets.scenes);
 
+  const refNames = [...characterRefs, ...sceneRefs].filter(
+    name => {
+      const charAsset = assets.characters.find(a => a.name === name);
+      const sceneAsset = assets.scenes.find(a => a.name === name);
+      return (charAsset && charAsset.officialImageUrl) || (sceneAsset && sceneAsset.officialImageUrl);
+    }
+  );
+
+  const { text: enrichedStoryText, imageRefs } = refNames.length > 0
+    ? injectRefTags(storyText, refNames, assets.characters, assets.scenes)
+    : { text: storyText, imageRefs: [] as ImageRef[] };
+
   const baseContent = [
     `页码 Page: ${pageIndex + 1}`,
-    `故事情节 Story Content: ${storyText || "保持与当前分镜一致的叙事内容。"}`,
+    `故事情节 Story Content: ${enrichedStoryText || "保持与当前分镜一致的叙事内容。"}`,
     `画面目标 Visual Goal: ${visualGoal}`,
     characterRefs.length > 0 ? `角色 Characters: ${formatRefs(characterRefs, "无明确角色")}${characterDetails ? `\n角色细节 Character Details: ${characterDetails}` : ""}` : "",
     sceneRefs.length > 0 ? `场景 Scenes: ${formatRefs(sceneRefs, "无明确场景")}${sceneDetails ? `\n场景细节 Scene Details: ${sceneDetails}` : ""}` : "",
   ].filter(Boolean).join("\n");
 
-  return promptEnhancer.buildProfessionalPrompt({
+  const prompt = promptEnhancer.buildProfessionalPrompt({
     type: 'page',
     artStyle: projectInfo.artStyle,
     targetAge: projectInfo.targetAge,
     mood: 'warm',
     layout: 'golden'
   }, baseContent);
+
+  return { prompt, imageRefs };
 }
 
 export function buildAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEntry, projectInfo: ProjectInfo) {

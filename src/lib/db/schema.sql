@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS pages (
   scene_refs TEXT NOT NULL DEFAULT '[]',
   prompt TEXT NOT NULL DEFAULT '',
   prompt_user_edited INTEGER NOT NULL DEFAULT 0,
+  image_refs TEXT NOT NULL DEFAULT '[]',
   image_url TEXT,
   image_blob BLOB,
   page_status TEXT NOT NULL DEFAULT 'idle',

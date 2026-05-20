@@ -1,5 +1,11 @@
 import "server-only";
 
+export interface ImageRefInput {
+  url: string;
+  name?: string;
+  type?: 'character' | 'scene';
+}
+
 export interface ImageGenerateParams {
   prompt: string;
   negativePrompt?: string;
@@ -8,6 +14,7 @@ export interface ImageGenerateParams {
   style?: string;
   seed?: number;
   headers?: Record<string, string>;
+  images?: ImageRefInput[];
 }
 
 export interface ImageGenerateResult {

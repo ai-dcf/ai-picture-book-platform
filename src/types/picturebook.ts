@@ -228,6 +228,14 @@ export interface AssetsData {
   scenes: AssetItem[];
 }
 
+// ─── Image Refs (Stage 5) ────────────────────────────────────────────────────
+export interface ImageRef {
+  assetId: string;
+  assetName: string;
+  assetType: 'character' | 'scene';
+  imageUrl: string;
+}
+
 // ─── Pages (PRD §8.5) ───────────────────────────────────────────────────────
 export interface PageItem {
   index: number;
@@ -239,6 +247,7 @@ export interface PageItem {
   imageUrl: string | null;
   pageStatus: PageStatus;
   generating: boolean;
+  imageRefs: ImageRef[];
 }
 
 // ─── Editor (PRD §8.6) ──────────────────────────────────────────────────────

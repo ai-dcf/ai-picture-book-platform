@@ -277,6 +277,139 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
   constructor(private config: ModelConfigItem) {}
 
   async generate(params: ImageGenerateParams): Promise<ImageGenerateResult> {
+    if (params.images && params.images.length > 0) {
+      return this.generateWithRefImages(params);
+    }
+    return this.generateTextOnly(params);
+  }
+
+  private async generateWithRefImages(params: ImageGenerateParams): Promise<ImageGenerateResult> {
+    const { apiKey, endpoint } = this.config.credentials;
+    const model = (this.config.params?.model as string) || "doubao-seedream-5.0-lite";
+    const startTime = Date.now();
+    const resolvedSize = mapImageSizeForModel(params.size, model);
+
+    const imageUrls = params.images!.map(img => img.url).filter(Boolean);
+    if (imageUrls.length === 0) {
+      return this.generateTextOnly(params);
+    }
+
+    console.info(`${LOG_PREFIX} 参考图生成开始`, {
+      alias: this.config.alias,
+      model,
+      endpoint,
+      promptChars: params.prompt.length,
+      size: resolvedSize,
+      refImageCount: imageUrls.length,
+      refImageNames: params.images!.map(i => i.name).filter(Boolean),
+    });
+
+    try {
+      const requestBody: Record<string, unknown> = {
+        model,
+        prompt: params.prompt,
+        image: imageUrls,
+        size: resolvedSize || "2048x2048",
+        response_format: "url",
+        watermark: false,
+        sequential_image_generation: "disabled",
+      };
+
+      console.info(`${LOG_PREFIX} 参考图请求发送中`, {
+        alias: this.config.alias,
+        model,
+        endpoint,
+        requestBody: { ...requestBody, prompt: requestBody.prompt },
+      });
+
+      const invokeStartAt = Date.now();
+      const response = await fetch(`${endpoint}/images/generations`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(120000),
+      });
+
+      console.info(`${LOG_PREFIX} 参考图请求已返回`, {
+        alias: this.config.alias,
+        model,
+        invokeDurationMs: Date.now() - invokeStartAt,
+        status: response.status,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error(`${LOG_PREFIX} 参考图生成失败`, {
+          alias: this.config.alias,
+          model,
+          durationMs: Date.now() - startTime,
+          status: response.status,
+          errorText,
+        });
+        return {
+          success: false,
+          error: { code: "API_ERROR", message: `参考图生成 API 返回 ${response.status}: ${errorText}` },
+        };
+      }
+
+      const result = await response.json() as {
+        data?: Array<{ url?: string; b64_json?: string; error?: { code: string; message: string } }>;
+        error?: { code: string; message: string };
+      };
+
+      if (result.error) {
+        console.error(`${LOG_PREFIX} 参考图生成业务错误`, {
+          alias: this.config.alias,
+          model,
+          error: result.error,
+        });
+        return {
+          success: false,
+          error: { code: result.error.code || "API_ERROR", message: result.error.message || "参考图生成失败" },
+        };
+      }
+
+      const firstImage = result.data?.[0];
+      if (!firstImage?.url && !firstImage?.b64_json) {
+        const imgError = firstImage?.error;
+        console.warn(`${LOG_PREFIX} 参考图生成无图片`, {
+          alias: this.config.alias,
+          model,
+          imgError,
+        });
+        return {
+          success: false,
+          error: { code: "NO_IMAGE_URL", message: imgError?.message || "参考图生成未返回可用图片" },
+        };
+      }
+
+      const imageUrl = firstImage.url || (firstImage.b64_json ? `data:image/png;base64,${firstImage.b64_json}` : "");
+      console.info(`${LOG_PREFIX} 参考图生成成功`, {
+        alias: this.config.alias,
+        model,
+        durationMs: Date.now() - startTime,
+        imageUrl: imageUrl.slice(0, 100),
+      });
+
+      return { success: true, imageUrl };
+    } catch (error) {
+      console.error(`${LOG_PREFIX} 参考图生成异常`, {
+        alias: this.config.alias,
+        model,
+        durationMs: Date.now() - startTime,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        success: false,
+        error: { code: "GENERATION_FAILED", message: error instanceof Error ? error.message : "参考图生成异常" },
+      };
+    }
+  }
+
+  private async generateTextOnly(params: ImageGenerateParams): Promise<ImageGenerateResult> {
     const { apiKey, endpoint } = this.config.credentials;
     const model = (this.config.params?.model as string) || "dall-e-3";
     const startTime = Date.now();

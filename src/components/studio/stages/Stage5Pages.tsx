@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import PromptEditor from '@/components/studio/PromptEditor';
+import { findUnreferencedAssets, injectRefTags } from '@/lib/prompt-ref-parser';
 import { cn } from '@/lib/utils';
 import { PageStatus, PAGE_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {
@@ -81,8 +83,8 @@ export default function Stage5Pages() {
             : item.storyText;
         const nextCharacterRefs = storyboardPage?.characterRefs || item.characterRefs;
         const nextSceneRefs = storyboardPage?.sceneRefs || item.sceneRefs;
-        const nextPrompt = item.promptUserEdited
-          ? item.prompt
+        const nextPromptResult = item.promptUserEdited
+          ? { prompt: item.prompt, imageRefs: item.imageRefs }
           : buildPagePrompt({
               pageIndex: index,
               page: {
@@ -99,7 +101,7 @@ export default function Stage5Pages() {
           item.storyText !== nextStoryText ||
           !arraysEqual(item.characterRefs, nextCharacterRefs) ||
           !arraysEqual(item.sceneRefs, nextSceneRefs) ||
-          item.prompt !== nextPrompt
+          item.prompt !== nextPromptResult.prompt
         );
       }),
     [assets, pages, projectInfo, storyboard.pages]
@@ -114,21 +116,23 @@ export default function Stage5Pages() {
   const handleGenerate = useCallback(async () => {
     if (!page) return;
     if (!(page.prompt || '').trim()) {
+      const promptResult = buildPagePrompt({
+        pageIndex: currentPage,
+        page: {
+          storyText: page.storyText,
+          characterRefs: effectiveCharacterRefs,
+          sceneRefs: effectiveSceneRefs,
+        },
+        storyboardPage: sbPage,
+        assets,
+        projectInfo,
+      });
       dispatch({
         type: 'UPDATE_PAGE_CONFIG',
         payload: {
           index: currentPage,
-          prompt: buildPagePrompt({
-            pageIndex: currentPage,
-            page: {
-              storyText: page.storyText,
-              characterRefs: effectiveCharacterRefs,
-              sceneRefs: effectiveSceneRefs,
-            },
-            storyboardPage: sbPage,
-            assets,
-            projectInfo,
-          }),
+          prompt: promptResult.prompt,
+          imageRefs: promptResult.imageRefs,
         },
       });
     }
@@ -147,8 +151,8 @@ export default function Stage5Pages() {
     triggerSave();
   }
 
-  function handlePromptChange(prompt: string) {
-    dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, prompt } });
+  function handlePromptChange(prompt: string, imageRefs: import('@/types/picturebook').ImageRef[]) {
+    dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, prompt, imageRefs } });
     triggerSave();
   }
 
@@ -266,12 +270,47 @@ export default function Stage5Pages() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">页面生成提示词</label>
-              <Textarea
+              <PromptEditor
                 value={page.prompt || ''}
-                onChange={e => handlePromptChange(e.target.value)}
-                className="font-body text-sm resize-none min-h-[132px]"
-                placeholder="系统会自动生成页面提示词，你也可以继续编辑镜头、光线、氛围等要求…"
+                imageRefs={page.imageRefs || []}
+                assets={assets}
+                onChange={handlePromptChange}
+                characterRefs={effectiveCharacterRefs}
+                sceneRefs={effectiveSceneRefs}
+                placeholder="系统会自动生成页面提示词，你也可以继续编辑镜头、光线、氛围等要求…输入 # 可引用素材图"
               />
+              {(() => {
+                const unreferenced = findUnreferencedAssets(
+                  page.prompt || '',
+                  effectiveCharacterRefs,
+                  effectiveSceneRefs,
+                  assets.characters,
+                  assets.scenes
+                );
+                const allUnreferenced = [...unreferenced.characters, ...unreferenced.scenes];
+                if (allUnreferenced.length === 0) return null;
+                return (
+                  <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs font-body text-blue-700 dark:text-blue-300 flex items-center justify-between gap-2">
+                    <span>检测到 {allUnreferenced.length} 个可引用素材：{allUnreferenced.map(a => a.name).join('、')}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const names = allUnreferenced.map(a => a.name);
+                        const { text: newPrompt, imageRefs: newImageRefs } = injectRefTags(
+                          page.prompt || '',
+                          names,
+                          assets.characters,
+                          assets.scenes
+                        );
+                        handlePromptChange(newPrompt, newImageRefs);
+                      }}
+                      className="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] hover:bg-blue-700 transition-colors flex-shrink-0"
+                    >
+                      全部添加
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {page.pageStatus === 'review' && (

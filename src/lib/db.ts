@@ -42,6 +42,27 @@ export function initDatabase(): void {
   const schema = readFileSync(schemaPath, 'utf-8');
 
   database.exec(schema);
+  runMigrations(database);
+}
+
+const MIGRATIONS: Array<{ column: string; table: string; type: string; default: string }> = [
+  { column: 'image_refs', table: 'pages', type: 'TEXT', default: "'[]'" },
+];
+
+function runMigrations(database: Database.Database): void {
+  for (const migration of MIGRATIONS) {
+    try {
+      const rows = database.prepare(`PRAGMA table_info(${migration.table})`).all() as Array<{ name: string }>;
+      const exists = rows.some(row => row.name === migration.column);
+      if (!exists) {
+        database.exec(
+          `ALTER TABLE ${migration.table} ADD COLUMN ${migration.column} ${migration.type} NOT NULL DEFAULT ${migration.default}`
+        );
+      }
+    } catch {
+      // Column may already exist from schema.sql CREATE TABLE
+    }
+  }
 }
 
 export function closeDatabase(): void {
