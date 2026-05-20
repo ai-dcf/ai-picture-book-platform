@@ -121,7 +121,7 @@ export function buildAssetPromptFromEntry(kind: AssetPromptKind, entry: StoryEnt
  * 生成用户友好的角色/场景提示词（用于前端展示）
  */
 export function buildUserFriendlyAssetPrompt({ kind, name, description, projectInfo }: BuildAssetPromptParams) {
-  return promptEnhancer.buildUserFriendlyPrompt({
+  let prompt = promptEnhancer.buildUserFriendlyPrompt({
     type: kind,
     artStyle: projectInfo.artStyle,
     targetAge: projectInfo.targetAge,
@@ -129,6 +129,13 @@ export function buildUserFriendlyAssetPrompt({ kind, name, description, projectI
     name,
     description: description || "延续上游故事设定，补足适合儿童绘本的细节。"
   });
+
+  // 角色形象默认添加全身照片要求
+  if (kind === 'character') {
+    prompt += " 要求全身照片。";
+  }
+
+  return prompt;
 }
 
 /**
