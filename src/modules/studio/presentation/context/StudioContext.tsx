@@ -11,6 +11,7 @@ import {
   SpreadItem,
   AssetItem,
   AssetsData,
+  AspectRatio,
   PageItem,
   EditorPageState,
   TextBoxStyle,
@@ -27,7 +28,7 @@ import {
   BaseImageHistoryEntry,
   CandidateHistoryEntry,
 } from '@/types/picturebook';
-import { buildUserFriendlyAssetPrompt, buildUserFriendlyPagePrompt, buildUserFriendlyAssetPromptFromEntry } from '@/modules/studio/domain/services/prompt';
+import { buildUserFriendlyAssetPrompt, buildUserFriendlyPagePrompt, buildUserFriendlyAssetPromptFromEntry } from '@/prompts';
 import { parseRefTags } from '@/lib/prompt-ref-parser';
 import type { ProjectHistoryEntry } from '@/modules/project-history/types';
 
@@ -310,7 +311,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
 
       let result: PictureBookState = { ...state, projectInfo: newInfo };
 
-      if (action.payload.pageCount && action.payload.pageCount !== state.projectInfo.pageCount) {
+      if (
+        action.payload.pageCount &&
+        action.payload.pageCount !== "auto" &&
+        action.payload.pageCount !== state.projectInfo.pageCount
+      ) {
         result = rebuildPagesForCount(result, action.payload.pageCount);
       }
 

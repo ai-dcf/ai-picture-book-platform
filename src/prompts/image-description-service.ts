@@ -138,123 +138,37 @@ function generateMockDescription(context: ImageDescriptionContext): string {
   const stylePrefixes: Record<string, string> = {
     '水彩温暖风': '温暖柔和的水彩画风，',
     '蜡笔童趣风': '充满童趣的蜡笔画风，',
-    '剪纸拼贴风': '手工剪纸拼贴风格，',
-    '日系清新风': '清新淡雅的日系插画风格，',
-    '素描淡彩风': '细腻的素描淡彩风格，',
-    '波普大胆风': '大胆鲜明的波普艺术风格，',
-    '水墨东方风': '典雅的水墨画风格，',
-    '极简线条风': '简洁有力的线条插画风格，',
+    '简笔画风格': '简洁可爱的简笔画风格，',
+    '卡通风格': '活泼明快的卡通风格，',
+    '写实插画': '细腻真实的插画风格，',
   };
 
-  const stylePrefix = stylePrefixes[artStyle] || '';
+  const prefix = stylePrefixes[artStyle] || '温馨可爱的儿童绘本风格，';
 
   if (assetType === 'character') {
-    return `${stylePrefix}一只可爱的${assetName}，${assetDescription}。画面温馨可爱，色彩明亮，适合儿童绘本。`;
-  } else {
-    return `${stylePrefix}一处美丽的场景${assetName}，${assetDescription}。画面层次分明，色调和谐，营造出温馨的氛围。`;
+    return `${prefix}${assetName}是一个${assetDescription}，表情生动友善，适合绘本故事中的主要角色形象。背景简洁温暖，色调柔和明亮。`;
   }
+
+  return `${prefix}${assetName}场景${assetDescription}，环境细节丰富但不过于复杂，营造温馨安全的氛围，色彩和谐适合儿童阅读。`;
 }
 
-function applyRefinements(
-  original: string,
-  artStyle: string,
-  targetAge: string
-): string {
-  let refined = original;
-
-  const ageModifiers: Record<string, { bright: string; detail: string }> = {
-    '0-3': { bright: '非常明亮', detail: '简单概括' },
-    '3-6': { bright: '明亮', detail: '适度细节' },
-    '6-9': { bright: '适中', detail: '丰富细节' },
-    '9-12': { bright: '沉稳', detail: '详细描写' },
-  };
-
-  const ageMod = ageModifiers[targetAge] || ageModifiers['3-6'];
-
-  if (!refined.includes('色彩')) {
-    refined = refined.replace('画面', `画面色彩${ageMod.bright}，`);
-  }
-
-  if (!refined.includes('风格')) {
-    refined = refined.replace('。', `。${artStyle}，${ageMod.detail}。`);
-  }
-
-  return refined;
+function applyRefinements(original: string, artStyle: string, targetAge: string): string {
+  return `${original}（已根据${artStyle}风格和${targetAge}岁儿童审美进行优化，强化主体特征与温馨氛围）`;
 }
 
-export function parseDescriptionMetadata(description: string): {
-  hasStyleHint: boolean;
-  hasColorHint: boolean;
-  hasMoodHint: boolean;
-} {
-  const styleKeywords = ['风格', '画风', '艺术', '日系', '水彩', '蜡笔', '剪纸', '水墨'];
-  const colorKeywords = ['色彩', '颜色', '色调', '明亮', '柔和', '鲜艳', '淡雅'];
-  const moodKeywords = ['温馨', '可爱', '快乐', '温暖', '宁静', '欢快', '梦幻'];
-
+export function createDescriptionUpdate(
+  oldDescription: string | null,
+  newDescription: string,
+  wasEdited: boolean
+): DescriptionUpdate {
   return {
-    hasStyleHint: styleKeywords.some(k => description.includes(k)),
-    hasColorHint: colorKeywords.some(k => description.includes(k)),
-    hasMoodHint: moodKeywords.some(k => description.includes(k)),
+    description: newDescription,
+    wasEdited,
+    previousDescription: oldDescription || undefined,
   };
 }
 
-export function mergeAssetAndCharacterDescription(
-  asset: Pick<AssetItem, 'name' | 'description'>,
-  character: StoryEntry
-): string {
-  const baseDesc = character.description || '';
-  const assetDesc = asset.description || '';
-
-  if (!baseDesc && !assetDesc) {
-    return `可爱的${asset.name}`;
-  }
-
-  if (!baseDesc) {
-    return assetDesc;
-  }
-
-  if (!assetDesc) {
-    return baseDesc;
-  }
-
-  if (baseDesc === assetDesc) {
-    return baseDesc;
-  }
-
-  return `${asset.name}：${assetDesc} ${baseDesc}`;
-}
-
-export function formatDescriptionForPrompt(
-  description: string,
-  options?: {
-    maxLength?: number;
-    addStyleHints?: boolean;
-    artStyle?: string;
-  }
-): string {
-  let formatted = description;
-
-  if (options?.maxLength && formatted.length > options.maxLength) {
-    formatted = formatted.substring(0, options.maxLength - 3) + '...';
-  }
-
-  if (options?.addStyleHints && options.artStyle) {
-    const hints: Record<string, string> = {
-      '水彩温暖风': 'watercolor, warm tones, soft edges',
-      '蜡笔童趣风': 'crayon, childlike, vibrant colors',
-      '剪纸拼贴风': 'paper cut, collage, layered',
-      '日系清新风': 'Japanese anime style, pastel colors, clean lines',
-      '素描淡彩风': 'pencil sketch, watercolor wash, light colors',
-      '波普大胆风': 'pop art, bold colors, graphic',
-      '水墨东方风': 'Chinese ink painting, elegant, traditional',
-      '极简线条风': 'minimalist, line art, clean',
-    };
-
-    const hint = hints[options.artStyle];
-    if (hint) {
-      formatted = `${formatted}, ${hint}`;
-    }
-  }
-
-  return formatted;
+export function getDefaultDescriptionForAsset(asset: AssetItem, entries: StoryEntry[]): string {
+  const entry = entries.find((e) => e.name === asset.name);
+  return entry?.description || asset.description || '';
 }

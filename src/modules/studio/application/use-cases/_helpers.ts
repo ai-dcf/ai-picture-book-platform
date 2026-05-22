@@ -38,7 +38,7 @@ function get_default_image_strategy(): ImageModelGateway | null {
   }
 }
 
-function summarizeProjectInfo(projectInfo: { title?: string; targetAge?: string; artStyle?: string; aspectRatio?: string; pageCount?: number }): Record<string, unknown> {
+function summarizeProjectInfo(projectInfo: { title?: string; targetAge?: string; artStyle?: string; aspectRatio?: string; pageCount?: string | number }): Record<string, unknown> {
   return {
     title: projectInfo.title || "待定",
     targetAge: projectInfo.targetAge,

@@ -16,6 +16,7 @@ import {
   TARGET_AGES,
   PAGE_COUNTS,
   ART_STYLES,
+  ProjectInfo,
   TargetAge,
   PageCount,
   AspectRatio,
@@ -127,7 +128,7 @@ export default function Stage1Init() {
         dispatch({ type: 'CREATE_DRAFT' });
       }
       triggerSave();
-      dispatch({ type: 'SET_CURRENT_STAGE', payload: 2 });
+      dispatch({ type: 'SET_STAGE', payload: 2 });
     } catch (err) {
       console.error('项目创建失败', err);
       // 即使分析失败，也继续创建项目，使用用户输入的参数
@@ -146,7 +147,7 @@ export default function Stage1Init() {
         dispatch({ type: 'CREATE_DRAFT' });
       }
       triggerSave();
-      dispatch({ type: 'SET_CURRENT_STAGE', payload: 2 });
+      dispatch({ type: 'SET_STAGE', payload: 2 });
     } finally {
       setIsAnalyzing(false);
     }

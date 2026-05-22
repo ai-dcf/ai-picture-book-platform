@@ -1,21 +1,37 @@
 import "server-only";
 
-import { buildAssetPrompt } from "@/modules/studio/domain/services/prompt";
+import { buildAssetPrompt, buildPromptRuleBundle } from "@/prompts";
 import { noModelError, generationFailedError } from "@/modules/studio/domain/errors";
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_image_strategy } from "./_helpers";
 import type { AssetItem, ProjectInfo } from "@/types/picturebook";
-import { promptEnhancer } from "@/lib/prompt-enhancer";
+import { promptEnhancer } from "@/prompts/prompt-enhancer";
+import type { PromptCustomParams } from "@/prompts";
+
+function stableSeedFromString(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const seed = (hash >>> 0) % 2147483647;
+  return seed === 0 ? 1 : seed;
+}
 
 export async function generateAssetImage(
   asset: AssetItem,
-  projectInfo: ProjectInfo
+  projectInfo: ProjectInfo,
+  promptOptions: PromptCustomParams = {}
 ): Promise<GenerateResult<string>> {
   const strategy = get_default_image_strategy();
   if (!strategy) return { success: false, error: noModelError() };
 
   try {
     const kind = asset.id.includes("scene") ? "scene" : "character";
+    const rules = buildPromptRuleBundle(
+      { ...projectInfo, aspectRatio: asset.aspectRatio },
+      promptOptions
+    );
     let prompt =
       asset.promptUserEdited && asset.prompt
         ? asset.prompt
@@ -24,6 +40,7 @@ export async function generateAssetImage(
             name: asset.name,
             description: asset.description,
             projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
+            customParams: promptOptions,
           });
 
     // 如果是用户编辑的友好提示词，转换为专业提示词
@@ -46,6 +63,8 @@ export async function generateAssetImage(
 
     const result = await strategy.generate({
       prompt,
+      negativePrompt: [...rules.compliance.negativePrompt, ...rules.model.negativePrompt].join(", "),
+      seed: stableSeedFromString(`${projectInfo.projectId}:asset:${asset.id}`),
       size: sizeMap[asset.aspectRatio] || "1024x1024",
     });
 

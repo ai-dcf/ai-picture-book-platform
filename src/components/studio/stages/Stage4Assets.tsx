@@ -45,7 +45,7 @@ import {
   Users,
   Wand2,
 } from 'lucide-react';
-import { buildAssetPrompt, buildUserFriendlyAssetPrompt } from '@/modules/studio/domain/services/prompt';
+import { buildAssetPrompt, buildUserFriendlyAssetPrompt } from '@/prompts';
 
 type PreviewPayload = {
   imageUrl: string;

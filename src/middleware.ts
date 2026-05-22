@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.AUTH_SECRET || "development-secret-key-change-in-production" });
   const isAuthenticated = !!token;
 
-  const publicPaths = ["/login", "/register", "/api/auth", "/"];
+  const publicPaths = ["/login", "/register", "/api/auth", "/api/studio/prompt-validation", "/"];
   const isPublicPath = publicPaths.some((path) => pathname === path || pathname.startsWith(path + "/")) || pathname.startsWith("/api/projects");
 
   if (!isAuthenticated && !isPublicPath) {

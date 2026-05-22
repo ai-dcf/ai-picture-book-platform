@@ -314,6 +314,8 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
         watermark: false,
         sequential_image_generation: "disabled",
       };
+      if (params.negativePrompt) requestBody.negative_prompt = params.negativePrompt;
+      if (typeof params.seed === "number") requestBody.seed = params.seed;
 
       console.info(`${LOG_PREFIX} 参考图请求发送中`, {
         alias: this.config.alias,
@@ -429,96 +431,98 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
     });
 
     try {
-      const imageTool = new DallEAPIWrapper({
-        apiKey,
-        baseUrl: endpoint,
+      const requestBody: Record<string, unknown> = {
         model,
-        n: 1,
-        dallEResponseFormat: "url",
-        size: resolvedSize as any,
-        quality: normalizeImageQuality(params.quality),
-        style: normalizeImageStyle(params.style),
-      });
+        prompt: params.prompt,
+        size: resolvedSize || "2048x2048",
+        response_format: "url",
+        watermark: false,
+      };
+
+      const quality = normalizeImageQuality(params.quality);
+      const style = normalizeImageStyle(params.style);
+      if (quality) requestBody.quality = quality;
+      if (style) requestBody.style = style;
+      if (params.negativePrompt) requestBody.negative_prompt = params.negativePrompt;
+      if (typeof params.seed === "number") requestBody.seed = params.seed;
 
       console.info(`${LOG_PREFIX} 图片请求发送中`, {
         alias: this.config.alias,
         model,
         endpoint,
-        request: {
-          prompt: params.prompt,
-          size: resolvedSize,
-          originalSize: params.size,
-          quality: normalizeImageQuality(params.quality),
-          style: normalizeImageStyle(params.style),
-          n: 1,
-          responseFormat: "url",
-        },
+        requestBody: { ...requestBody, prompt: requestBody.prompt },
       });
+
       const invokeStartAt = Date.now();
-      const output = await imageTool.invoke(params.prompt);
+      const response = await fetch(`${endpoint}/images/generations`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(120000),
+      });
+
       console.info(`${LOG_PREFIX} 图片请求已返回`, {
         alias: this.config.alias,
         model,
         invokeDurationMs: Date.now() - invokeStartAt,
-      });
-      console.info(`${LOG_PREFIX} 图片原始响应`, {
-        alias: this.config.alias,
-        model,
-        outputType: Array.isArray(output) ? "array" : typeof output,
-        output,
-      });
-      let imageUrl = "";
-
-      if (typeof output === "string") {
-        imageUrl = output;
-      } else if (Array.isArray(output)) {
-        const imageItem = output.find(
-          (item) =>
-            typeof item === "object" &&
-            item !== null &&
-            "type" in item &&
-            "image_url" in item &&
-            (item as { type?: string }).type === "image_url"
-        ) as { image_url?: string | { url?: string } } | undefined;
-
-        if (typeof imageItem?.image_url === "string") {
-          imageUrl = imageItem.image_url;
-        } else if (
-          typeof imageItem?.image_url === "object" &&
-          imageItem.image_url !== null &&
-          typeof imageItem.image_url.url === "string"
-        ) {
-          imageUrl = imageItem.image_url.url;
-        }
-      }
-      console.info(`${LOG_PREFIX} 图片解析结果`, {
-        alias: this.config.alias,
-        model,
-        hasImageUrl: Boolean(imageUrl),
-        imageUrl,
+        status: response.status,
       });
 
-      if (!imageUrl) {
-        console.warn(`${LOG_PREFIX} 图片生成失败`, {
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error(`${LOG_PREFIX} 图片生成失败`, {
           alias: this.config.alias,
           model,
           durationMs: Date.now() - startTime,
-          error: "未返回可用图片 URL",
-          outputType: Array.isArray(output) ? "array" : typeof output,
-          output,
+          status: response.status,
+          errorText,
         });
+
+        const imageTool = new DallEAPIWrapper({
+          apiKey,
+          baseUrl: endpoint,
+          model,
+          n: 1,
+          dallEResponseFormat: "url",
+          size: resolvedSize as any,
+          quality,
+          style,
+        });
+        const output = await imageTool.invoke(params.prompt);
+        const fallbackUrl = typeof output === "string" ? output : "";
+        if (fallbackUrl) return { success: true, imageUrl: fallbackUrl };
+
         return {
           success: false,
-          error: { code: "NO_IMAGE_URL", message: "未返回可用图片 URL" },
+          error: { code: "API_ERROR", message: `图片生成 API 返回 ${response.status}: ${errorText}` },
         };
       }
 
-      console.info(`${LOG_PREFIX} 图片生成成功`, {
-        alias: this.config.alias,
-        model,
-        durationMs: Date.now() - startTime,
-        imageUrl,
-      });
+      const result = await response.json() as {
+        data?: Array<{ url?: string; b64_json?: string; error?: { code: string; message: string } }>;
+        error?: { code: string; message: string };
+      };
+
+      if (result.error) {
+        return {
+          success: false,
+          error: { code: result.error.code || "API_ERROR", message: result.error.message || "图片生成失败" },
+        };
+      }
+
+      const firstImage = result.data?.[0];
+      if (!firstImage?.url && !firstImage?.b64_json) {
+        const imgError = firstImage?.error;
+        return {
+          success: false,
+          error: { code: "NO_IMAGE_URL", message: imgError?.message || "未返回可用图片" },
+        };
+      }
+
+      const imageUrl = firstImage.url || (firstImage.b64_json ? `data:image/png;base64,${firstImage.b64_json}` : "");
       return { success: true, imageUrl };
     } catch (error) {
       console.error(`${LOG_PREFIX} 图片生成异常`, {
@@ -530,6 +534,8 @@ class OpenAICompatibleImageStrategy implements ImageModelGateway {
         originalSize: params.size,
         quality: params.quality,
         style: params.style,
+        negativePrompt: params.negativePrompt,
+        seed: params.seed,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });

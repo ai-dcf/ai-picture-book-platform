@@ -1,26 +1,43 @@
 import "server-only";
 
-import { buildPagePrompt } from "@/modules/studio/domain/services/prompt";
+import { buildPagePrompt, buildPromptRuleBundle } from "@/prompts";
 import { noModelError, generationFailedError } from "@/modules/studio/domain/errors";
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_image_strategy } from "./_helpers";
 import type { AssetsData, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
 import type { ImageGenerateParams, ImageRefInput } from "@/platform/ai/contracts/image-model-gateway";
 import { replaceRefTagsWithDescription } from "@/lib/prompt-ref-parser";
-import { promptEnhancer } from "@/lib/prompt-enhancer";
+import { promptEnhancer } from "@/prompts/prompt-enhancer";
+import type { PromptCustomParams } from "@/prompts";
 
 const MAX_REF_IMAGES = 14;
+
+function stableSeedFromString(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const seed = (hash >>> 0) % 2147483647;
+  return seed === 0 ? 1 : seed;
+}
 
 export async function generatePageImage(
   page: PageItem,
   assets: AssetsData,
   projectInfo: ProjectInfo,
-  storyboardPage?: StoryboardPageData
+  storyboardPage?: StoryboardPageData,
+  promptOptions: PromptCustomParams = {}
 ): Promise<GenerateResult<string>> {
   const strategy = get_default_image_strategy();
   if (!strategy) return { success: false, error: noModelError() };
 
   try {
+    const effectiveRatio = page.aspectRatio || '16:9';
+    const rules = buildPromptRuleBundle(
+      { ...projectInfo, aspectRatio: effectiveRatio },
+      promptOptions
+    );
     const promptResult =
       page.promptUserEdited && page.prompt
         ? { prompt: page.prompt, imageRefs: page.imageRefs || [] }
@@ -30,6 +47,7 @@ export async function generatePageImage(
             storyboardPage,
             assets,
             projectInfo,
+            customParams: promptOptions,
           });
 
     const validImageRefs = (promptResult.imageRefs || []).filter(
@@ -68,9 +86,10 @@ export async function generatePageImage(
       "1:1": "1024x1024",
     };
 
-    const effectiveRatio = page.aspectRatio || '16:9';
     const generateParams: ImageGenerateParams = {
       prompt: processedPrompt,
+      negativePrompt: [...rules.compliance.negativePrompt, ...rules.model.negativePrompt].join(", "),
+      seed: stableSeedFromString(`${projectInfo.projectId}:page:${page.index}`),
       size: sizeMap[effectiveRatio] || "1024x1024",
     };
 

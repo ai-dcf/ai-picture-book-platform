@@ -1,4 +1,11 @@
-import type { StoryData, StoryEntry, EmotionCurvePoint } from "@/types/picturebook";
+import type {
+  ArtStyle,
+  EmotionCurvePoint,
+  PageCount,
+  StoryData,
+  StoryEntry,
+  TargetAge,
+} from "@/types/picturebook";
 
 export function extractJSON(text: string): string {
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -60,14 +67,14 @@ export function parseStoryResponse(raw: string): StoryData & {
   };
 
   // 提取推荐参数
-  if (parsed.recommendedTargetAge) {
-    result.recommendedTargetAge = parsed.recommendedTargetAge as TargetAge;
+  if (parsed.recommendedTargetAge && parsed.recommendedTargetAge !== "auto") {
+    result.recommendedTargetAge = parsed.recommendedTargetAge as Exclude<TargetAge, "auto">;
   }
-  if (parsed.recommendedArtStyle) {
-    result.recommendedArtStyle = parsed.recommendedArtStyle as ArtStyle;
+  if (parsed.recommendedArtStyle && parsed.recommendedArtStyle !== "auto") {
+    result.recommendedArtStyle = parsed.recommendedArtStyle as Exclude<ArtStyle, "auto">;
   }
-  if (parsed.recommendedPageCount) {
-    result.recommendedPageCount = parsed.recommendedPageCount as PageCount;
+  if (parsed.recommendedPageCount && parsed.recommendedPageCount !== "auto") {
+    result.recommendedPageCount = parsed.recommendedPageCount as Exclude<PageCount, "auto">;
   }
 
   return result;

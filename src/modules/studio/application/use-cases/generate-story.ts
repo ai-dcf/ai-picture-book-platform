@@ -1,14 +1,16 @@
 import "server-only";
 
-import { buildStorySystemPrompt, buildStoryUserPrompt } from "@/modules/studio/domain/services/prompt";
+import { buildStorySystemPrompt, buildStoryUserPrompt } from "@/prompts";
 import { parseStoryResponse } from "@/modules/studio/domain/services/parsers";
 import { noModelError, generationFailedError } from "@/modules/studio/domain/errors";
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_text_strategy, summarizeProjectInfo, LOG_PREFIX } from "./_helpers";
 import type { ProjectInfo, StoryData } from "@/types/picturebook";
+import type { PromptCustomParams } from "@/prompts";
 
 export async function generateStory(
-  projectInfo: ProjectInfo
+  projectInfo: ProjectInfo,
+  promptOptions: PromptCustomParams = {}
 ): Promise<GenerateResult<StoryData>> {
   const startTime = Date.now();
   console.info(`${LOG_PREFIX} 故事生成开始`, summarizeProjectInfo(projectInfo));
@@ -21,8 +23,8 @@ export async function generateStory(
 
   try {
     const result = await strategy.generate({
-      systemPrompt: buildStorySystemPrompt(),
-      prompt: buildStoryUserPrompt(projectInfo),
+      systemPrompt: buildStorySystemPrompt(promptOptions),
+      prompt: buildStoryUserPrompt(projectInfo, promptOptions),
       temperature: 0.8,
       maxTokens: 4000,
     });

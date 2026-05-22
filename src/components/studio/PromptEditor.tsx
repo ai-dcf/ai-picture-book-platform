@@ -189,6 +189,14 @@ export default function PromptEditor({
     syncChange();
   }, [syncChange]);
 
+  const handleRemoveRef = useCallback((assetId: string) => {
+    const targetRef = imageRefs.find(ref => ref.assetId === assetId);
+    if (!targetRef) return;
+    const nextPrompt = removeRefTag(value, targetRef.assetName);
+    const { imageRefs: nextImageRefs } = parseRefTags(nextPrompt, assets.characters, assets.scenes);
+    onChange(nextPrompt, nextImageRefs);
+  }, [assets, imageRefs, onChange, value]);
+
   // 处理点击选择素材
   const handleSelectAsset = useCallback(
     (assetName: string) => {
@@ -245,7 +253,7 @@ export default function PromptEditor({
         </div>
       )}
 
-      {imageRefs.length > 0 && <ImageRefPreview imageRefs={imageRefs} onRemove={handleRemoveClick} />}
+      {imageRefs.length > 0 && <ImageRefPreview imageRefs={imageRefs} onRemove={handleRemoveRef} />}
 
       {selectorOpen && selectorPosition && (
         <AssetSelector

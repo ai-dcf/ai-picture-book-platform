@@ -48,20 +48,40 @@ const ART_STYLE_MODIFIERS: Record<string, { lighting: string; texture: string; m
     texture: "watercolor texture, transparent layers, bleeding edges",
     mood: "warm and cozy, gentle and inviting"
   },
-  "写实插画": {
-    lighting: "professional studio lighting, detailed shadows, high fidelity",
-    texture: "realistic texture, fine details, photographic quality",
-    mood: "lifelike and engaging, professional illustration"
+  "蜡笔童趣风": {
+    lighting: "bright child-friendly lighting, soft daylight, gentle contrast",
+    texture: "crayon texture, wax grain, hand-drawn strokes",
+    mood: "playful, cheerful, innocent"
   },
-  "水墨风格": {
+  "剪纸拼贴风": {
+    lighting: "clean even lighting, low shadow complexity, graphic readability",
+    texture: "paper collage texture, cut edges, layered craft material",
+    mood: "decorative, lively, handmade"
+  },
+  "日系清新风": {
+    lighting: "fresh natural lighting, airy highlights, soft backlight",
+    texture: "clean illustration texture, light brushwork, airy finish",
+    mood: "fresh, tender, uplifting"
+  },
+  "素描淡彩风": {
+    lighting: "soft sketch lighting, calm midtones, subtle shading",
+    texture: "pencil lines, light wash, paper grain",
+    mood: "quiet, gentle, observant"
+  },
+  "波普大胆风": {
+    lighting: "bright flat lighting, graphic contrast, bold visual punch",
+    texture: "poster-like surfaces, crisp shapes, pop illustration finish",
+    mood: "bold, energetic, playful"
+  },
+  "水墨东方风": {
     lighting: "soft ink wash lighting, subtle gradients, harmonious balance",
     texture: "ink wash texture, brushstroke details, paper grain",
     mood: "elegant and serene, traditional Eastern aesthetics"
   },
-  "卡通风格": {
-    lighting: "bright flat lighting, minimal shadows, vibrant colors",
-    texture: "clean vector texture, bold outlines, smooth gradients",
-    mood: "playful and energetic, fun and engaging"
+  "极简线条风": {
+    lighting: "clean simple lighting, minimal shadow noise, high readability",
+    texture: "minimal line texture, smooth flat fills, restrained detail",
+    mood: "clean, modern, calm"
   }
 };
 
@@ -74,6 +94,21 @@ export class PromptEnhancer {
     return `${basePrompt}\n\n${professionalInstructions}\n\n${qualityTags}`;
   }
 
+  generateColorPalette(artStyle: string): ColorPalette {
+    const palettes: Record<string, ColorPalette> = {
+      "水彩温暖风": { primary: "warm pastel", secondary: "soft cream", accent: "gentle coral" },
+      "蜡笔童趣风": { primary: "soft wax red", secondary: "sunny yellow", accent: "sky blue" },
+      "剪纸拼贴风": { primary: "paper red", secondary: "olive green", accent: "warm cream" },
+      "日系清新风": { primary: "fresh mint", secondary: "clear sky", accent: "soft peach" },
+      "素描淡彩风": { primary: "soft gray", secondary: "light beige", accent: "pale blue" },
+      "波普大胆风": { primary: "bold cyan", secondary: "warm yellow", accent: "vivid red" },
+      "水墨东方风": { primary: "ink black", secondary: "light gray", accent: "subtle red seal" },
+      "极简线条风": { primary: "off white", secondary: "graphite gray", accent: "soft blue" }
+    };
+
+    return palettes[artStyle] || palettes["水彩温暖风"];
+  }
+
   generateLightingDescription(mood: string = 'warm'): string {
     const preset = LIGHTING_PRESETS[mood as keyof typeof LIGHTING_PRESETS] || LIGHTING_PRESETS.soft;
     return preset.description;
@@ -82,16 +117,6 @@ export class PromptEnhancer {
   generateCompositionDescription(layout: string = 'golden'): string {
     const preset = COMPOSITION_PRESETS[layout as keyof typeof COMPOSITION_PRESETS] || COMPOSITION_PRESETS.golden;
     return preset.description;
-  }
-
-  generateColorPalette(artStyle: string): ColorPalette {
-    const palettes: Record<string, ColorPalette> = {
-      "水彩温暖风": { primary: "soft blues and greens", secondary: "warm earth tones", accent: "gentle yellows" },
-      "写实插画": { primary: "natural earth tones", secondary: "complementary colors", accent: "subtle highlights" },
-      "水墨风格": { primary: "ink black and gray", secondary: "subtle cyan tones", accent: "vermilion red" },
-      "卡通风格": { primary: "bright primary colors", secondary: "pastel accents", accent: "bold highlights" }
-    };
-    return palettes[artStyle] || palettes["水彩温暖风"];
   }
 
   buildProfessionalPrompt(params: PromptParams, baseContent: string): string {
@@ -146,7 +171,8 @@ ${baseContent}
 - 完美的手和脸，避免畸形
 - 儿童绘本审美，健康向上
 - 构图稳定，色彩统一
-- 无文字，无水印，无干扰元素`;
+- 系列一致：角色造型与风格保持一致（除非内容明确要求变化）
+- 无文字，无水印，无Logo，无签名，无边框，无UI元素，无干扰杂物`;
   }
 
   private getQualityTags(): string {
@@ -180,9 +206,6 @@ ${baseContent}
 - 叙事: visual storytelling, emotional expression, narrative flow`;
   }
 
-  /**
-   * 生成用户友好的自然语言段落式提示词
-   */
   buildUserFriendlyPrompt(params: PromptParams, data: {
     visualGoal?: string;
     sceneName?: string;
@@ -193,7 +216,6 @@ ${baseContent}
     const { type, artStyle, targetAge } = params;
 
     if (type === 'page') {
-      // 页面提示词
       const parts = [`${artStyle}风格的儿童绘本画面，适合${targetAge}。`];
       if (data.visualGoal) parts.push(data.visualGoal);
       if (data.sceneName && data.sceneDescription) {
@@ -201,19 +223,13 @@ ${baseContent}
       }
       return parts.join(' ');
     } else if (type === 'character') {
-      // 角色提示词
       return `${artStyle}风格的儿童绘本角色，适合${targetAge}。${data.name}：${data.description}`;
     } else {
-      // 场景提示词
       return `${artStyle}风格的儿童绘本场景，适合${targetAge}。${data.name}：${data.description}`;
     }
   }
 
-  /**
-   * 将用户编辑的友好提示词转换为专业提示词（用于API调用）
-   */
   convertUserPromptToProfessional(userPrompt: string, params: PromptParams): string {
-    // 直接将用户编辑的提示词作为基础内容，加上专业绘画指导
     return this.buildProfessionalPrompt(params, userPrompt);
   }
 }

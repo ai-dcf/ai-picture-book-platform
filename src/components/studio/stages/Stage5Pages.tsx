@@ -30,7 +30,7 @@ import {
   RefreshCw,
   Wand2,
 } from 'lucide-react';
-import { buildPagePrompt, buildUserFriendlyPagePrompt } from '@/modules/studio/domain/services/prompt';
+import { buildPagePrompt, buildUserFriendlyPagePrompt } from '@/prompts';
 
 function arraysEqual(a: string[], b: string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);

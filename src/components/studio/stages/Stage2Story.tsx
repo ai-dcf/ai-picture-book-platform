@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
-import { EmotionCurvePoint, StoryEntry, EMOTION_INTENSITY_MAP } from '@/types/picturebook';
+import { EmotionCurvePoint, ProjectInfo, StoryEntry, EMOTION_INTENSITY_MAP } from '@/types/picturebook';
 import EmotionCurveChart from './EmotionCurveChart';
 
 function generateMockStory(title: string, pages: number) {

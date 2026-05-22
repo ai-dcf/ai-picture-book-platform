@@ -165,6 +165,9 @@ export interface StoryData {
   emotionCurve: EmotionCurvePoint[];
   scenes: StoryEntry[];
   generating: boolean;
+  recommendedTargetAge?: Exclude<TargetAge, 'auto'>;
+  recommendedArtStyle?: Exclude<ArtStyle, 'auto'>;
+  recommendedPageCount?: Exclude<PageCount, 'auto'>;
 }
 
 // ─── Storyboard (PRD §8.3) ──────────────────────────────────────────────────
