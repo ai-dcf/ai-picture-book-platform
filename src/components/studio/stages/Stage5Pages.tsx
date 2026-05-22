@@ -8,6 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import PromptEditor from '@/components/studio/PromptEditor';
 import { findUnreferencedAssets, injectRefTags } from '@/lib/prompt-ref-parser';
 import { cn } from '@/lib/utils';
@@ -349,7 +356,7 @@ export default function Stage5Pages() {
         </div>
 
         <div className="flex-1 p-4 flex flex-col gap-4">
-          <div className={cn('w-full rounded-xl border border-border overflow-hidden bg-muted relative group', getAspectClass(projectInfo.aspectRatio))}>
+          <div className={cn('w-full rounded-xl border border-border overflow-hidden bg-muted relative group', getAspectClass(page.aspectRatio || projectInfo.aspectRatio))}>
             {page.generating && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/90 z-10">
                 <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center animate-pulse-soft">
@@ -374,6 +381,31 @@ export default function Stage5Pages() {
           </div>
 
           <div className="space-y-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">画面比例</label>
+              <Select
+                value={page.aspectRatio || projectInfo.aspectRatio}
+                onValueChange={(value: AspectRatio) => {
+                  dispatch({
+                    type: 'UPDATE_PAGE_CONFIG',
+                    payload: {
+                      index: currentPage,
+                      aspectRatio: value,
+                    },
+                  });
+                  triggerSave();
+                }}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="选择画面比例" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3:4">3:4 (竖版)</SelectItem>
+                  <SelectItem value="16:9">16:9 (横版)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button
               onClick={handleGenerate}
               disabled={page.generating}

@@ -43,6 +43,7 @@ function buildInitialPages(count: number): PageItem[] {
     pageStatus: 'idle' as PageStatus,
     generating: false,
     imageRefs: [],
+    aspectRatio: undefined,
   }));
 }
 

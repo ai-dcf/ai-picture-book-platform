@@ -68,9 +68,10 @@ export async function generatePageImage(
       "1:1": "1024x1024",
     };
 
+    const effectiveRatio = page.aspectRatio || projectInfo.aspectRatio;
     const generateParams: ImageGenerateParams = {
       prompt: processedPrompt,
-      size: sizeMap[projectInfo.aspectRatio] || "1024x1024",
+      size: sizeMap[effectiveRatio] || "1024x1024",
     };
 
     if (validImageRefs.length > 0) {

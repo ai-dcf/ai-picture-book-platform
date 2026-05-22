@@ -250,6 +250,7 @@ export interface PageItem {
   pageStatus: PageStatus;
   generating: boolean;
   imageRefs: ImageRef[];
+  aspectRatio?: AspectRatio;
 }
 
 // ─── Editor (PRD §8.6) ──────────────────────────────────────────────────────
