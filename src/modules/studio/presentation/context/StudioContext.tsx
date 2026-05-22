@@ -88,9 +88,9 @@ const initialState: PictureBookState = {
   projectInfo: {
     projectId: '',
     title: '',
-    targetAge: '3-6',
-    pageCount: 24,
-    artStyle: '水彩温暖风',
+    targetAge: 'auto',
+    pageCount: 'auto',
+    artStyle: 'auto',
     aspectRatio: '3:4',
     saveStatus: 'saved',
     projectStatus: 'draft',
