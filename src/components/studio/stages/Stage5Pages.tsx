@@ -356,7 +356,7 @@ export default function Stage5Pages() {
         </div>
 
         <div className="flex-1 p-4 flex flex-col gap-4">
-          <div className={cn('w-full rounded-xl border border-border overflow-hidden bg-muted relative group', getAspectClass(page.aspectRatio || projectInfo.aspectRatio))}>
+          <div className={cn('w-full rounded-xl border border-border overflow-hidden bg-muted relative group', getAspectClass(page.aspectRatio || '16:9'))}>
             {page.generating && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/90 z-10">
                 <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center animate-pulse-soft">
@@ -384,7 +384,7 @@ export default function Stage5Pages() {
             <div className="space-y-1.5">
               <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">画面比例</label>
               <Select
-                value={page.aspectRatio || projectInfo.aspectRatio}
+                value={page.aspectRatio || '16:9'}
                 onValueChange={(value: AspectRatio) => {
                   dispatch({
                     type: 'UPDATE_PAGE_CONFIG',

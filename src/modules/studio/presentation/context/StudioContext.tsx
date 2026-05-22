@@ -415,7 +415,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         prompt: buildUserFriendlyAssetPromptFromEntry('character', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
-        aspectRatio: state.projectInfo.aspectRatio,
+        aspectRatio: '9:16' as AspectRatio,
         baseImageUrl: null,
         candidates: [],
         officialImageUrl: null,

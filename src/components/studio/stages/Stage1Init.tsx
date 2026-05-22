@@ -14,7 +14,6 @@ import { AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
 import {
   TARGET_AGES,
   PAGE_COUNTS,
-  ASPECT_RATIOS,
   ART_STYLES,
   TargetAge,
   PageCount,
@@ -34,7 +33,6 @@ export default function Stage1Init() {
     targetAge: projectInfo.targetAge || 'auto',
     pageCount: projectInfo.pageCount || 'auto',
     artStyle: projectInfo.artStyle || 'auto',
-    aspectRatio: projectInfo.aspectRatio,
   });
 
   const [showImpact, setShowImpact] = useState(false);
@@ -46,15 +44,15 @@ export default function Stage1Init() {
 
   function handleCreate() {
     dispatch({
-      type: 'SET_PROJECT_INFO',
-      payload: {
-        title: form.title,
-        targetAge: form.targetAge as TargetAge,
-        pageCount: form.pageCount as PageCount,
-        artStyle: form.artStyle as ArtStyle,
-        aspectRatio: form.aspectRatio as AspectRatio,
-      },
-    });
+        type: 'SET_PROJECT_INFO',
+        payload: {
+          title: form.title.trim(),
+          targetAge: form.targetAge as TargetAge,
+          pageCount: form.pageCount as PageCount,
+          artStyle: form.artStyle as ArtStyle,
+          aspectRatio: '3:4' as AspectRatio,
+        },
+      });
     if (!projectInfo.projectId) {
       dispatch({ type: 'CREATE_DRAFT' });
     }
@@ -149,24 +147,7 @@ export default function Stage1Init() {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">画面比例</label>
-          <div className="flex gap-2 flex-wrap">
-            {ASPECT_RATIOS.map(r => (
-              <button
-                key={r}
-                onClick={() => handleChange('aspectRatio', r as AspectRatio)}
-                className={`px-4 py-2 rounded-lg text-sm font-body border transition-smooth ${
-                  form.aspectRatio === r
-                    ? 'bg-primary text-primary-foreground border-primary shadow-glow'
-                    : 'bg-card border-border text-foreground hover:border-primary/50'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {showImpact && hasDownstream && (
           <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex gap-2">
