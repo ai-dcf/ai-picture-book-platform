@@ -13,7 +13,11 @@ export function extractJSON(text: string): string {
   return text.trim();
 }
 
-export function parseStoryResponse(raw: string): StoryData {
+export function parseStoryResponse(raw: string): StoryData & {
+  recommendedTargetAge?: TargetAge;
+  recommendedArtStyle?: ArtStyle;
+  recommendedPageCount?: PageCount;
+} {
   const json = extractJSON(raw);
   const parsed = JSON.parse(json);
 
@@ -42,7 +46,11 @@ export function parseStoryResponse(raw: string): StoryData {
     })
   );
 
-  return {
+  const result: StoryData & {
+    recommendedTargetAge?: TargetAge;
+    recommendedArtStyle?: ArtStyle;
+    recommendedPageCount?: PageCount;
+  } = {
     oneLineStory: parsed.oneLineStory || "",
     characters,
     storyOutline: parsed.storyOutline || "",
@@ -50,4 +58,17 @@ export function parseStoryResponse(raw: string): StoryData {
     scenes,
     generating: false,
   };
+
+  // 提取推荐参数
+  if (parsed.recommendedTargetAge) {
+    result.recommendedTargetAge = parsed.recommendedTargetAge as TargetAge;
+  }
+  if (parsed.recommendedArtStyle) {
+    result.recommendedArtStyle = parsed.recommendedArtStyle as ArtStyle;
+  }
+  if (parsed.recommendedPageCount) {
+    result.recommendedPageCount = parsed.recommendedPageCount as PageCount;
+  }
+
+  return result;
 }

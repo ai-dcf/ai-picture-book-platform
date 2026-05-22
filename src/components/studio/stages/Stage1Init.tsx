@@ -31,9 +31,9 @@ export default function Stage1Init() {
 
   const [form, setForm] = useState({
     title: projectInfo.title,
-    targetAge: projectInfo.targetAge,
-    pageCount: projectInfo.pageCount,
-    artStyle: projectInfo.artStyle,
+    targetAge: projectInfo.targetAge || 'auto',
+    pageCount: projectInfo.pageCount || 'auto',
+    artStyle: projectInfo.artStyle || 'auto',
     aspectRatio: projectInfo.aspectRatio,
   });
 
@@ -107,7 +107,7 @@ export default function Stage1Init() {
             </SelectTrigger>
             <SelectContent>
               {TARGET_AGES.map(a => (
-                <SelectItem key={a} value={a} className="font-body">{a}</SelectItem>
+                <SelectItem key={a} value={a} className="font-body">{a === 'auto' ? '自动' : a}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -126,7 +126,7 @@ export default function Stage1Init() {
                     : 'bg-card border-border text-foreground hover:border-primary/50'
                 }`}
               >
-                {p} 页
+                {p === 'auto' ? '自动' : `${p} 页`}
               </button>
             ))}
           </div>
@@ -143,7 +143,7 @@ export default function Stage1Init() {
             </SelectTrigger>
             <SelectContent>
               {ART_STYLES.map(s => (
-                <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
+                <SelectItem key={s} value={s} className="font-body">{s === 'auto' ? '自动' : s}</SelectItem>
               ))}
             </SelectContent>
           </Select>

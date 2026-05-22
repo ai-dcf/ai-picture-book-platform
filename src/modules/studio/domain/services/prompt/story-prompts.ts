@@ -27,13 +27,40 @@ export function buildStorySystemPrompt(): string {
 }
 
 export function buildStoryUserPrompt(projectInfo: ProjectInfo): string {
-  return [
+  const lines = [
     `绘本标题：${projectInfo.title || "待定"}`,
-    `目标年龄：${projectInfo.targetAge}岁`,
-    `画面风格：${projectInfo.artStyle}`,
-    `画面比例：${projectInfo.aspectRatio}`,
-    `总页数：${projectInfo.pageCount}页`,
-    "",
-    "请创作一个适合以上设定的儿童绘本故事。",
-  ].join("\n");
+  ];
+  
+  if (projectInfo.targetAge === 'auto') {
+    lines.push(`目标年龄：请根据绘本主题自动分析最适合的年龄段`);
+  } else {
+    lines.push(`目标年龄：${projectInfo.targetAge}岁`);
+  }
+  
+  if (projectInfo.artStyle === 'auto') {
+    lines.push(`画面风格：请根据绘本主题自动选择最适合的绘画风格`);
+  } else {
+    lines.push(`画面风格：${projectInfo.artStyle}`);
+  }
+  
+  lines.push(`画面比例：${projectInfo.aspectRatio}`);
+  
+  if (projectInfo.pageCount === 'auto') {
+    lines.push(`总页数：请根据故事复杂度自动选择合适的页数（可选：8/12/16/24/32）`);
+  } else {
+    lines.push(`总页数：${projectInfo.pageCount}页`);
+  }
+  
+  lines.push("");
+  lines.push("请创作一个适合以上设定的儿童绘本故事。");
+  
+  if (projectInfo.targetAge === 'auto' || projectInfo.artStyle === 'auto' || projectInfo.pageCount === 'auto') {
+    lines.push("");
+    lines.push("注意：请在输出的JSON中额外添加以下字段：");
+    if (projectInfo.targetAge === 'auto') lines.push("- recommendedTargetAge: 你推荐的目标年龄段（只能是 '0-3'/'3-6'/'6-9'/'9-12' 中的一个）");
+    if (projectInfo.artStyle === 'auto') lines.push("- recommendedArtStyle: 你推荐的绘画风格（只能是现有风格列表中的一个）");
+    if (projectInfo.pageCount === 'auto') lines.push("- recommendedPageCount: 你推荐的页数（只能是 8/12/16/24/32 中的一个数字）");
+  }
+  
+  return lines.join("\n");
 }

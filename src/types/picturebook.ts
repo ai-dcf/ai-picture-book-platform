@@ -1,8 +1,9 @@
 // ─── Enums (PRD §6) ──────────────────────────────────────────────────────────
-export type TargetAge = '0-3' | '3-6' | '6-9' | '9-12';
-export type PageCount = 8 | 12 | 16 | 24 | 32;
+export type TargetAge = 'auto' | '0-3' | '3-6' | '6-9' | '9-12';
+export type PageCount = 'auto' | 8 | 12 | 16 | 24 | 32;
 export type AspectRatio = '3:4' | '9:16' | '16:9' | '1:1';
 export type ArtStyle =
+  | 'auto'
   | '水彩温暖风'
   | '蜡笔童趣风'
   | '剪纸拼贴风'
@@ -12,10 +13,11 @@ export type ArtStyle =
   | '水墨东方风'
   | '极简线条风';
 
-export const TARGET_AGES: TargetAge[] = ['0-3', '3-6', '6-9', '9-12'];
-export const PAGE_COUNTS: PageCount[] = [8, 12, 16, 24, 32];
+export const TARGET_AGES: TargetAge[] = ['auto', '0-3', '3-6', '6-9', '9-12'];
+export const PAGE_COUNTS: PageCount[] = ['auto', 8, 12, 16, 24, 32];
 export const ASPECT_RATIOS: AspectRatio[] = ['3:4', '9:16', '16:9', '1:1'];
 export const ART_STYLES: ArtStyle[] = [
+  'auto',
   '水彩温暖风',
   '蜡笔童趣风',
   '剪纸拼贴风',

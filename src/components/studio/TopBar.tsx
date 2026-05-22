@@ -148,7 +148,7 @@ export default function TopBar() {
                 <Select value={draft.targetAge} onValueChange={v => setDraft(d => ({ ...d, targetAge: v as TargetAge }))}>
                   <SelectTrigger className="font-body"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TARGET_AGES.map(a => <SelectItem key={a} value={a} className="font-body">{a}</SelectItem>)}
+                    {TARGET_AGES.map(a => <SelectItem key={a} value={a} className="font-body">{a === 'auto' ? '自动' : a}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -157,7 +157,7 @@ export default function TopBar() {
                 <Select value={draft.artStyle} onValueChange={v => setDraft(d => ({ ...d, artStyle: v as ArtStyle }))}>
                   <SelectTrigger className="font-body"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ART_STYLES.map(s => <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>)}
+                    {ART_STYLES.map(s => <SelectItem key={s} value={s} className="font-body">{s === 'auto' ? '自动' : s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
