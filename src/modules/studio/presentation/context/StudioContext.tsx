@@ -902,6 +902,7 @@ export function StudioProvider({ children, projectId }: { children: React.ReactN
   }, []);
 
   useEffect(() => {
+    // 仅当项目已经被正式创建（有projectId）时才自动保存
     if (initialLoadComplete && state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
       triggerSaveToServer(state);
       lastSavedStateRef.current = state;
@@ -909,11 +910,7 @@ export function StudioProvider({ children, projectId }: { children: React.ReactN
   }, [state, initialLoadComplete]);
 
   // Initialize project if no projectId and no existing project
-  useEffect(() => {
-    if (initialLoadComplete && !projectId && !state.projectInfo.projectId) {
-      dispatch({ type: 'CREATE_DRAFT' });
-    }
-  }, [projectId, state.projectInfo.projectId, initialLoadComplete]);
+  // 移除自动创建草稿逻辑，仅当用户点击"创建项目并继续"按钮时才创建项目
 
   if (isLoading) {
     return (

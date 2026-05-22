@@ -193,7 +193,7 @@ export default function Stage1Init() {
           size="lg"
           className="gap-2 font-body text-base gradient-hero text-primary-foreground border-0 shadow-elevated hover:shadow-glow transition-smooth"
         >
-          创建草稿并继续
+          创建项目并继续
           <ArrowRight className="w-4 h-4" />
         </Button>
       </div>
