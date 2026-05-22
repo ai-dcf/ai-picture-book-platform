@@ -1,8 +1,9 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import {
   TARGET_AGES,
   PAGE_COUNTS,
@@ -23,6 +24,7 @@ import {
 
 export default function Stage1Init() {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generateStory } = useStudioGenerate();
   const { projectInfo, stageStatuses } = state;
   const hasDownstream = Object.values(stageStatuses).some(
     (s, i) => i > 0 && s !== 'idle'
@@ -36,14 +38,100 @@ export default function Stage1Init() {
   });
 
   const [showImpact, setShowImpact] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自动调整文本框高度
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [form.title]);
 
   function handleChange<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm(f => ({ ...f, [key]: value }));
-    if (hasDownstream) setShowImpact(true);
+    setForm(prev => ({ ...prev, [key]: value }));
+    if (hasDownstream) {
+      setShowImpact(true);
+    }
   }
 
-  function handleCreate() {
-    dispatch({
+  // 一键优化故事概要
+  async function handleOptimize() {
+    if (!form.title.trim() || isOptimizing) return;
+    
+    setIsOptimizing(true);
+    try {
+      // 调用大模型优化故事概要
+      const tempProjectInfo: ProjectInfo = {
+        ...projectInfo,
+        title: form.title,
+        targetAge: form.targetAge,
+        pageCount: form.pageCount,
+        artStyle: form.artStyle,
+      };
+      
+      const story = await generateStory(tempProjectInfo);
+      if (story) {
+        // 使用生成的故事大纲作为优化后的内容
+        handleChange('title', story.storyOutline || story.oneLineStory || form.title);
+      }
+    } catch (err) {
+      console.error('优化失败', err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }
+
+  async function handleCreate() {
+    if (!form.title.trim()) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // 调用AI分析故事内容，获取推荐参数
+      const tempProjectInfo: ProjectInfo = {
+        ...projectInfo,
+        title: form.title,
+        targetAge: form.targetAge,
+        pageCount: form.pageCount,
+        artStyle: form.artStyle,
+        aspectRatio: '3:4' as AspectRatio,
+      };
+      
+      const story = await generateStory(tempProjectInfo);
+      
+      // 合并AI推荐参数和用户选择的参数
+      const finalProjectInfo = {
+        title: form.title.trim(),
+        // 如果用户选择自动，使用AI推荐值，否则使用用户选择的值
+        targetAge: form.targetAge === 'auto' && story?.recommendedTargetAge 
+          ? story.recommendedTargetAge 
+          : form.targetAge as TargetAge,
+        pageCount: form.pageCount === 'auto' && story?.recommendedPageCount 
+          ? story.recommendedPageCount 
+          : form.pageCount as PageCount,
+        artStyle: form.artStyle === 'auto' && story?.recommendedArtStyle 
+          ? story.recommendedArtStyle 
+          : form.artStyle as ArtStyle,
+        aspectRatio: '3:4' as AspectRatio,
+      };
+      
+      // 更新项目信息
+      dispatch({
+        type: 'SET_PROJECT_INFO',
+        payload: finalProjectInfo,
+      });
+      
+      if (!projectInfo.projectId) {
+        dispatch({ type: 'CREATE_DRAFT' });
+      }
+      triggerSave();
+      dispatch({ type: 'SET_CURRENT_STAGE', payload: 2 });
+    } catch (err) {
+      console.error('项目创建失败', err);
+      // 即使分析失败，也继续创建项目，使用用户输入的参数
+      dispatch({
         type: 'SET_PROJECT_INFO',
         payload: {
           title: form.title.trim(),
@@ -53,11 +141,15 @@ export default function Stage1Init() {
           aspectRatio: '3:4' as AspectRatio,
         },
       });
-    if (!projectInfo.projectId) {
-      dispatch({ type: 'CREATE_DRAFT' });
+      
+      if (!projectInfo.projectId) {
+        dispatch({ type: 'CREATE_DRAFT' });
+      }
+      triggerSave();
+      dispatch({ type: 'SET_CURRENT_STAGE', payload: 2 });
+    } finally {
+      setIsAnalyzing(false);
     }
-    dispatch({ type: 'COMPLETE_STAGE', payload: 1 });
-    triggerSave();
   }
 
   const canCreate = form.title.trim().length > 0;
@@ -82,16 +174,32 @@ export default function Stage1Init() {
       <div className="flex-1 space-y-6 max-w-lg">
         <div className="space-y-2">
           <label className="text-sm font-body font-medium text-foreground">
-            绘本主题
+            绘本主题/故事概要
             <span className="text-destructive ml-0.5">*</span>
           </label>
-          <Input
-            value={form.title}
-            onChange={e => handleChange('title', e.target.value)}
-            placeholder="例如：小兔子学会分享的故事"
-            className="font-body h-11 text-base"
-          />
-          <p className="text-xs font-body text-muted-foreground">描述你的绘本想讲述什么故事或主题</p>
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={form.title}
+              onChange={e => handleChange('title', e.target.value)}
+              placeholder="输入绘本主题、故事情节或者完整的故事概要，例如：小兔子学会分享的故事..."
+              className="font-body pr-24 resize-none min-h-[80px] max-h-[240px] overflow-y-auto"
+              rows={3}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute right-2 bottom-2 h-7 text-xs gap-1"
+              onClick={handleOptimize}
+              disabled={isOptimizing || !form.title.trim()}
+            >
+              {isOptimizing ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> 优化中</>
+              ) : (
+                <><Sparkles className="w-3 h-3" /> 一键优化</>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -170,12 +278,15 @@ export default function Stage1Init() {
       <div className="pt-6 mt-auto border-t border-border">
         <Button
           onClick={handleCreate}
-          disabled={!canCreate}
+          disabled={!canCreate || isAnalyzing || isOptimizing}
           size="lg"
           className="gap-2 font-body text-base gradient-hero text-primary-foreground border-0 shadow-elevated hover:shadow-glow transition-smooth"
         >
-          创建项目并继续
-          <ArrowRight className="w-4 h-4" />
+          {isAnalyzing ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> 分析中...</>
+          ) : (
+            <>创建项目并继续 <ArrowRight className="w-4 h-4" /></>
+          )}
         </Button>
       </div>
     </div>
