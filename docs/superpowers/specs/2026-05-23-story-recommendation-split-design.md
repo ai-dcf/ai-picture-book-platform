@@ -98,6 +98,7 @@ interface ProjectConfigRecommendation {
 - 不再要求输出 `characters`、`scenes`、`emotionCurve`、`storyOutline`。
 - 仅要求输出推荐字段。
 - 显式列出合法年龄段、页数和风格枚举值。
+- 强制要求模型必须严格从提供的风格枚举列表中选择输出，禁止生成不在列表中的风格值，否则视为无效结果直接报错。
 - 用户已明确选择的字段不要求模型重复推荐。
 - 允许模型依据标题和题材线索进行推荐，但不要求展开故事内容。
 
