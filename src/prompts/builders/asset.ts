@@ -4,6 +4,51 @@ import { buildPromptRuleBundle } from "@/prompts/specs";
 import type { AssetPromptKind, BuildAssetPromptParams, PromptCustomParams } from "@/prompts/types";
 import { buildRuleSummary, formatRuleBlock, formatRulesAsSentence } from "@/prompts/builders/shared";
 
+export function buildCharacterPromptGenerationSystemPrompt(): string {
+  return [
+    "你是一位儿童绘本角色 AI 绘画提示词专家。",
+    "你的任务是根据项目绘本风格和角色描述，生成一条可直接用于 AI 绘画的中文角色提示词。",
+    "你必须严格遵守以下要求：",
+    "- 只输出最终提示词，不要输出解释、标题、引号、序号或 Markdown",
+    "- 必须明确体现项目当前选择的绘本风格",
+    "- 必须描写人物完整形象，并且明确为全身",
+    "- 必须明确写出无光影、纯色背景",
+    "- 必须使用客观、可见、可绘制的视觉语言",
+    "- 不要写剧情概述、心理活动、抽象情绪词、镜头外信息",
+    "- 输出为一行自然中文，适合直接提交给 AI 绘画模型",
+  ].join("\n");
+}
+
+export function buildCharacterPromptGenerationUserPrompt({
+  name,
+  description,
+  projectInfo,
+  customParams = {},
+}: Omit<BuildAssetPromptParams, "kind">) {
+  const rules = buildPromptRuleBundle(projectInfo, customParams);
+  const details = description?.trim() || "请根据角色名称补足基础外观，但保持儿童绘本识别度。";
+
+  return [
+    `项目标题：${projectInfo.title || "待定"}`,
+    `目标年龄：${rules.context.targetAge}岁`,
+    `绘本风格：${rules.context.artStyle}`,
+    `风格气质：${rules.style.styleMood}`,
+    `材质表现：${rules.style.textureRules.join("；")}`,
+    `色彩规则：${rules.style.colorRules.join("；")}`,
+    `角色名称：${name}`,
+    `角色描述：${details}`,
+    "",
+    "请生成 1 条角色 AI 绘画提示词，必须同时满足：",
+    "- 项目级统一风格由上述“绘本风格”决定",
+    "- 人物完整形象",
+    "- 全身",
+    "- 无光影",
+    "- 纯色背景",
+    "",
+    "请直接输出最终提示词。",
+  ].join("\n");
+}
+
 export function buildAssetPrompt({
   kind,
   name,
@@ -87,7 +132,7 @@ export function buildUserFriendlyAssetPrompt({
   prompt += ` ${additions.join("。")}。`;
 
   if (kind === "character") {
-    prompt += " 要求全身照片。";
+    prompt += " 要求完整角色形象、全身、无光影、纯色背景。";
   }
 
   return prompt;

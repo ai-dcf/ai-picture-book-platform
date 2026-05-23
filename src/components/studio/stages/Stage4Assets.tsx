@@ -112,11 +112,16 @@ function AssetStatusBadge({ asset }: { asset: AssetItem }) {
 function AssetPromptEditor({
   asset,
   assetType,
+  onGeneratePrompt,
+  isPromptGenerating = false,
 }: {
   asset: AssetItem;
   assetType: 'characters' | 'scenes';
+  onGeneratePrompt?: () => Promise<void>;
+  isPromptGenerating?: boolean;
 }) {
   const { state, dispatch, triggerSave } = useStudio();
+  const promptActionDisabled = asset.generating || isPromptGenerating;
 
   function handleDescChange(description: string) {
     dispatch({ type: 'UPDATE_ASSET_DESCRIPTION', payload: { type: assetType, id: asset.id, description } });
@@ -128,7 +133,11 @@ function AssetPromptEditor({
     triggerSave();
   }
 
-  function handleResetPrompt() {
+  async function handleResetPrompt() {
+    if (assetType === 'characters' && onGeneratePrompt) {
+      await onGeneratePrompt();
+      return;
+    }
     dispatch({
       type: 'UPDATE_ASSET_PROMPT',
       payload: {
@@ -146,25 +155,47 @@ function AssetPromptEditor({
     triggerSave();
   }
 
+  async function handleRegeneratePrompt() {
+    if (assetType === 'characters' && onGeneratePrompt) {
+      await onGeneratePrompt();
+      return;
+    }
+    await handleResetPrompt();
+  }
+
   return (
     <>
-      <Textarea
-        value={asset.description}
-        onChange={e => handleDescChange(e.target.value)}
-        placeholder={assetType === 'characters' ? '描述角色外观、服饰、气质与关键特征…' : '描述场景氛围、空间元素与时代背景…'}
-        className="font-body text-xs resize-none min-h-[56px]"
-      />
+      <div className="space-y-1.5 mb-3">
+        <p className="text-[11px] font-body text-muted-foreground">角色形象描述</p>
+        <Textarea
+          value={asset.description}
+          onChange={e => handleDescChange(e.target.value)}
+          placeholder={assetType === 'characters' ? '描述角色外观、服饰、气质与关键特征…' : '描述场景氛围、空间元素与时代背景…'}
+          className="font-body text-xs resize-none min-h-[56px]"
+        />
+      </div>
 
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-body text-muted-foreground">素材提示词</p>
-          <button
-            type="button"
-            onClick={handleResetPrompt}
-            className="text-[11px] text-primary font-body hover:underline"
-          >
-            重置系统提示词
-          </button>
+        <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11px] font-body text-muted-foreground">AI绘画提示词</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:justify-end">
+            <button
+              type="button"
+              onClick={handleRegeneratePrompt}
+              disabled={promptActionDisabled}
+              className="text-[11px] text-primary font-body hover:underline"
+            >
+              {isPromptGenerating ? '重新生成中…' : '重新生成AI绘画提示词'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResetPrompt}
+              disabled={promptActionDisabled}
+              className="text-[11px] text-primary font-body hover:underline"
+            >
+              {isPromptGenerating ? '重置中…' : '重置系统提示词'}
+            </button>
+          </div>
         </div>
         <Textarea
           value={asset.prompt || ''}
@@ -581,39 +612,60 @@ function CharacterCard({
   onPreview: (payload: PreviewPayload) => void;
 }) {
   const { state, dispatch, triggerSave } = useStudio();
-  const { generateAssetImage } = useStudioGenerate();
+  const { generateAssetImage, generateCharacterPrompt } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
   const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
+  const autoPromptRequestedRef = useRef(false);
 
-  function ensurePrompt() {
-    if (hasPrompt) return;
+  async function generatePromptFromModel() {
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_prompt' },
+    });
+    const prompt = await generateCharacterPrompt(
+      asset,
+      { ...state.projectInfo, aspectRatio: asset.aspectRatio }
+    );
+    if (!prompt) {
+      dispatch({
+        type: 'SET_ASSET_GENERATING',
+        payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+      });
+      return null;
+    }
     dispatch({
       type: 'UPDATE_ASSET_PROMPT',
       payload: {
         type: 'characters',
         id: asset.id,
-        prompt: buildUserFriendlyAssetPrompt({
-          kind: 'character',
-          name: asset.name,
-          description: asset.description,
-          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
-        }),
+        prompt,
         userEdited: false,
       },
     });
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+    });
+    triggerSave();
+    return prompt;
   }
 
-  async function handleGenerateBase() {
-    const prompt = hasPrompt
-      ? asset.prompt
-      : buildAssetPrompt({
-          kind: 'character',
-          name: asset.name,
-          description: asset.description,
-          projectInfo: { ...state.projectInfo, aspectRatio: asset.aspectRatio },
-        });
+  useEffect(() => {
+    if (hasPrompt || asset.promptUserEdited || asset.generating || autoPromptRequestedRef.current) {
+      return;
+    }
+    autoPromptRequestedRef.current = true;
+    void generatePromptFromModel();
+  }, [asset.generating, asset.promptUserEdited, hasPrompt]);
 
-    ensurePrompt();
+  async function handleGenerateBase() {
+    let prompt = (asset.prompt || '').trim();
+    if (!prompt) {
+      prompt = (await generatePromptFromModel()) || '';
+      if (!prompt) {
+        return;
+      }
+    }
     dispatch({
       type: 'SET_ASSET_GENERATING',
       payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_base' },
@@ -659,7 +711,12 @@ function CharacterCard({
         <p className="text-[11px] font-body text-amber-600">画面比例已变更，建议重新生成</p>
       )}
 
-      <AssetPromptEditor asset={asset} assetType="characters" />
+      <AssetPromptEditor
+        asset={asset}
+        assetType="characters"
+        onGeneratePrompt={async () => { await generatePromptFromModel(); }}
+        isPromptGenerating={asset.generatingPhase === 'character_prompt'}
+      />
 
       <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">

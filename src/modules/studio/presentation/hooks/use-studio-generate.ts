@@ -135,6 +135,27 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateCharacterPrompt = useCallback(
+    async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<string>("/api/studio/generate-character-prompt", { asset, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "角色提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const generatePageImage = useCallback(
     async (
       page: PageItem,
@@ -170,6 +191,7 @@ export function useStudioGenerate() {
     recommendProjectConfig,
     generateStory,
     generateStoryboard,
+    generateCharacterPrompt,
     generateAssetImage,
     generatePageImage,
     loading,

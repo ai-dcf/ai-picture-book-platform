@@ -32,19 +32,29 @@ export async function generateAssetImage(
       { ...projectInfo, aspectRatio: asset.aspectRatio },
       promptOptions
     );
+    const currentPrompt = asset.prompt?.trim();
     let prompt =
-      asset.promptUserEdited && asset.prompt
-        ? asset.prompt
-        : buildAssetPrompt({
+      kind === "character"
+        ? currentPrompt ||
+          buildAssetPrompt({
             kind,
             name: asset.name,
             description: asset.description,
             projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
             customParams: promptOptions,
-          });
+          })
+        : asset.promptUserEdited && currentPrompt
+          ? currentPrompt
+          : buildAssetPrompt({
+              kind,
+              name: asset.name,
+              description: asset.description,
+              projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
+              customParams: promptOptions,
+            });
 
-    // 如果是用户编辑的友好提示词，转换为专业提示词
-    if (asset.promptUserEdited && asset.prompt) {
+    // 场景仍保留用户友好提示词到专业提示词的转换；角色直接使用当前提示词。
+    if (kind === "scene" && asset.promptUserEdited && currentPrompt) {
       prompt = promptEnhancer.convertUserPromptToProfessional(prompt, {
         type: kind,
         artStyle: projectInfo.artStyle,

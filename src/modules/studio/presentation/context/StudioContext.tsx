@@ -427,7 +427,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         id: `${entry.name}-${idx}`,
         name: entry.name,
         description: entry.description,
-        prompt: buildUserFriendlyAssetPromptFromEntry('character', entry, state.projectInfo),
+        prompt: '',
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
         aspectRatio: '9:16' as AspectRatio,
@@ -617,14 +617,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
                   ...a,
                   description: action.payload.description,
                   status: nextAssetEditedStatus(a),
-                  prompt: a.promptUserEdited
+                  prompt: key === 'characters'
                     ? a.prompt
-                    : buildUserFriendlyAssetPrompt({
-                        kind: key === 'characters' ? 'character' : 'scene',
-                        name: a.name,
-                        description: action.payload.description,
-                        projectInfo: { ...state.projectInfo, aspectRatio: a.aspectRatio },
-                      }),
+                    : a.promptUserEdited
+                      ? a.prompt
+                      : buildUserFriendlyAssetPrompt({
+                          kind: 'scene',
+                          name: a.name,
+                          description: action.payload.description,
+                          projectInfo: { ...state.projectInfo, aspectRatio: a.aspectRatio },
+                        }),
                 }
               : a
           ),

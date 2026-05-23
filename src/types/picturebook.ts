@@ -80,7 +80,7 @@ export const PAGE_STATUS_LABELS: Record<PageStatus, string> = {
 
 // ─── Asset Status (PRD §7.3) ─────────────────────────────────────────────────
 export type AssetStatus = 'not_generated' | 'candidates_generated' | 'official_confirmed' | 'pending_update' | 'review';
-export type AssetGenerationPhase = 'character_base' | 'scene_candidates' | null;
+export type AssetGenerationPhase = 'character_prompt' | 'character_base' | 'scene_candidates' | null;
 
 export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   not_generated: '未生成',
