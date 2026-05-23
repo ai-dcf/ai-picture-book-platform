@@ -1,4 +1,4 @@
-# 故事参数推荐与故事生成拆分设计
+# 项目配置推荐与故事生成拆分设计
 
 ## 背景
 
@@ -66,10 +66,9 @@
 
 ```text
 Stage1Init
-  -> recommendStoryConfig(projectInfo)
-    -> buildStoryRecommendSystemPrompt()
-    -> buildStoryRecommendUserPrompt()
-    -> parseStoryRecommendResponse()
+  -> recommendProjectConfig(projectInfo)
+    -> buildProjectConfigRecommendPrompt()
+    -> parseProjectConfigRecommendResponse()
   -> 回填仍为 auto 的项目参数
   -> 保存项目并进入 Stage2
 
@@ -86,7 +85,7 @@ Stage2Story
 新增一条独立的推荐链路，输入仍然是 `ProjectInfo`，但输出变为专门的推荐结果类型，例如：
 
 ```ts
-interface StoryRecommendation {
+interface ProjectConfigRecommendation {
   recommendedTargetAge?: Exclude<TargetAge, "auto">;
   recommendedArtStyle?: Exclude<ArtStyle, "auto">;
   recommendedPageCount?: Exclude<PageCount, "auto">;
@@ -95,6 +94,7 @@ interface StoryRecommendation {
 
 这一阶段的 prompt 必须满足以下规则：
 
+- 不需要拆分 `system prompt` 和 `user prompt`，构建为单个完整提示词即可。
 - 不再要求输出 `characters`、`scenes`、`emotionCurve`、`storyOutline`。
 - 仅要求输出推荐字段。
 - 显式列出合法年龄段、页数和风格枚举值。
@@ -129,9 +129,9 @@ interface StoryRecommendation {
 
 | 文件 | 说明 |
 |---|---|
-| `src/prompts/builders/story-recommend.ts` | 构建阶段 1 的推荐 system prompt 和 user prompt |
-| `src/modules/studio/application/use-cases/recommend-story-config.ts` | 推荐用例，负责调用模型获取推荐配置 |
-| `src/modules/studio/domain/services/parsers/story-recommend-parser.ts` | 推荐结果解析与运行时校验 |
+| `src/prompts/builders/project-config-recommend.ts` | 构建阶段 1 的项目配置推荐 prompt（单文件不拆分 system/user） |
+| `src/modules/studio/application/use-cases/recommend-project-config.ts` | 推荐用例，负责调用模型获取项目配置推荐 |
+| `src/modules/studio/domain/services/parsers/project-config-recommend-parser.ts` | 推荐结果解析与运行时校验 |
 
 ### 修改文件
 
@@ -241,7 +241,7 @@ interface StoryData {
 新增独立推荐类型：
 
 ```ts
-interface StoryRecommendation {
+interface ProjectConfigRecommendation {
   recommendedTargetAge?: Exclude<TargetAge, "auto">;
   recommendedArtStyle?: Exclude<ArtStyle, "auto">;
   recommendedPageCount?: Exclude<PageCount, "auto">;
