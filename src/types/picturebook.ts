@@ -215,12 +215,17 @@ export interface ImageRef {
   assetName: string;
   assetType: 'character' | 'scene';
   imageUrl: string;
+  refLabel?: string;
+  refToken?: string;
 }
 
 // ─── Pages (PRD §8.5) ───────────────────────────────────────────────────────
 export interface PageItem {
   index: number;
   storyText: string;
+  pageText: string;
+  visualGoal: string;
+  storyboardEdited: boolean;
   characterRefs: string[];
   sceneRefs: string[];
   prompt: string;

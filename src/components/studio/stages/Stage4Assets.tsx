@@ -598,7 +598,7 @@ function CharacterCard({
   const { generateAssetImage, generateCharacterPrompt } = useStudioGenerate();
   const hasPrompt = Boolean((asset.prompt || '').trim());
   const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
-  const autoPromptRequestedRef = useRef(false);
+  const autoPromptRequestedRef = useRef<string | null>(null);
 
   async function generatePromptFromModel() {
     dispatch({
@@ -634,12 +634,13 @@ function CharacterCard({
   }
 
   useEffect(() => {
-    if (hasPrompt || asset.promptUserEdited || asset.generating || autoPromptRequestedRef.current) {
+    const autoPromptKey = `${state.projectInfo.artStyle}|${asset.name}|${asset.description}`;
+    if (hasPrompt || asset.promptUserEdited || asset.generating || autoPromptRequestedRef.current === autoPromptKey) {
       return;
     }
-    autoPromptRequestedRef.current = true;
+    autoPromptRequestedRef.current = autoPromptKey;
     void generatePromptFromModel();
-  }, [asset.generating, asset.promptUserEdited, hasPrompt]);
+  }, [asset.description, asset.generating, asset.name, asset.promptUserEdited, hasPrompt, state.projectInfo.artStyle]);
 
   async function handleGenerateBase() {
     let prompt = (asset.prompt || '').trim();

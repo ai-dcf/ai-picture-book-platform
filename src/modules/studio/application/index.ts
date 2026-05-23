@@ -1,1 +1,1 @@
-export { generateStory, generateStoryboard, generateAssetImage, generatePageImage } from "./use-cases";
+export { generateStory, generateStoryboard, generateAssetImage, generatePagePrompt, generatePageImage } from "./use-cases";

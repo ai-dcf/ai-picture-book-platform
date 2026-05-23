@@ -3,6 +3,7 @@
 import "server-only";
 
 import {
+  buildCharacterFinalPrompt,
   buildCharacterPromptGenerationSystemPrompt,
   buildCharacterPromptGenerationUserPrompt,
 } from "@/prompts";
@@ -60,13 +61,18 @@ export async function generateCharacterAssetPrompt(
       };
     }
 
-    const prompt = sanitizeGeneratedPrompt(result.text);
-    if (!prompt) {
+    const appearanceDescription = sanitizeGeneratedPrompt(result.text);
+    if (!appearanceDescription) {
       return {
         success: false,
         error: generationFailedError("角色提示词生成结果为空"),
       };
     }
+
+    const prompt = buildCharacterFinalPrompt({
+      projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
+      appearanceDescription,
+    });
 
     console.info(`${LOG_PREFIX} 角色提示词生成成功`, {
       durationMs: Date.now() - startTime,

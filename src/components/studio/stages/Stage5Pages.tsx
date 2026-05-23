@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
@@ -16,10 +16,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import PromptEditor from '@/components/studio/PromptEditor';
-import { findUnreferencedAssets, injectRefTags } from '@/lib/prompt-ref-parser';
 import { cn } from '@/lib/utils';
 import { PageStatus, PAGE_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {
+  AlertCircle,
   AlertTriangle,
   CheckCircle2,
   Circle,
@@ -30,11 +30,6 @@ import {
   RefreshCw,
   Wand2,
 } from 'lucide-react';
-import { buildPagePrompt, buildUserFriendlyPagePrompt } from '@/prompts';
-
-function arraysEqual(a: string[], b: string[]) {
-  return a.length === b.length && a.every((item, index) => item === b[index]);
-}
 
 function pageStatusIcon(s: PageStatus) {
   const map: Record<PageStatus, { icon: React.ElementType; color: string }> = {
@@ -60,11 +55,14 @@ function getAspectClass(ratio: AspectRatio) {
 
 export default function Stage5Pages() {
   const { state, dispatch, triggerSave } = useStudio();
-  const { generatePageImage } = useStudioGenerate();
+  const { generatePageImage, generatePagePrompt, error, clearError, getErrorMessage } = useStudioGenerate();
   const router = useRouter();
   const { pages, storyboard, assets, projectInfo } = state;
   const [currentPage, setCurrentPage] = useState(0);
   const [previewState, setPreviewState] = useState<{ open: boolean; imageUrl: string; alt: string }>({ open: false, imageUrl: '', alt: '' });
+  const [promptGeneratingPage, setPromptGeneratingPage] = useState<number | null>(null);
+  const [promptErrorPage, setPromptErrorPage] = useState<number | null>(null);
+  const autoPromptRequestedRef = useRef<Record<number, string>>({});
   const generatedCount = pages.filter(item => Boolean(item.imageUrl)).length;
   const allGenerated = pages.length > 0 && pages.every(item => Boolean(item.imageUrl));
   const finalizedCount = pages.filter(item => item.pageStatus === 'finalized').length;
@@ -72,42 +70,27 @@ export default function Stage5Pages() {
   const page = pages[currentPage];
   const sbPage = storyboard.pages[currentPage];
   const effectiveCharacterRefs = useMemo(
-    () => page?.characterRefs || [],
-    [page?.characterRefs]
+    () => assets.characters.map(asset => asset.name),
+    [assets.characters]
   );
   const effectiveSceneRefs = useMemo(
-    () => page?.sceneRefs || [],
-    [page?.sceneRefs]
+    () => assets.scenes.map(asset => asset.name),
+    [assets.scenes]
   );
+  const effectivePageText = page?.pageText || page?.storyText || sbPage?.text || '';
+  const effectiveVisualGoal = page?.visualGoal || sbPage?.visualGoal || '';
+  const isPromptGenerating = promptGeneratingPage === currentPage;
 
   const needsPageSync = useMemo(
     () =>
       pages.some((item, index) => {
         const storyboardPage = storyboard.pages[index];
-        const nextStoryText =
-          item.pageStatus === 'idle' && !item.storyText.trim()
-            ? (storyboardPage?.text || '')
-            : item.storyText;
-        const nextPromptResult = item.promptUserEdited
-          ? { prompt: item.prompt, imageRefs: item.imageRefs }
-          : buildUserFriendlyPagePrompt({
-              pageIndex: index,
-              page: {
-                storyText: nextStoryText,
-                characterRefs: item.characterRefs,
-                sceneRefs: item.sceneRefs,
-              },
-              storyboardPage,
-              assets,
-              projectInfo,
-            });
-
-        return (
-          item.storyText !== nextStoryText ||
-          item.prompt !== nextPromptResult.prompt
-        );
+        if (item.storyboardEdited) return false;
+        const nextPageText = storyboardPage?.text || '';
+        const nextVisualGoal = storyboardPage?.visualGoal || '';
+        return item.storyText !== nextPageText || item.pageText !== nextPageText || item.visualGoal !== nextVisualGoal;
       }),
-    [assets, pages, projectInfo, storyboard.pages]
+    [pages, storyboard.pages]
   );
 
   useEffect(() => {
@@ -116,46 +99,108 @@ export default function Stage5Pages() {
     triggerSave();
   }, [dispatch, needsPageSync, triggerSave]);
 
+  const requestPromptForPage = useCallback(async (pageIndex: number) => {
+    const targetPage = state.pages[pageIndex];
+    const targetStoryboardPage = storyboard.pages[pageIndex];
+    if (!targetPage) return null;
+
+    clearError();
+    setPromptErrorPage(null);
+    setPromptGeneratingPage(pageIndex);
+    const promptResult = await generatePagePrompt(
+      targetPage,
+      assets,
+      { ...projectInfo, aspectRatio: targetPage.aspectRatio || projectInfo.aspectRatio },
+      targetStoryboardPage
+    );
+    setPromptGeneratingPage(prev => (prev === pageIndex ? null : prev));
+
+    if (!promptResult) {
+      setPromptErrorPage(pageIndex);
+      return null;
+    }
+
+    dispatch({
+      type: 'UPDATE_PAGE_CONFIG',
+      payload: {
+        index: pageIndex,
+        prompt: promptResult.prompt,
+        imageRefs: promptResult.imageRefs,
+        promptUserEdited: false,
+      },
+    });
+    triggerSave();
+    return promptResult;
+  }, [assets, clearError, dispatch, generatePagePrompt, projectInfo, state.pages, storyboard.pages, triggerSave]);
+
+  useEffect(() => {
+    if (!page || page.prompt.trim().length > 0 || page.generating || isPromptGenerating) return;
+    const autoPromptKey = [
+      projectInfo.artStyle,
+      page.aspectRatio || projectInfo.aspectRatio,
+      effectivePageText,
+      effectiveVisualGoal,
+    ].join('::');
+    if (autoPromptRequestedRef.current[currentPage] === autoPromptKey) return;
+    autoPromptRequestedRef.current[currentPage] = autoPromptKey;
+    void requestPromptForPage(currentPage);
+  }, [
+    currentPage,
+    effectivePageText,
+    effectiveVisualGoal,
+    isPromptGenerating,
+    page,
+    projectInfo.artStyle,
+    projectInfo.aspectRatio,
+    requestPromptForPage,
+  ]);
+
   const handleGenerate = useCallback(async () => {
     if (!page) return;
+    let nextPage = page;
     if (!(page.prompt || '').trim()) {
-      const promptResult = buildUserFriendlyPagePrompt({
-        pageIndex: currentPage,
-        page: {
-          storyText: page.storyText,
-          characterRefs: effectiveCharacterRefs,
-          sceneRefs: effectiveSceneRefs,
-        },
-        storyboardPage: sbPage,
-        assets,
-        projectInfo,
-      });
-      dispatch({
-        type: 'UPDATE_PAGE_CONFIG',
-        payload: {
-          index: currentPage,
-          prompt: promptResult.prompt,
-          imageRefs: promptResult.imageRefs,
-        },
-      });
+      const promptResult = await requestPromptForPage(currentPage);
+      if (!promptResult) return;
+      nextPage = {
+        ...page,
+        prompt: promptResult.prompt,
+        imageRefs: promptResult.imageRefs,
+        promptUserEdited: false,
+      };
     }
+    clearError();
     dispatch({ type: 'SET_PAGE_GENERATING', payload: { index: currentPage, generating: true } });
-    const url = await generatePageImage(page, assets, projectInfo, sbPage);
+    const url = await generatePageImage(
+      nextPage,
+      assets,
+      { ...projectInfo, aspectRatio: nextPage.aspectRatio || projectInfo.aspectRatio },
+      sbPage
+    );
     if (!url) {
       dispatch({ type: 'SET_PAGE_GENERATING', payload: { index: currentPage, generating: false } });
       return;
     }
     dispatch({ type: 'SET_PAGE_IMAGE', payload: { index: currentPage, imageUrl: url } });
     triggerSave();
-  }, [assets, currentPage, dispatch, effectiveCharacterRefs, effectiveSceneRefs, generatePageImage, page, projectInfo, sbPage, triggerSave]);
+  }, [assets, clearError, currentPage, dispatch, generatePageImage, page, projectInfo, requestPromptForPage, sbPage, triggerSave]);
 
   function handleTextChange(text: string) {
-    dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, storyText: text } });
+    clearError();
+    setPromptErrorPage(null);
+    dispatch({ type: 'UPDATE_PAGE_STORYBOARD_FIELDS', payload: { index: currentPage, pageText: text } });
+    triggerSave();
+  }
+
+  function handleVisualGoalChange(visualGoal: string) {
+    clearError();
+    setPromptErrorPage(null);
+    dispatch({ type: 'UPDATE_PAGE_STORYBOARD_FIELDS', payload: { index: currentPage, visualGoal } });
     triggerSave();
   }
 
   function handlePromptChange(prompt: string, imageRefs: import('@/types/picturebook').ImageRef[]) {
-    dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, prompt, imageRefs } });
+    setPromptErrorPage(null);
+    dispatch({ type: 'UPDATE_PAGE_CONFIG', payload: { index: currentPage, prompt, imageRefs, promptUserEdited: true } });
     triggerSave();
   }
 
@@ -224,75 +269,64 @@ export default function Stage5Pages() {
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">本页故事文字</label>
+              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">画面文字</label>
               <Textarea
-                value={page.storyText}
+                value={effectivePageText}
                 onChange={e => handleTextChange(e.target.value)}
                 className="font-body text-sm resize-none min-h-[80px]"
-                placeholder="输入本页故事文字…"
+                placeholder="请输入本页呈现的文字内容，需匹配目标儿童年龄段的认知水平和文字复杂度要求"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">本页角色引用</label>
-              <div className="flex flex-wrap gap-3">
-                {assets.characters
-                  .filter(c => effectiveCharacterRefs.includes(c.name) && c.officialImageUrl)
-                  .map(c => (
-                    <div key={c.id} className="flex flex-col items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewState({ open: true, imageUrl: c.officialImageUrl!, alt: c.name })}
-                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
-                      >
-                        <img
-                          src={c.officialImageUrl!}
-                          alt={c.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-primary text-primary-foreground border border-primary">
-                        {c.name}
-                      </span>
-                    </div>
-                  ))}
-                {effectiveCharacterRefs.length > 0 && assets.characters.filter(c => effectiveCharacterRefs.includes(c.name) && c.officialImageUrl).length === 0 && (
-                  <span className="text-xs text-muted-foreground font-body">暂无可预览的角色素材</span>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">画面内容描述</label>
+              <Textarea
+                value={effectiveVisualGoal}
+                onChange={e => handleVisualGoalChange(e.target.value)}
+                className="font-body text-sm resize-none min-h-[120px]"
+                placeholder="请输入具体、可量化、纯视觉化的画面描述：默认直接写角色名称；只有当页造型、装束、道具状态或形体有变化时再补充变化点，同时写清眼睛和嘴巴形态、姿势动作、场景物体及位置/材质、光线方向与色温、具体颜色、景别/构图/视角；不要写开心、温暖、活泼等抽象词，也不要新增第 2 步之外的角色"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                提示：角色默认继承第 2 步设定，无变化时写名称即可；只描述“看得见的东西”，不要解释角色感受。
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">本页场景引用</label>
-              <div className="flex flex-wrap gap-3">
-                {assets.scenes
-                  .filter(s => effectiveSceneRefs.includes(s.name) && s.officialImageUrl)
-                  .map(s => (
-                    <div key={s.id} className="flex flex-col items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewState({ open: true, imageUrl: s.officialImageUrl!, alt: s.name })}
-                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
-                      >
-                        <img
-                          src={s.officialImageUrl!}
-                          alt={s.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-accent text-accent-foreground border border-accent">
-                        {s.name}
-                      </span>
-                    </div>
-                  ))}
-                {effectiveSceneRefs.length > 0 && assets.scenes.filter(s => effectiveSceneRefs.includes(s.name) && s.officialImageUrl).length === 0 && (
-                  <span className="text-xs text-muted-foreground font-body">暂无可预览的场景素材</span>
-                )}
-              </div>
-            </div>
+            <div className="border-t border-border" />
 
             <div className="space-y-1.5">
-              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">页面生成提示词</label>
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">AI绘画提示词</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void requestPromptForPage(currentPage)}
+                  disabled={isPromptGenerating}
+                  className="gap-1.5 font-body text-xs"
+                >
+                  {isPromptGenerating ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />重新生成中…</>
+                  ) : (
+                    <><RefreshCw className="w-3 h-3" />重新生成AI绘画提示词</>
+                  )}
+                </Button>
+              </div>
+              {error && promptErrorPage === currentPage && !isPromptGenerating && (
+                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1">{getErrorMessage(error)}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void requestPromptForPage(currentPage)}
+                    className="h-7 gap-1 text-[10px] border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    重试
+                  </Button>
+                </div>
+              )}
               <PromptEditor
                 value={page.prompt || ''}
                 imageRefs={page.imageRefs || []}
@@ -300,40 +334,64 @@ export default function Stage5Pages() {
                 onChange={handlePromptChange}
                 characterRefs={effectiveCharacterRefs}
                 sceneRefs={effectiveSceneRefs}
-                placeholder="系统会自动生成页面提示词，你也可以继续编辑镜头、光线、氛围等要求…输入 # 可引用素材图"
+                onPreviewRef={(imageUrl, alt) => setPreviewState({ open: true, imageUrl, alt })}
+                placeholder="系统会结合画面风格、构图、画面内容描述和光影色调自动生成提示词，你也可以继续编辑…"
               />
-              {(() => {
-                const unreferenced = findUnreferencedAssets(
-                  page.prompt || '',
-                  effectiveCharacterRefs,
-                  effectiveSceneRefs,
-                  assets.characters,
-                  assets.scenes
-                );
-                const allUnreferenced = [...unreferenced.characters, ...unreferenced.scenes];
-                if (allUnreferenced.length === 0) return null;
-                return (
-                  <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs font-body text-blue-700 dark:text-blue-300 flex items-center justify-between gap-2">
-                    <span>检测到 {allUnreferenced.length} 个可引用素材：{allUnreferenced.map(a => a.name).join('、')}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const names = allUnreferenced.map(a => a.name);
-                        const { text: newPrompt, imageRefs: newImageRefs } = injectRefTags(
-                          page.prompt || '',
-                          names,
-                          assets.characters,
-                          assets.scenes
-                        );
-                        handlePromptChange(newPrompt, newImageRefs);
-                      }}
-                      className="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] hover:bg-blue-700 transition-colors flex-shrink-0"
-                    >
-                      全部添加
-                    </button>
-                  </div>
-                );
-              })()}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">引用角色</label>
+              <div className="flex flex-wrap gap-3">
+                {(page.imageRefs || []).filter(ref => ref.assetType === 'character' && ref.imageUrl).map(ref => (
+
+                    <div key={ref.assetId} className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewState({ open: true, imageUrl: ref.imageUrl!, alt: ref.assetName })}
+                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
+                      >
+                        <img
+                          src={ref.imageUrl!}
+                          alt={ref.assetName}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-primary text-primary-foreground border border-primary">
+                        {ref.refLabel || ref.assetName}
+                      </span>
+                    </div>
+                ))}
+                {(page.imageRefs || []).filter(ref => ref.assetType === 'character').length === 0 && (
+                  <span className="text-xs text-muted-foreground font-body">生成提示词后自动识别引用的角色</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-body font-medium text-foreground uppercase tracking-wide">引用场景</label>
+              <div className="flex flex-wrap gap-3">
+                {(page.imageRefs || []).filter(ref => ref.assetType === 'scene' && ref.imageUrl).map(ref => (
+                    <div key={ref.assetId} className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewState({ open: true, imageUrl: ref.imageUrl!, alt: ref.assetName })}
+                        className="w-12 h-12 rounded-lg border border-border overflow-hidden hover:scale-105 transition-transform bg-muted"
+                      >
+                        <img
+                          src={ref.imageUrl!}
+                          alt={ref.assetName}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-accent text-accent-foreground border border-accent">
+                        {ref.refLabel || ref.assetName}
+                      </span>
+                    </div>
+                ))}
+                {(page.imageRefs || []).filter(ref => ref.assetType === 'scene').length === 0 && (
+                  <span className="text-xs text-muted-foreground font-body">生成提示词后自动识别引用的场景</span>
+                )}
+              </div>
             </div>
 
             {page.pageStatus === 'review' && (

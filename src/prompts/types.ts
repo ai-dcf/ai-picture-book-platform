@@ -55,9 +55,11 @@ export interface BuildPagePromptResult {
   imageRefs: ImageRef[];
 }
 
+export interface GeneratePagePromptResult extends BuildPagePromptResult {}
+
 export interface BuildPagePromptParams {
   pageIndex: number;
-  page: Pick<PageItem, "storyText" | "characterRefs" | "sceneRefs">;
+  page: Pick<PageItem, "storyText" | "pageText" | "visualGoal" | "characterRefs" | "sceneRefs">;
   storyboardPage?: StoryboardPageData;
   assets: {
     characters: AssetItem[];
@@ -76,6 +78,7 @@ export interface BuildStoryboardPromptParams {
 export interface StyleRuleSet {
   styleLabel: string;
   styleMood: string;
+  coreStyleConstraints: string[];
   lightingRules: string[];
   textureRules: string[];
   colorRules: string[];

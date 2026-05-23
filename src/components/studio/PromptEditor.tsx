@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
-import React, { useCallback, useRef, useState, useEffect } from "react";
-import type { AssetsData, ImageRef } from "@/types/picturebook";
-import { parseRefTags, removeRefTag } from "@/lib/prompt-ref-parser";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { AssetItem, AssetsData, ImageRef } from "@/types/picturebook";
+import { parseRefTags } from "@/lib/prompt-ref-parser";
 import { cn } from "@/lib/utils";
-import AssetSelector from "./AssetSelector";
-import ImageRefPreview from "./ImageRefPreview";
+import PromptRefPicker from "./PromptRefPicker";
 
 interface PromptEditorProps {
   value: string;
@@ -16,9 +15,182 @@ interface PromptEditorProps {
   sceneRefs: string[];
   placeholder?: string;
   className?: string;
+  onPreviewRef?: (imageUrl: string, alt: string) => void;
 }
 
-const REF_PATTERN = /@([^\s@]+)/g;
+const NUMBERED_REF_PATTERN = /#\((图片\d+)\)/g;
+
+function getAssetImageUrl(asset: AssetItem): string {
+  return asset.officialImageUrl || asset.baseImageUrl || "";
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeEditorText(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").replace(/\n\n/g, "\n");
+}
+
+function getExpectedRefTokens(text: string): string[] {
+  return Array.from(text.matchAll(NUMBERED_REF_PATTERN), (match) => match[0]);
+}
+
+function getRenderedRefTokens(root: HTMLElement): string[] {
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-ref]"))
+    .map((node) => node.getAttribute("data-ref") || "")
+    .filter(Boolean);
+}
+
+function getNodeTextLength(node: Node): number {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent?.length || 0;
+  }
+
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const el = node as HTMLElement;
+    const ref = el.getAttribute("data-ref");
+    if (ref) return ref.length;
+    if (el.tagName === "BR") return 1;
+    if (el.tagName === "DIV") {
+      let total = 1;
+      for (const child of Array.from(el.childNodes)) {
+        total += getNodeTextLength(child);
+      }
+      return total;
+    }
+  }
+
+  let total = 0;
+  for (const child of Array.from(node.childNodes)) {
+    total += getNodeTextLength(child);
+  }
+  return total;
+}
+
+function getCaretTextOffset(root: HTMLElement): number | null {
+  const selection = window.getSelection();
+  if (!selection || !selection.rangeCount) return null;
+
+  const range = selection.getRangeAt(0);
+  const targetNode = range.startContainer;
+  const targetOffset = range.startOffset;
+
+  let found = false;
+
+  function walk(node: Node): number {
+    if (node === targetNode) {
+      found = true;
+      if (node.nodeType === Node.TEXT_NODE) {
+        return targetOffset;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        let total = 0;
+        for (let i = 0; i < targetOffset; i += 1) {
+          total += getNodeTextLength(node.childNodes[i]);
+        }
+        return total;
+      }
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as HTMLElement;
+      if (element.hasAttribute("data-ref")) {
+        return getNodeTextLength(node);
+      }
+    }
+
+    let total = 0;
+    for (const child of Array.from(node.childNodes)) {
+      const childLength = walk(child);
+      total += childLength;
+      if (found) return total;
+    }
+    return total;
+  }
+
+  const total = walk(root);
+  return found ? total : null;
+}
+
+function placeCaretByTextOffset(root: HTMLElement, targetOffset: number) {
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  const range = document.createRange();
+  let remaining = targetOffset;
+  let placed = false;
+
+  function walk(node: Node) {
+    if (placed) return;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      const textLength = node.textContent?.length || 0;
+      if (remaining <= textLength) {
+        range.setStart(node, remaining);
+        range.collapse(true);
+        placed = true;
+      } else {
+        remaining -= textLength;
+      }
+      return;
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      const ref = el.getAttribute("data-ref");
+      if (ref) {
+        if (remaining <= ref.length) {
+          range.setStartAfter(el);
+          range.collapse(true);
+          placed = true;
+        } else {
+          remaining -= ref.length;
+        }
+        return;
+      }
+
+      if (el.tagName === "BR") {
+        if (remaining <= 1) {
+          range.setStartAfter(el);
+          range.collapse(true);
+          placed = true;
+        } else {
+          remaining -= 1;
+        }
+        return;
+      }
+    }
+
+    for (const child of Array.from(node.childNodes)) {
+      walk(child);
+      if (placed) return;
+    }
+  }
+
+  walk(root);
+
+  if (!placed) {
+    range.selectNodeContents(root);
+    range.collapse(false);
+  }
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function getNextRefIndex(imageRefs: ImageRef[]): number {
+  return imageRefs.reduce((max, ref) => {
+    const match = ref.refLabel?.match(/^图片(\d+)$/);
+    const value = match ? Number(match[1]) : 0;
+    return Math.max(max, value);
+  }, 0) + 1;
+}
 
 export default function PromptEditor({
   value,
@@ -29,53 +201,68 @@ export default function PromptEditor({
   sceneRefs,
   placeholder = "",
   className,
+  onPreviewRef,
 }: PromptEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [selectorOpen, setSelectorOpen] = useState(false);
-  const [selectorPosition, setSelectorPosition] = useState<{ top: number; left: number } | null>(null);
-  const [localHtml, setLocalHtml] = useState<string>("");
-  const isUpdatingRef = useRef(false);
+  const pendingCaretOffsetRef = useRef<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [hashOffset, setHashOffset] = useState<number | null>(null);
 
-  // 将纯文本转换为带标签的 HTML
   const textToHtml = useCallback((text: string): string => {
-    return text.replace(REF_PATTERN, (match, name) => {
-      const char = assets.characters.find(c => c.name === name && c.officialImageUrl);
-      const scene = assets.scenes.find(s => s.name === name && s.officialImageUrl);
-      const asset = char || scene;
-      const isChar = !!char;
-      if (!asset) return match;
+    let result = "";
+    let lastIndex = 0;
 
-      return `<span 
-                contenteditable="false" 
-                data-ref="${match}" 
-                data-name="${name}"
-                class="${
-                  isChar
-                    ? "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium align-middle bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                    : "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium align-middle bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800"
-                }"
+    for (const match of text.matchAll(NUMBERED_REF_PATTERN)) {
+      const fullMatch = match[0];
+      const label = match[1];
+      const matchIndex = match.index ?? 0;
+      result += escapeHtml(text.slice(lastIndex, matchIndex));
+
+      const ref = imageRefs.find((item) => item.refLabel === label || item.refToken === fullMatch);
+      if (!ref) {
+        result += escapeHtml(fullMatch);
+        lastIndex = matchIndex + fullMatch.length;
+        continue;
+      }
+
+      const escapedUrl = ref.imageUrl.replace(/"/g, "&quot;");
+      const escapedName = escapeHtml(ref.assetName);
+      const escapedLabel = escapeHtml(label);
+
+      result += `<span
+                contenteditable="false"
+                data-ref="${fullMatch}"
+                data-name="${escapedName}"
+                data-image-url="${escapedUrl}"
+                class="inline-flex items-center align-middle mx-0.5 relative group"
               >
-                <img 
-                  src="${asset.officialImageUrl}" 
-                  alt="${name}" 
-                  class="w-3.5 h-3.5 rounded-sm object-cover flex-shrink-0"
+                <img
+                  src="${escapedUrl}"
+                  alt="${escapedLabel}"
+                  title="${escapedName}"
+                  class="h-[2.1em] w-[2.1em] rounded-sm object-cover inline-block cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow"
+                  data-action="preview"
                 />
-                ${name}
-                <button 
-                  type="button" 
-                  class="ml-0.5 hover:text-red-500 transition-colors text-[10px] leading-none cursor-pointer"
+                <button
+                  type="button"
+                  data-action="delete"
+                  class="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[7px] leading-none text-white opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer hover:bg-red-600 z-10"
                 >
                   ×
                 </button>
               </span>`;
-    });
-  }, [assets]);
+      lastIndex = matchIndex + fullMatch.length;
+    }
 
-  // 将 HTML 转换回纯文本
-  const htmlToText = useCallback((node: Node): string => {
+    result += escapeHtml(text.slice(lastIndex));
+    return result;
+  }, [imageRefs]);
+
+  const htmlToText = useCallback((node: Node, isRoot = false): string => {
     if (node.nodeType === Node.TEXT_NODE) {
       return node.textContent || "";
     }
+
     if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as HTMLElement;
       const ref = el.getAttribute("data-ref");
@@ -90,9 +277,10 @@ export default function PromptEditor({
         for (const child of Array.from(node.childNodes)) {
           result += htmlToText(child);
         }
-        return "\n" + result;
+        return isRoot ? result : `\n${result}`;
       }
     }
+
     let result = "";
     for (const child of Array.from(node.childNodes)) {
       result += htmlToText(child);
@@ -100,146 +288,171 @@ export default function PromptEditor({
     return result;
   }, []);
 
-  // 当外部 value 变化时更新 HTML
   useEffect(() => {
-    if (!editorRef.current || isUpdatingRef.current) return;
-    const newHtml = textToHtml(value);
-    if (editorRef.current.innerHTML !== newHtml) {
-      editorRef.current.innerHTML = newHtml;
-    }
-  }, [value, textToHtml]);
-
-  // 同步内容变化
-  const syncChange = useCallback(() => {
     if (!editorRef.current) return;
-    const text = htmlToText(editorRef.current).replace(/\n\n/g, "\n");
-    const { imageRefs: newImageRefs } = parseRefTags(text, assets.characters, assets.scenes);
-    onChange(text, newImageRefs);
-  }, [htmlToText, assets, onChange]);
 
-  // 处理输入事件
+    const currentText = normalizeEditorText(htmlToText(editorRef.current, true));
+    const expectedRefTokens = getExpectedRefTokens(value);
+    const renderedRefTokens = getRenderedRefTokens(editorRef.current);
+    const shouldRender =
+      currentText !== value ||
+      renderedRefTokens.join("|") !== expectedRefTokens.join("|");
+
+    if (shouldRender) {
+      editorRef.current.innerHTML = textToHtml(value);
+    }
+
+    if (pendingCaretOffsetRef.current !== null) {
+      placeCaretByTextOffset(editorRef.current, pendingCaretOffsetRef.current);
+      pendingCaretOffsetRef.current = null;
+    }
+  }, [textToHtml, value]);
+
+  const syncChange = useCallback(() => {
+    if (!editorRef.current) {
+      return { text: value, nextImageRefs: imageRefs };
+    }
+
+    const text = normalizeEditorText(htmlToText(editorRef.current, true));
+    const { imageRefs: nextImageRefs } = parseRefTags(text, assets.characters, assets.scenes, imageRefs);
+    onChange(text, nextImageRefs);
+    return { text, nextImageRefs };
+  }, [assets, htmlToText, imageRefs, onChange, value]);
+
+  const closePicker = useCallback(() => {
+    setPickerOpen(false);
+    setHashOffset(null);
+  }, []);
+
   const handleInput = useCallback(() => {
-    syncChange();
-  }, [syncChange]);
+    if (!editorRef.current) return;
 
-  // 处理 keydown 事件
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "#" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          setSelectorPosition({
-            top: rect.bottom + 4,
-            left: rect.left,
-          });
-          setSelectorOpen(true);
-        }
-        return;
+    const caretOffset = getCaretTextOffset(editorRef.current);
+    if (caretOffset !== null) {
+      pendingCaretOffsetRef.current = caretOffset;
+    }
+
+    const { text } = syncChange();
+    if (caretOffset !== null && caretOffset > 0 && text[caretOffset - 1] === "#") {
+      setHashOffset(caretOffset - 1);
+      setPickerOpen(true);
+      return;
+    }
+
+    if (pickerOpen) {
+      closePicker();
+    }
+  }, [closePicker, pickerOpen, syncChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (pickerOpen && e.key === "Escape") {
+      e.preventDefault();
+      closePicker();
+      return;
+    }
+
+    if (e.key !== "Backspace" && e.key !== "Delete") return;
+
+    const selection = window.getSelection();
+    if (!selection || !selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+    const node = range.startContainer;
+
+    let refNode: HTMLElement | null = null;
+    if (e.key === "Backspace") {
+      let prev: Node | null = node.previousSibling;
+      while (prev && prev.nodeType === Node.TEXT_NODE && !prev.textContent?.trim() && prev.previousSibling) {
+        prev = prev.previousSibling;
       }
-
-      // 删除标签处理
-      if (e.key === "Backspace" || e.key === "Delete") {
-        const selection = window.getSelection();
-        if (!selection || !selection.isCollapsed) return;
-        const range = selection.getRangeAt(0);
-        const node = range.startContainer;
-
-        let refNode: HTMLElement | null = null;
-        if (e.key === "Backspace") {
-          let prev: Node | null = node.previousSibling;
-          while (prev && prev.nodeType === Node.TEXT_NODE && !prev.textContent?.trim() && prev.previousSibling) {
-            prev = prev.previousSibling;
-          }
-          if (prev && prev.nodeType === Node.ELEMENT_NODE && (prev as HTMLElement).hasAttribute("data-ref")) {
-            refNode = prev as HTMLElement;
-          } else if (node.parentElement?.hasAttribute("data-ref")) {
-            refNode = node.parentElement;
-          }
-        } else {
-          let next: Node | null = node.nextSibling;
-          while (next && next.nodeType === Node.TEXT_NODE && !next.textContent?.trim() && next.nextSibling) {
-            next = next.nextSibling;
-          }
-          if (next && next.nodeType === Node.ELEMENT_NODE && (next as HTMLElement).hasAttribute("data-ref")) {
-            refNode = next as HTMLElement;
-          } else if (node.parentElement?.hasAttribute("data-ref")) {
-            refNode = node.parentElement;
-          }
-        }
-
-        if (refNode) {
-          e.preventDefault();
-          refNode.remove();
-          syncChange();
-        }
+      if (prev && prev.nodeType === Node.ELEMENT_NODE && (prev as HTMLElement).hasAttribute("data-ref")) {
+        refNode = prev as HTMLElement;
+      } else if (node.parentElement?.hasAttribute("data-ref")) {
+        refNode = node.parentElement;
       }
-    },
-    [syncChange]
-  );
+    } else {
+      let next: Node | null = node.nextSibling;
+      while (next && next.nodeType === Node.TEXT_NODE && !next.textContent?.trim() && next.nextSibling) {
+        next = next.nextSibling;
+      }
+      if (next && next.nodeType === Node.ELEMENT_NODE && (next as HTMLElement).hasAttribute("data-ref")) {
+        refNode = next as HTMLElement;
+      } else if (node.parentElement?.hasAttribute("data-ref")) {
+        refNode = node.parentElement;
+      }
+    }
 
-  // 处理删除按钮点击
-  const handleRemoveClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const refNode = target.closest("[data-ref]") as HTMLElement;
-    if (!refNode) return;
-    refNode.remove();
-    syncChange();
-  }, [syncChange]);
-
-  const handleRemoveRef = useCallback((assetId: string) => {
-    const targetRef = imageRefs.find(ref => ref.assetId === assetId);
-    if (!targetRef) return;
-    const nextPrompt = removeRefTag(value, targetRef.assetName);
-    const { imageRefs: nextImageRefs } = parseRefTags(nextPrompt, assets.characters, assets.scenes);
-    onChange(nextPrompt, nextImageRefs);
-  }, [assets, imageRefs, onChange, value]);
-
-  // 处理点击选择素材
-  const handleSelectAsset = useCallback(
-    (assetName: string) => {
-      setSelectorOpen(false);
-      setSelectorPosition(null);
-      const tag = `@${assetName}`;
-
-      const selection = window.getSelection();
-      if (!selection || !selection.rangeCount || !editorRef.current) return;
-
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-
-      // 插入 HTML 标签
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = textToHtml(tag);
-      const refElement = tempDiv.firstChild as HTMLElement;
-
-      range.insertNode(refElement);
-
-      // 光标移到标签后面
-      const cursor = document.createTextNode("\u200B");
-      refElement.after(cursor);
-      const newRange = document.createRange();
-      newRange.setStartAfter(cursor);
-      newRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-
+    if (refNode) {
+      e.preventDefault();
+      refNode.remove();
       syncChange();
-    },
-    [textToHtml, syncChange]
-  );
+    }
+  }, [closePicker, pickerOpen, syncChange]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    const deleteBtn = target.closest('[data-action="delete"]');
+    if (deleteBtn) {
+      const refNode = deleteBtn.closest("[data-ref]") as HTMLElement | null;
+      if (refNode) {
+        refNode.remove();
+        syncChange();
+      }
+      return;
+    }
+
+    const previewImg = target.closest('[data-action="preview"]');
+    if (previewImg) {
+      const refNode = previewImg.closest("[data-ref]") as HTMLElement | null;
+      if (refNode && onPreviewRef) {
+        const imageUrl = refNode.getAttribute("data-image-url");
+        const name = refNode.getAttribute("data-name") || "";
+        if (imageUrl) {
+          onPreviewRef(imageUrl, name);
+        }
+      }
+    }
+  }, [onPreviewRef, syncChange]);
+
+  const handleSelectAsset = useCallback((asset: AssetItem, assetType: "character" | "scene") => {
+    if (hashOffset === null) return;
+
+    const currentText = editorRef.current
+      ? normalizeEditorText(htmlToText(editorRef.current, true))
+      : value;
+
+    const existingRef = imageRefs.find((ref) => ref.assetId === asset.id);
+    const targetRef = existingRef || (() => {
+      const nextIndex = getNextRefIndex(imageRefs);
+      const refLabel = `图片${nextIndex}`;
+      return {
+        assetId: asset.id,
+        assetName: asset.name,
+        assetType,
+        imageUrl: getAssetImageUrl(asset),
+        refLabel,
+        refToken: `#(${refLabel})`,
+      } satisfies ImageRef;
+    })();
+
+    const nextText = `${currentText.slice(0, hashOffset)}${targetRef.refToken}${currentText.slice(hashOffset + 1)}`;
+    const knownRefs = existingRef ? imageRefs : [...imageRefs, targetRef];
+    const { imageRefs: nextImageRefs } = parseRefTags(nextText, assets.characters, assets.scenes, knownRefs);
+
+    pendingCaretOffsetRef.current = hashOffset + (targetRef.refToken?.length || 0);
+    onChange(nextText, nextImageRefs);
+    closePicker();
+  }, [assets, closePicker, hashOffset, htmlToText, imageRefs, onChange, value]);
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("relative space-y-2", className)}>
       <div
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
         onKeyDown={handleKeyDown}
-        onClick={handleRemoveClick}
+        onClick={handleClick}
         className={cn(
           "font-body text-sm resize-none min-h-[132px] w-full rounded-lg border border-input bg-background px-3 py-2",
           "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -248,23 +461,18 @@ export default function PromptEditor({
         data-placeholder={placeholder}
       />
       {!value && (
-        <div className="absolute top-2 left-3 text-sm text-muted-foreground pointer-events-none font-body">
+        <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground font-body">
           {placeholder}
         </div>
       )}
-
-      {imageRefs.length > 0 && <ImageRefPreview imageRefs={imageRefs} onRemove={handleRemoveRef} />}
-
-      {selectorOpen && selectorPosition && (
-        <AssetSelector
-          assets={assets}
-          existingRefs={imageRefs.map(r => r.assetName)}
-          position={selectorPosition}
+      {pickerOpen && (
+        <PromptRefPicker
+          characters={assets.characters}
+          scenes={assets.scenes}
+          characterRefs={characterRefs}
+          sceneRefs={sceneRefs}
           onSelect={handleSelectAsset}
-          onClose={() => {
-            setSelectorOpen(false);
-            setSelectorPosition(null);
-          }}
+          onClose={closePicker}
         />
       )}
     </div>

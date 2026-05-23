@@ -24,7 +24,7 @@ export function findAssetDescriptions(names: string[], assets: AssetItem[]) {
 
 export function buildRuleSummary(bundle: PromptRuleBundle): string[] {
   const contextRules = [
-    `受众 Audience: ${bundle.visual.targetAgeLabel}`,
+    `受众 Audience: ${bundle.context.targetAge}`,
     `风格 Style: ${bundle.style.styleLabel}，整体气质 ${bundle.style.styleMood}`,
   ];
 

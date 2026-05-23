@@ -7,7 +7,6 @@ import { get_default_image_strategy } from "./_helpers";
 import type { AssetsData, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
 import type { ImageGenerateParams, ImageRefInput } from "@/platform/ai/contracts/image-model-gateway";
 import { replaceRefTagsWithDescription } from "@/lib/prompt-ref-parser";
-import { promptEnhancer } from "@/prompts/prompt-enhancer";
 import type { PromptCustomParams } from "@/prompts";
 
 const MAX_REF_IMAGES = 14;
@@ -34,19 +33,21 @@ export async function generatePageImage(
 
   try {
     const effectiveRatio = page.aspectRatio || '16:9';
+    const effectiveProjectInfo = { ...projectInfo, aspectRatio: effectiveRatio };
     const rules = buildPromptRuleBundle(
-      { ...projectInfo, aspectRatio: effectiveRatio },
+      effectiveProjectInfo,
       promptOptions
     );
+    const currentPrompt = page.prompt?.trim();
     const promptResult =
-      page.promptUserEdited && page.prompt
+      currentPrompt
         ? { prompt: page.prompt, imageRefs: page.imageRefs || [] }
         : buildPagePrompt({
             pageIndex: page.index,
             page,
             storyboardPage,
             assets,
-            projectInfo,
+            projectInfo: effectiveProjectInfo,
             customParams: promptOptions,
           });
 
@@ -67,17 +68,6 @@ export async function generatePageImage(
       promptResult.prompt,
       validImageRefs
     );
-
-    // 如果是用户编辑的友好提示词，转换为专业提示词
-    if (page.promptUserEdited && page.prompt) {
-      processedPrompt = promptEnhancer.convertUserPromptToProfessional(processedPrompt, {
-        type: 'page',
-        artStyle: projectInfo.artStyle,
-        targetAge: projectInfo.targetAge,
-        mood: 'warm',
-        layout: 'golden'
-      });
-    }
 
     const sizeMap: Record<string, string> = {
       "3:4": "768x1024",

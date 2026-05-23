@@ -33,16 +33,15 @@ export async function generateAssetImage(
       promptOptions
     );
     const currentPrompt = asset.prompt?.trim();
+    if (kind === "character" && !currentPrompt) {
+      return {
+        success: false,
+        error: generationFailedError("角色提示词为空，请先生成角色提示词"),
+      };
+    }
     let prompt =
       kind === "character"
-        ? currentPrompt ||
-          buildAssetPrompt({
-            kind,
-            name: asset.name,
-            description: asset.description,
-            projectInfo: { ...projectInfo, aspectRatio: asset.aspectRatio },
-            customParams: promptOptions,
-          })
+        ? currentPrompt
         : asset.promptUserEdited && currentPrompt
           ? currentPrompt
           : buildAssetPrompt({

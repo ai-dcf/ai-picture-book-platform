@@ -27,7 +27,7 @@ import {
   BaseImageHistoryEntry,
   CandidateHistoryEntry,
 } from '@/types/picturebook';
-import { buildUserFriendlyAssetPrompt, buildUserFriendlyPagePrompt, buildUserFriendlyAssetPromptFromEntry } from '@/prompts';
+import { buildUserFriendlyAssetPrompt, buildUserFriendlyAssetPromptFromEntry } from '@/prompts';
 import { parseRefTags } from '@/lib/prompt-ref-parser';
 import type { ProjectHistoryEntry } from '@/modules/project-history/types';
 
@@ -35,6 +35,9 @@ function buildInitialPages(count: number): PageItem[] {
   return Array.from({ length: count }, (_, i) => ({
     index: i,
     storyText: '',
+    pageText: '',
+    visualGoal: '',
+    storyboardEdited: false,
     characterRefs: [],
     sceneRefs: [],
     prompt: '',
@@ -180,28 +183,26 @@ function rebuildPagesForCount(state: PictureBookState, count: number): PictureBo
 function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
   return state.pages.map(page => {
     const storyboardPage = state.storyboard.pages[page.index];
-    const nextStoryText =
-      page.pageStatus === 'idle' && !page.storyText.trim()
-        ? (storyboardPage?.text || '')
-        : page.storyText;
-    const nextPromptResult = page.promptUserEdited
-      ? { prompt: page.prompt, imageRefs: page.imageRefs }
-      : buildUserFriendlyPagePrompt({
-          pageIndex: page.index,
-          page: {
-            storyText: nextStoryText,
-            characterRefs: page.characterRefs,
-            sceneRefs: page.sceneRefs,
-          },
-          storyboardPage,
-          assets: state.assets,
-          projectInfo: state.projectInfo,
-        });
+    const syncedPageText = storyboardPage?.text || '';
+    const syncedVisualGoal = storyboardPage?.visualGoal || '';
+    const nextPageText = page.storyboardEdited
+      ? (page.pageText || page.storyText || syncedPageText)
+      : syncedPageText;
+    const nextVisualGoal = page.storyboardEdited
+      ? (page.visualGoal || syncedVisualGoal)
+      : syncedVisualGoal;
+    const nextStoryText = nextPageText;
 
     let nextPageStatus = page.pageStatus;
     if (
       nextPageStatus === 'idle' &&
-      (page.characterRefs.length > 0 || page.sceneRefs.length > 0 || nextPromptResult.prompt.trim().length > 0)
+      (
+        page.characterRefs.length > 0 ||
+        page.sceneRefs.length > 0 ||
+        nextPageText.trim().length > 0 ||
+        nextVisualGoal.trim().length > 0 ||
+        page.prompt.trim().length > 0
+      )
     ) {
       nextPageStatus = 'pending';
     }
@@ -209,8 +210,8 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
     return {
       ...page,
       storyText: nextStoryText,
-      prompt: nextPromptResult.prompt,
-      imageRefs: nextPromptResult.imageRefs,
+      pageText: nextPageText,
+      visualGoal: nextVisualGoal,
       pageStatus: nextPageStatus,
     };
   });
@@ -238,6 +239,19 @@ function nextAssetEditedStatus(asset: AssetItem): AssetStatus {
   return asset.status;
 }
 
+function clearSystemCharacterPrompts(characters: AssetItem[]): AssetItem[] {
+  return characters.map(asset =>
+    asset.promptUserEdited
+      ? asset
+      : {
+          ...asset,
+          prompt: '',
+          generating: false,
+          generatingPhase: null,
+        }
+  );
+}
+
 type Action =
   | { type: 'SET_SAVE_STATUS'; payload: ProjectInfo['saveStatus'] }
   | { type: 'SET_PROJECT_INFO'; payload: Partial<ProjectInfo> }
@@ -263,6 +277,7 @@ type Action =
   | { type: 'SET_PAGE_GENERATING'; payload: { index: number; generating: boolean } }
   | { type: 'SET_PAGE_IMAGE'; payload: { index: number; imageUrl: string } }
   | { type: 'SET_PAGE_STATUS'; payload: { index: number; status: PageStatus } }
+  | { type: 'UPDATE_PAGE_STORYBOARD_FIELDS'; payload: { index: number; pageText?: string; visualGoal?: string } }
   | { type: 'UPDATE_PAGE_CONFIG'; payload: Partial<PageItem> & { index: number } }
   | { type: 'SYNC_PAGES_FROM_STORYBOARD' }
   | { type: 'SCAN_IMAGE_REFS'; payload: { index: number } }
@@ -318,6 +333,8 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         || action.payload.pageCount !== undefined;
       const styleChanged = action.payload.artStyle !== undefined
         || action.payload.aspectRatio !== undefined;
+      const artStyleChanged = action.payload.artStyle !== undefined
+        && action.payload.artStyle !== state.projectInfo.artStyle;
 
       let result: PictureBookState = { ...state, projectInfo: newInfo };
 
@@ -333,6 +350,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         result = applyCascadeForCoreParams(result);
       } else if (styleChanged) {
         result = applyCascadeForStyleParams(result);
+      }
+
+      if (artStyleChanged) {
+        result = {
+          ...result,
+          assets: {
+            ...result.assets,
+            characters: clearSystemCharacterPrompts(result.assets.characters),
+          },
+        };
       }
 
       return result;
@@ -673,7 +700,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const sbPage = state.storyboard.pages[action.payload.index];
       editorStates[action.payload.index] = {
         ...editorStates[action.payload.index],
-        textContent: sbPage?.text || state.pages[action.payload.index].storyText || '',
+        textContent:
+          state.pages[action.payload.index].pageText ||
+          state.pages[action.payload.index].storyText ||
+          sbPage?.text ||
+          '',
       };
       return { ...state, pages, editorStates };
     }
@@ -685,18 +716,59 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return { ...state, pages };
     }
 
-    case 'UPDATE_PAGE_CONFIG': {
-      const { index, ...rest } = action.payload;
+    case 'UPDATE_PAGE_STORYBOARD_FIELDS': {
+      const { index, pageText, visualGoal } = action.payload;
       const pages = state.pages.map(p => {
         if (p.index !== index) return p;
         const updated = {
           ...p,
-          ...rest,
-          promptUserEdited: rest.prompt !== undefined ? true : p.promptUserEdited,
+          pageText: pageText ?? p.pageText,
+          storyText: pageText ?? p.storyText,
+          visualGoal: visualGoal ?? p.visualGoal,
+          storyboardEdited: true,
         };
         if (p.pageStatus === 'generated' || p.pageStatus === 'finalized') {
           updated.pageStatus = 'review';
-        } else if (p.pageStatus === 'idle' && (rest.characterRefs || rest.sceneRefs || rest.prompt)) {
+        } else if (
+          p.pageStatus === 'idle' &&
+          (
+            updated.characterRefs.length > 0 ||
+            updated.sceneRefs.length > 0 ||
+            updated.pageText.trim().length > 0 ||
+            updated.visualGoal.trim().length > 0 ||
+            updated.prompt.trim().length > 0
+          )
+        ) {
+          updated.pageStatus = 'pending';
+        }
+        return updated;
+      });
+      return { ...state, pages };
+    }
+
+    case 'UPDATE_PAGE_CONFIG': {
+      const { index, ...rest } = action.payload;
+      const pages = state.pages.map(p => {
+        if (p.index !== index) return p;
+        const nextPromptUserEdited =
+          rest.prompt !== undefined ? (rest.promptUserEdited ?? true) : p.promptUserEdited;
+        const updated = {
+          ...p,
+          ...rest,
+          promptUserEdited: nextPromptUserEdited,
+        };
+        if (p.pageStatus === 'generated' || p.pageStatus === 'finalized') {
+          updated.pageStatus = 'review';
+        } else if (
+          p.pageStatus === 'idle' &&
+          (
+            updated.characterRefs.length > 0 ||
+            updated.sceneRefs.length > 0 ||
+            updated.pageText.trim().length > 0 ||
+            updated.visualGoal.trim().length > 0 ||
+            updated.prompt.trim().length > 0
+          )
+        ) {
           updated.pageStatus = 'pending';
         }
         return updated;
@@ -712,7 +784,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const pageIndex = action.payload.index;
       const page = state.pages[pageIndex];
       if (!page) return state;
-      const { imageRefs } = parseRefTags(page.prompt, state.assets.characters, state.assets.scenes);
+      const { imageRefs } = parseRefTags(page.prompt, state.assets.characters, state.assets.scenes, page.imageRefs);
       const pages = state.pages.map(p =>
         p.index === pageIndex ? { ...p, imageRefs } : p
       );

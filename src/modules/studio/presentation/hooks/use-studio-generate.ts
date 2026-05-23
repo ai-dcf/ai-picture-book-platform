@@ -11,6 +11,7 @@ import type {
   PageItem,
   StoryboardPageData,
 } from "@/types/picturebook";
+import type { GeneratePagePromptResult } from "@/prompts";
 
 export type GenerateError = {
   code: string;
@@ -187,12 +188,44 @@ export function useStudioGenerate() {
     []
   );
 
+  const generatePagePrompt = useCallback(
+    async (
+      page: PageItem,
+      assets: AssetsData,
+      projectInfo: ProjectInfo,
+      storyboardPage?: StoryboardPageData
+    ): Promise<GeneratePagePromptResult | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<GeneratePagePromptResult>("/api/studio/generate-page-prompt", {
+          page,
+          assets,
+          projectInfo,
+          storyboardPage,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "页面提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     recommendProjectConfig,
     generateStory,
     generateStoryboard,
     generateCharacterPrompt,
     generateAssetImage,
+    generatePagePrompt,
     generatePageImage,
     loading,
     error,
