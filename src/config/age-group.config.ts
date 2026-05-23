@@ -35,12 +35,10 @@ export function getAgeGroupConfig(key: AgeGroupKey | string): AgeGroupConfig | u
 
 export function getAgeGroupConfigByTargetAge(targetAge: string): AgeGroupConfig | undefined {
   const ageMap: Record<string, AgeGroupKey> = {
-    '0-3岁': 'toddler',
-    '1-3岁': 'toddler',
-    '3-5岁': 'preschool',
-    '5-7岁': 'early_reader',
-    '7-9岁': 'older',
-    '9-12岁': 'older'
+    '1-3': 'toddler',
+    '3-5': 'preschool',
+    '5-7': 'early_reader',
+    '7-9': 'older',
   };
   return getAgeGroupConfig(ageMap[targetAge] || targetAge);
 }

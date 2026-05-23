@@ -46,7 +46,11 @@ export default function Stage3Storyboard() {
   );
 
   useEffect(() => {
-    const canAutoGenerate = story.characters.length > 0 && story.scenes.length > 0;
+    const canAutoGenerate =
+      projectInfo.title.trim().length > 0 &&
+      (story.storyOutline.trim().length > 0 ||
+        story.characters.length > 0 ||
+        story.scenes.length > 0);
 
     if (
       autoTriggeredRef.current ||
@@ -62,7 +66,9 @@ export default function Stage3Storyboard() {
   }, [
     handleGenerate,
     hasStoryboardResult,
+    projectInfo.title,
     storyboard.generating,
+    story.storyOutline,
     story.characters.length,
     story.scenes.length,
   ]);
@@ -105,6 +111,17 @@ export default function Stage3Storyboard() {
         )}
 
       </div>
+
+      {error && !storyboard.generating && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{getErrorMessage(error)}</span>
+          <Button onClick={handleGenerate} size="sm" variant="outline" className="gap-1.5 font-body text-xs h-7 border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50">
+            <RefreshCw className="w-3 h-3" />
+            重试
+          </Button>
+        </div>
+      )}
 
       {storyboard.generating && (
         <div className="flex-1 flex items-center justify-center">

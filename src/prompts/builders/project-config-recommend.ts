@@ -34,6 +34,6 @@ ${requiredKeys.length > 0 ? `- ${requiredKeys.join("\n- ")}` : `- (无需要推�
 - 绘本主题/故事概要：${projectInfo.title || "待定"}
 
 输出示例（仅示例，字段按需输出）：
-{"recommendedTargetAge":"3-6","recommendedArtStyle":"水彩温暖风","recommendedPageCount":16}`;
+{"recommendedTargetAge":"3-5","recommendedArtStyle":"水彩温暖风","recommendedPageCount":16}`;
 }
 

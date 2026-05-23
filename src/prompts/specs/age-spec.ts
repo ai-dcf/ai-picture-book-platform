@@ -2,10 +2,10 @@ import type { TargetAge } from "@/types/picturebook";
 import type { VisualRuleSet } from "@/prompts/types";
 
 const AGE_LABELS: Record<Exclude<TargetAge, "auto">, string> = {
-  "0-3": "0-3 岁低幼认知",
-  "3-6": "3-6 岁儿童绘本",
-  "6-9": "6-9 岁少儿读物",
-  "9-12": "9-12 岁少年读物",
+  "1-3": "1-3 岁低幼认知",
+  "3-5": "3-5 岁儿童绘本",
+  "5-7": "5-7 岁少儿读物",
+  "7-9": "7-9 岁少年读物",
 };
 
 export function getAgeVisualSpec(targetAge: Exclude<TargetAge, "auto">): VisualRuleSet {
@@ -21,7 +21,7 @@ export function getAgeVisualSpec(targetAge: Exclude<TargetAge, "auto">): VisualR
   };
 
   switch (targetAge) {
-    case "0-3":
+    case "1-3":
       return {
         targetAgeLabel: AGE_LABELS[targetAge],
         ageGuidance: [
@@ -42,7 +42,7 @@ export function getAgeVisualSpec(targetAge: Exclude<TargetAge, "auto">): VisualR
         ],
         textSafeAreaRules: common.textSafeAreaRules,
       };
-    case "3-6":
+    case "3-5":
       return {
         targetAgeLabel: AGE_LABELS[targetAge],
         ageGuidance: [
@@ -63,7 +63,7 @@ export function getAgeVisualSpec(targetAge: Exclude<TargetAge, "auto">): VisualR
         ],
         textSafeAreaRules: common.textSafeAreaRules,
       };
-    case "6-9":
+    case "5-7":
       return {
         targetAgeLabel: AGE_LABELS[targetAge],
         ageGuidance: [
@@ -84,7 +84,7 @@ export function getAgeVisualSpec(targetAge: Exclude<TargetAge, "auto">): VisualR
         ],
         textSafeAreaRules: common.textSafeAreaRules,
       };
-    case "9-12":
+    case "7-9":
       return {
         targetAgeLabel: AGE_LABELS[targetAge],
         ageGuidance: [

@@ -40,11 +40,11 @@ function createCustomParams(genre: PromptGenre, educationalGoal?: string): Promp
 export const PROMPT_VALIDATION_CASES: PromptValidationCase[] = [
   {
     id: "case-a",
-    name: "原创童话 / 3-6 / 水彩温暖风 / 16:9",
+    name: "原创童话 / 3-5 / 水彩温暖风 / 16:9",
     projectInfo: createProjectInfo({
       id: "case-a",
       title: "会发光的小种子和森林里的春天",
-      targetAge: "3-6",
+      targetAge: "3-5",
       artStyle: "水彩温暖风",
       aspectRatio: "16:9",
     }),
@@ -53,11 +53,11 @@ export const PROMPT_VALIDATION_CASES: PromptValidationCase[] = [
   },
   {
     id: "case-b",
-    name: "科普启蒙 / 6-9 / 极简线条风 / 3:4",
+    name: "科普启蒙 / 5-7 / 极简线条风 / 3:4",
     projectInfo: createProjectInfo({
       id: "case-b",
       title: "四季为什么会变化",
-      targetAge: "6-9",
+      targetAge: "5-7",
       artStyle: "极简线条风",
       aspectRatio: "3:4",
     }),
@@ -66,11 +66,11 @@ export const PROMPT_VALIDATION_CASES: PromptValidationCase[] = [
   },
   {
     id: "case-c",
-    name: "经典改编 / 6-9 / 水墨东方风 / 16:9",
+    name: "经典改编 / 5-7 / 水墨东方风 / 16:9",
     projectInfo: createProjectInfo({
       id: "case-c",
       title: "守信的小桥边",
-      targetAge: "6-9",
+      targetAge: "5-7",
       artStyle: "水墨东方风",
       aspectRatio: "16:9",
     }),
@@ -83,11 +83,11 @@ export const PROMPT_VALIDATION_CASES: PromptValidationCase[] = [
   },
   {
     id: "case-d",
-    name: "冒险成长 / 9-12 / 日系清新风 / 9:16",
+    name: "冒险成长 / 7-9 / 日系清新风 / 9:16",
     projectInfo: createProjectInfo({
       id: "case-d",
       title: "风筝邮差穿越雾谷",
-      targetAge: "9-12",
+      targetAge: "7-9",
       artStyle: "日系清新风",
       aspectRatio: "9:16",
     }),
@@ -96,11 +96,11 @@ export const PROMPT_VALIDATION_CASES: PromptValidationCase[] = [
   },
   {
     id: "case-e",
-    name: "低幼认知启蒙 / 0-3 / 蜡笔童趣风 / 1:1",
+    name: "低幼认知启蒙 / 1-3 / 蜡笔童趣风 / 1:1",
     projectInfo: createProjectInfo({
       id: "case-e",
       title: "圆圆和方方找朋友",
-      targetAge: "0-3",
+      targetAge: "1-3",
       artStyle: "蜡笔童趣风",
       aspectRatio: "1:1",
     }),

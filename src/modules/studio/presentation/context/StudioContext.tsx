@@ -284,8 +284,28 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const pages = loaded.pages.map(p => ({
         ...p,
         imageRefs: p.imageRefs || [],
+        generating: false,
+        pageStatus: p.pageStatus === 'generating' ? 'pending' as PageStatus : p.pageStatus,
       }));
-      return { ...loaded, pages };
+      const assets: AssetsData = {
+        characters: (loaded.assets?.characters || []).map(a => ({
+          ...a,
+          generating: false,
+          generatingPhase: null,
+        })),
+        scenes: (loaded.assets?.scenes || []).map(a => ({
+          ...a,
+          generating: false,
+          generatingPhase: null,
+        })),
+      };
+      return {
+        ...loaded,
+        pages,
+        assets,
+        story: { ...loaded.story, generating: false },
+        storyboard: { ...loaded.storyboard, generating: false },
+      };
     }
 
     case 'SET_SAVE_STATUS':

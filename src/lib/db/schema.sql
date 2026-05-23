@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   title TEXT NOT NULL DEFAULT '',
-  target_age TEXT NOT NULL DEFAULT '3-6',
+  target_age TEXT NOT NULL DEFAULT '3-5',
   page_count INTEGER NOT NULL DEFAULT 24,
   art_style TEXT NOT NULL DEFAULT '水彩温暖风',
   aspect_ratio TEXT NOT NULL DEFAULT '3:4',

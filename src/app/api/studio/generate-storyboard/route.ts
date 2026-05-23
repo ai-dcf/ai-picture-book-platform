@@ -5,8 +5,10 @@ import type { ProjectInfo, StoryData } from "@/types/picturebook";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  console.info(`[API] 分镜生成接口被调用`);
   try {
     const body = await request.json();
+    console.info(`[API] 分镜生成参数校验`, { hasStory: !!body.story, hasProjectInfo: !!body.projectInfo, pageCount: body.projectInfo?.pageCount });
     const story = body.story as StoryData | undefined;
     const projectInfo = body.projectInfo as ProjectInfo | undefined;
 

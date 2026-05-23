@@ -2,7 +2,7 @@ import type { AspectRatio, ArtStyle, PageCount, ProjectInfo, TargetAge } from "@
 import type { PromptContext, PromptCustomParams } from "@/prompts/types";
 
 function normalizeTargetAge(targetAge: TargetAge): Exclude<TargetAge, "auto"> {
-  return targetAge === "auto" ? "3-6" : targetAge;
+  return targetAge === "auto" ? "3-5" : targetAge;
 }
 
 function normalizeArtStyle(artStyle: ArtStyle): Exclude<ArtStyle, "auto"> {

@@ -27,6 +27,7 @@ export function buildStoryboardSystemPrompt(
   targetAge?: string,
   customParams: PromptCustomParams = {}
 ): string {
+  
   const genreLine = buildStoryboardGenreLine(customParams);
   const ageSpecificRequirements = targetAge ? getAgeGroupPageTextPromptByTargetAge(targetAge) : "";
 
