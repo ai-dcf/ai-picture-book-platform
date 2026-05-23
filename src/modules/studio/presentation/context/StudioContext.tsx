@@ -100,7 +100,6 @@ const initialState: PictureBookState = {
   currentStage: 1,
   stageStatuses: { ...initialStageStatuses },
   story: {
-    oneLineStory: '',
     characters: [],
     storyOutline: '',
     emotionCurve: [],

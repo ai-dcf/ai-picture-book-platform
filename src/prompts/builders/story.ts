@@ -13,7 +13,6 @@ export function buildStorySystemPrompt(customParams: PromptCustomParams = {}): s
 
 你必须严格按以下 JSON 格式输出，不要输出任何其他内容：
 {
-  "oneLineStory": "一句话概括故事",
   "characters": [
     { "name": "角色名", "description": "角色外貌与性格描述" }
   ],

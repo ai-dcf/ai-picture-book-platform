@@ -159,7 +159,6 @@ export const EMOTION_INTENSITY_MAP: Record<string, number> = {
 };
 
 export interface StoryData {
-  oneLineStory: string;
   characters: StoryEntry[];
   storyOutline: string;
   emotionCurve: EmotionCurvePoint[];

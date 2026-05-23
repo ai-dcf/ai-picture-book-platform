@@ -1,2 +1,10 @@
 export { extractJSON, parseStoryResponse } from "./story-parser";
-export { parseStoryboardResponse } from "./storyboard-parser";
+export {
+  parseStoryboardResponse,
+  parseStoryboardOutlineResponse,
+  parseStoryboardVisualGoalBatchResponse,
+} from "./storyboard-parser";
+export type {
+  StoryboardOutlinePageDraft,
+  StoryboardVisualGoalDraft,
+} from "./storyboard-parser";

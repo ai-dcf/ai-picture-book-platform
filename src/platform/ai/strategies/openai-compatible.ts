@@ -108,21 +108,40 @@ function extractTextFromResponseContent(content: unknown): string {
   return textParts.join("\n").trim();
 }
 
+function getNumberConfigValue(value: unknown, fallback: number): number {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+}
+
+function getOptionalNumberValue(value: unknown): number | undefined {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) && normalized >= 0 ? normalized : undefined;
+}
+
 class OpenAICompatibleTextStrategy implements TextModelGateway {
   constructor(private config: ModelConfigItem) {}
 
   async generate(params: TextGenerateParams): Promise<TextGenerateResult> {
     const { apiKey, endpoint } = this.config.credentials;
     const model = (this.config.params?.model as string) || "gpt-3.5-turbo";
-    const requestTimeoutMs = Number(this.config.params?.timeoutMs) || 60000;
+    const requestTimeoutMs = getNumberConfigValue(this.config.params?.timeoutMs, 180000);
+    const effectiveTemperature = typeof params.temperature === "number" ? params.temperature : undefined;
+    const effectiveMaxTokens = params.maxTokens ?? getOptionalNumberValue(this.config.params?.maxTokens);
+    const effectiveMaxRetries = getOptionalNumberValue(this.config.params?.maxRetries) ?? 0;
+    const requestStage = params.headers?.["x-stage"] || "default";
+    const requestPageRange = params.headers?.["x-page-range"];
+    const requestBatchIndex = params.headers?.["x-batch-index"];
     const startTime = Date.now();
 
     const llm = new ChatOpenAI({
       model,
       apiKey,
       configuration: { baseURL: endpoint || undefined },
+      temperature: effectiveTemperature,
+      maxTokens: effectiveMaxTokens,
       streaming: false,
       timeout: requestTimeoutMs,
+      maxRetries: effectiveMaxRetries,
     });
 
     const messages = this.buildMessages(params);
@@ -131,36 +150,56 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
       alias: this.config.alias,
       model,
       endpoint,
+      stage: requestStage,
+      batchIndex: requestBatchIndex,
+      pageRange: requestPageRange,
       messageCount: messages.length,
       promptChars,
       maxTokens: params.maxTokens,
       temperature: params.temperature,
       timeoutMs: requestTimeoutMs,
+      effectiveMaxTokens,
+      effectiveTemperature,
+      effectiveTimeoutMs: requestTimeoutMs,
+      effectiveMaxRetries,
     });
 
     try {
       console.info(`${LOG_PREFIX} 文本请求消息`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         messages,
       });
       console.info(`${LOG_PREFIX} 文本请求发送中`, {
         alias: this.config.alias,
         model,
         endpoint,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         timeoutMs: requestTimeoutMs,
         messageCount: messages.length,
+        effectiveMaxTokens,
+        effectiveTemperature,
+        effectiveMaxRetries,
       });
       const invokeStartAt = Date.now();
       const response = await llm.invoke(messages);
       console.info(`${LOG_PREFIX} 文本请求已返回`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         invokeDurationMs: Date.now() - invokeStartAt,
       });
       console.info(`${LOG_PREFIX} 文本原始响应`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
         rawContent: response.content,
       });
       const outputText = extractTextFromResponseContent(response.content);
@@ -169,6 +208,9 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
       console.info(`${LOG_PREFIX} 文本响应详情`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         outputChars: outputText.length,
         responseText: outputText,
         preview: responsePreview,
@@ -179,6 +221,7 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
         console.warn(`${LOG_PREFIX} 文本响应为空`, {
           alias: this.config.alias,
           model,
+          stage: requestStage,
           contentType: Array.isArray(response.content) ? "array" : typeof response.content,
           rawContent: response.content,
         });
@@ -186,6 +229,9 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
       console.info(`${LOG_PREFIX} 文本生成成功`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         durationMs: Date.now() - startTime,
         outputChars: outputText.length,
       });
@@ -198,8 +244,15 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
       console.error(`${LOG_PREFIX} 文本生成失败`, {
         alias: this.config.alias,
         model,
+        stage: requestStage,
+        batchIndex: requestBatchIndex,
+        pageRange: requestPageRange,
         durationMs: Date.now() - startTime,
         error: error instanceof Error ? error.message : String(error),
+        effectiveTimeoutMs: requestTimeoutMs,
+        effectiveMaxTokens,
+        effectiveTemperature,
+        effectiveMaxRetries,
       });
       throw error;
     }

@@ -119,7 +119,6 @@ export default function Stage2Story() {
 
   const hasStoryResult = useMemo(
     () =>
-      story.oneLineStory.trim().length > 0 ||
       story.storyOutline.trim().length > 0 ||
       story.characters.length > 0 ||
       story.scenes.length > 0 ||
@@ -162,7 +161,6 @@ export default function Stage2Story() {
   }
 
   const canConfirm =
-    story.oneLineStory.trim().length > 0 &&
     story.characters.length > 0 &&
     story.storyOutline.trim().length > 0 &&
     story.emotionCurve.length > 0 &&
@@ -226,38 +224,6 @@ export default function Stage2Story() {
             <section>
               <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">1</span>
-                一句话故事
-              </h3>
-              <Input
-                value={story.oneLineStory}
-                onChange={e => { dispatch({ type: 'SET_STORY', payload: { oneLineStory: e.target.value } }); triggerSave(); }}
-                className="font-body text-sm"
-                placeholder="用一句话概括整个故事…"
-              />
-            </section>
-
-            <section>
-              <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">2</span>
-                <Users className="w-3.5 h-3.5" />
-                角色设定
-                <span className="text-xs text-muted-foreground font-normal ml-1">（可编辑描述，不可新增/删除）</span>
-              </h3>
-              <div className="space-y-2">
-                {story.characters.map(c => (
-                  <EntryCard
-                    key={c.name}
-                    entry={c}
-                    colorClass="border-primary/20"
-                    onDescChange={desc => { dispatch({ type: 'UPDATE_CHARACTER_DESC', payload: { name: c.name, description: desc } }); triggerSave(); }}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">3</span>
                 故事大纲
               </h3>
               <Textarea
@@ -270,7 +236,7 @@ export default function Stage2Story() {
 
             <section>
               <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">4</span>
+                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">2</span>
                 情绪曲线
                 <span className="text-xs text-muted-foreground font-normal ml-1">（点击节点可编辑情绪和强度）</span>
               </h3>
@@ -383,7 +349,26 @@ export default function Stage2Story() {
 
             <section>
               <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">5</span>
+                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">3</span>
+                <Users className="w-3.5 h-3.5" />
+                角色设定
+                <span className="text-xs text-muted-foreground font-normal ml-1">（可编辑描述，不可新增/删除）</span>
+              </h3>
+              <div className="space-y-2">
+                {story.characters.map(c => (
+                  <EntryCard
+                    key={c.name}
+                    entry={c}
+                    colorClass="border-primary/20"
+                    onDescChange={desc => { dispatch({ type: 'UPDATE_CHARACTER_DESC', payload: { name: c.name, description: desc } }); triggerSave(); }}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">4</span>
                 <MapPin className="w-3.5 h-3.5" />
                 场景清单
                 <span className="text-xs text-muted-foreground font-normal ml-1">（可编辑描述，不可新增/删除）</span>
@@ -420,7 +405,7 @@ export default function Stage2Story() {
             {canConfirm ? (
               <span>确认后将进入分镜拆页阶段</span>
             ) : (
-              <span className="text-amber-600">请确保所有5项核心产出已完成</span>
+              <span className="text-amber-600">请确保所有4项核心产出已完成</span>
             )}
             {hasDownstream && (
               <span className="text-amber-600 block mt-1">修改将使下游分镜拆页和素材设定标记为待复查</span>

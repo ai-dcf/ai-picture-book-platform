@@ -58,7 +58,6 @@ export function parseStoryResponse(raw: string): StoryData & {
     recommendedArtStyle?: ArtStyle;
     recommendedPageCount?: PageCount;
   } = {
-    oneLineStory: parsed.oneLineStory || "",
     characters,
     storyOutline: parsed.storyOutline || "",
     emotionCurve,

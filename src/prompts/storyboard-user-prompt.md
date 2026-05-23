@@ -1,8 +1,6 @@
 # 分镜生成用户提示词模板
 
 ```
-故事概要：{oneLineStory}
-
 角色：{characterList}
 场景：{sceneList}
 
@@ -14,7 +12,6 @@
 ```
 
 ## 变量说明
-- `{oneLineStory}`: 一句话故事概要
 - `{characterList}`: 角色列表，格式为 `角色名：角色描述；角色名：角色描述...`
 - `{sceneList}`: 场景列表，格式为 `场景名：场景描述；场景名：场景描述...`
 - `{storyOutline}`: 完整的故事大纲
