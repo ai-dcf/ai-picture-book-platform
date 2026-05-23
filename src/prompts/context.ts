@@ -1,9 +1,6 @@
 import type { AspectRatio, ArtStyle, PageCount, ProjectInfo, TargetAge } from "@/types/picturebook";
+import { normalizeTargetAge } from "@/config/age-spec";
 import type { PromptContext, PromptCustomParams } from "@/prompts/types";
-
-function normalizeTargetAge(targetAge: TargetAge): Exclude<TargetAge, "auto"> {
-  return targetAge === "auto" ? "3-5" : targetAge;
-}
 
 function normalizeArtStyle(artStyle: ArtStyle): Exclude<ArtStyle, "auto"> {
   return artStyle === "auto" ? "水彩温暖风" : artStyle;

@@ -16,7 +16,6 @@ export function buildAssetPrompt({
     `主体 Subject: ${name}`,
     `描述 Description: ${description || "延续上游故事设定，补足适合儿童绘本的细节。"}`,
     ...buildRuleSummary(rules),
-    formatRuleBlock("年龄视觉规则", [...rules.visual.ageGuidance, ...rules.visual.detailRules]),
     formatRuleBlock("风格规则", [
       ...rules.style.lightingRules,
       ...rules.style.textureRules,

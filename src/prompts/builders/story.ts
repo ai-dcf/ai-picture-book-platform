@@ -54,8 +54,6 @@ export function buildStoryUserPrompt(
   lines.push(`目标年龄：${rules.context.targetAge}岁`);
   lines.push(`画面风格：${rules.context.artStyle}`);
 
-  lines.push(`画面比例：${rules.context.aspectRatio}`);
-
   lines.push(`总页数：${rules.context.pageCount}页`);
 
   if (rules.context.genre) lines.push(`题材偏好：${rules.context.genre}`);
@@ -66,7 +64,6 @@ export function buildStoryUserPrompt(
   lines.push("");
   lines.push("请创作一个适合以上设定的儿童绘本故事。");
   lines.push(
-    formatRuleBlock("年龄视觉原则", rules.visual.ageGuidance),
     formatRuleBlock("题材原则", rules.genre.storyRules),
     formatRuleBlock("合规原则", [...rules.compliance.positiveRules, ...rules.compliance.negativeRules])
   );

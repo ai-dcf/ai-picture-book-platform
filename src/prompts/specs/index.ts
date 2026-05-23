@@ -1,5 +1,4 @@
 import { buildPromptContext } from "@/prompts/context";
-import { getAgeVisualSpec } from "@/prompts/specs/age-spec";
 import { getComplianceSpec } from "@/prompts/specs/compliance-spec";
 import { getContinuitySpec } from "@/prompts/specs/continuity-spec";
 import { getGenreSpec } from "@/prompts/specs/genre-spec";
@@ -17,7 +16,6 @@ export function buildPromptRuleBundle(
   return {
     context,
     customParams,
-    visual: getAgeVisualSpec(context.targetAge),
     style: getStyleSpec(context.artStyle),
     genre: getGenreSpec(context.genre),
     continuity: getContinuitySpec(),

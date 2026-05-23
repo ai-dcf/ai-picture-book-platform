@@ -36,13 +36,6 @@ export function buildPagePrompt({
     `故事情节 Story Content: ${enrichedStoryText || "保持与当前分镜一致的叙事内容。"}`,
     `画面目标 Visual Goal: ${visualGoal}`,
     ...buildRuleSummary(rules),
-    formatRuleBlock("年龄视觉规则", [
-      ...rules.visual.ageGuidance,
-      ...rules.visual.colorRules,
-      ...rules.visual.compositionRules,
-      ...rules.visual.detailRules,
-      ...rules.visual.textSafeAreaRules,
-    ]),
     formatRuleBlock("风格规则", [
       ...rules.style.lightingRules,
       ...rules.style.textureRules,

@@ -2,7 +2,7 @@ import type { ProjectInfo, StoryData } from "@/types/picturebook";
 import type { PromptCustomParams } from "@/prompts/types";
 import { buildPromptRuleBundle } from "@/prompts/specs";
 import { formatRuleBlock } from "@/prompts/builders/shared";
-import { getAgeGroupPageTextPromptByTargetAge } from "@/config/age-group.config";
+import { getPageTextPrompt, normalizeTargetAge } from "@/config/age-spec";
 
 function buildStoryboardGenreLine(customParams: PromptCustomParams): string {
   return customParams.genre
@@ -27,9 +27,9 @@ export function buildStoryboardSystemPrompt(
   targetAge?: string,
   customParams: PromptCustomParams = {}
 ): string {
-  
   const genreLine = buildStoryboardGenreLine(customParams);
-  const ageSpecificRequirements = targetAge ? getAgeGroupPageTextPromptByTargetAge(targetAge) : "";
+  const resolvedAge = targetAge ? normalizeTargetAge(targetAge as import("@/types/picturebook").TargetAge) : undefined;
+  const ageSpecificRequirements = resolvedAge ? getPageTextPrompt(resolvedAge) : "";
 
   return `你是一位专业绘本分镜导演。请根据故事内容为 ${pageCount} 页绘本创作分镜脚本。
 
@@ -47,9 +47,17 @@ export function buildStoryboardSystemPrompt(
 - 输出恰好 ${pageCount} 页
 - text 文字要求：${ageSpecificRequirements || "请根据目标年龄段输出简洁、适龄、易理解的页面文字"}
 - visualGoal 必须仅包含客观可呈现的视觉内容描述，完全避免任何抽象心理活动、情绪感受类描述：
-  - 仅描述可见元素：角色动作、场景环境、物品位置、光影色彩等
-  - 必须可直接用于图片生成，使用结构化描述，包含景别、构图、光影、色彩、动作、背景等元素
-  - 禁止出现“很开心”“生气”“难过”这类主观情绪描述
+  - 仅描述可见元素：角色名称、五官表情、姿势动作、场景环境、物品名称、位置关系、材质、光影色彩等
+  - 必须可直接用于图片生成，使用具体、可量化、纯视觉化语言，包含景别、构图、视角、光线方向、色温、色彩、动作、背景等元素
+  - 角色稳定外观默认继承前文已给出的角色设定；当页没有变化时只写角色名称
+  - 只有当页存在造型、装束、道具状态或形体变化时，才补充这些变化点，不要重复展开完整外观
+  - 表情必须写成可见细节，如眼睛形态、嘴巴形态、眉毛状态，不要直接写抽象情绪词
+  - 场景元素必须尽量明确物体名称、前后/左右/高低位置、材质或表面特征
+  - 光影必须尽量明确主光方向与冷暖倾向，例如侧光、逆光、暖黄光、冷蓝光
+  - 色彩必须使用具体颜色名称，不要只写"色彩丰富""颜色明快"
+  - 禁止出现任何情感、性格、氛围类抽象词，如"开心""活泼""温暖""紧张""孤独"
+  - 如确需表达情绪，只能转译为视觉细节，例如将"开心"改写为"嘴巴咧开露齿，眼睛弯成月牙形"
+- 页面中出现的角色只能来自前文角色列表，不允许新增任何额外角色
 - 相邻页之间必须体现故事的逻辑连续性
 ${genreLine}`;
 }
@@ -67,15 +75,10 @@ export function buildStoryboardUserPrompt(
     "",
     `故事大纲：${story.storyOutline}`,
     "",
-    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，总页数：${rules.context.pageCount}页，画面比例：${rules.context.aspectRatio}`,
+    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，总页数：${rules.context.pageCount}页`,
     rules.context.genre ? `题材偏好：${rules.context.genre}` : "",
     rules.context.educationalGoal ? `教育目标：${rules.context.educationalGoal}` : "",
     "",
-    formatRuleBlock("年龄视觉规则", [
-      ...rules.visual.ageGuidance,
-      ...rules.visual.compositionRules,
-      ...rules.visual.detailRules,
-    ]),
     formatRuleBlock("风格视觉规则", [
       ...rules.style.lightingRules,
       ...rules.style.textureRules,
@@ -90,6 +93,9 @@ export function buildStoryboardUserPrompt(
     formatRuleBlock("题材规则", rules.genre.storyboardRules),
     formatRuleBlock("合规规则", [...rules.compliance.positiveRules, ...rules.compliance.negativeRules]),
     "",
+    "分镜中的角色默认继承以上角色设定：无变化时只写角色名称；只有造型、装束、道具状态或形体变化时才补充变化点。",
+    "页面中出现的角色只能来自以上角色列表，不允许新增额外角色。",
+    "",
     "请为每页创作分镜脚本。",
   ]
     .filter(Boolean)
@@ -102,7 +108,8 @@ export function buildStoryboardOutlineSystemPrompt(
   customParams: PromptCustomParams = {}
 ): string {
   const genreLine = buildStoryboardGenreLine(customParams);
-  const ageSpecificRequirements = targetAge ? getAgeGroupPageTextPromptByTargetAge(targetAge) : "";
+  const resolvedAge = targetAge ? normalizeTargetAge(targetAge as import("@/types/picturebook").TargetAge) : undefined;
+  const ageSpecificRequirements = resolvedAge ? getPageTextPrompt(resolvedAge) : "";
 
   return `你是一位专业绘本分镜导演。请先根据故事内容为 ${pageCount} 页绘本生成轻量分页页纲。
 
@@ -142,15 +149,10 @@ export function buildStoryboardOutlineUserPrompt(
     "",
     `故事大纲：${story.storyOutline}`,
     "",
-    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，总页数：${rules.context.pageCount}页，画面比例：${rules.context.aspectRatio}`,
+    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，总页数：${rules.context.pageCount}页`,
     rules.context.genre ? `题材偏好：${rules.context.genre}` : "",
     rules.context.educationalGoal ? `教育目标：${rules.context.educationalGoal}` : "",
     "",
-    formatRuleBlock("年龄视觉规则", [
-      ...rules.visual.ageGuidance,
-      ...rules.visual.compositionRules.slice(0, 2),
-      ...rules.visual.detailRules.slice(0, 2),
-    ]),
     formatRuleBlock("风格视觉规则", [
       ...rules.style.lightingRules.slice(0, 2),
       ...rules.style.textureRules.slice(0, 2),
@@ -189,12 +191,18 @@ export function buildStoryboardVisualGoalSystemPrompt(): string {
 - visualGoal 至少包含以下标签：
   - Shot（景别/镜头）：close-up/medium/wide + 视角 + 焦点主体
   - Composition（构图）：主体位置 + 前中后景关系 + 留白策略
-  - Lighting（光影）：主光方向 + 氛围
-  - Color（色彩）：主色调/点缀色 + 冷暖倾向
-  - Action & Emotion（动作与情绪）：角色动作 + 情绪表达
-  - Background（背景叙事）：环境要素 2-4 个
+  - Character（角色）：角色名称；如当页造型、装束、道具状态或形体有变化，再补充变化点
+  - Expression（表情细节）：眼睛 + 嘴巴 + 眉毛等可见形态
+  - Action（动作姿态）：角色动作 + 肢体朝向 + 与道具/环境的互动
+  - Lighting（光影）：主光方向 + 色温，不得写抽象氛围词
+  - Color（色彩）：主色调/点缀色 + 冷暖倾向，使用具体颜色名称
+  - Background（背景叙事）：环境要素 2-4 个，并尽量写明位置或材质
   - Text Safe Area（排版留白）：明确配文安全区
   - No Text（禁止事项）：不得生成任何文字/水印/Logo/签名/边框
+- 全文必须采用具体、可量化、纯视觉化语言，禁止使用任何情感、性格、氛围类抽象词，如"活泼""温暖""梦幻"
+- 如需要表达情绪，只能翻译成看得见的五官或动作细节，例如"嘴角上扬露齿，眼睛弯起"
+- 角色稳定外观默认继承输入中的角色设定；无变化时只写名称，不要重复展开完整外观
+- 页面中出现的角色只能来自输入角色列表，不允许新增任何额外角色
 - 相邻页之间必须体现连续性：镜头衔接、道具状态、角色朝向、场景延续至少命中其一`;
 }
 
@@ -213,11 +221,9 @@ export function buildStoryboardVisualGoalUserPrompt(
   return [
     `角色：${characterList}`,
     `场景：${sceneList}`,
-    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，画面比例：${rules.context.aspectRatio}`,
+    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}`,
     "",
-    formatRuleBlock("视觉补全规则", [
-      ...rules.visual.ageGuidance,
-      ...rules.visual.textSafeAreaRules,
+    formatRuleBlock("风格视觉规则", [
       ...rules.style.lightingRules.slice(0, 2),
       ...rules.style.colorRules.slice(0, 2),
       ...rules.style.textureRules.slice(0, 2),
@@ -231,6 +237,9 @@ export function buildStoryboardVisualGoalUserPrompt(
       ...rules.compliance.positiveRules.slice(0, 3),
       ...rules.compliance.negativeRules.slice(0, 5),
     ]),
+    "",
+    "角色默认继承以上角色设定：无变化时只写名称；只有当页状态或外观有变化时才补充变化点。",
+    "只允许使用以上角色列表中的角色，不允许新增额外角色。",
     "",
     "待补全页面：",
     JSON.stringify(

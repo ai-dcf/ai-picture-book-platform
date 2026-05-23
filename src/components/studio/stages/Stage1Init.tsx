@@ -19,7 +19,6 @@ import {
   ProjectInfo,
   TargetAge,
   PageCount,
-  AspectRatio,
   ArtStyle,
 } from '@/types/picturebook';
 
@@ -98,7 +97,6 @@ export default function Stage1Init() {
         targetAge: form.targetAge,
         pageCount: form.pageCount,
         artStyle: form.artStyle,
-        aspectRatio: '3:4' as AspectRatio,
       };
       
       const needsRecommendation =
@@ -137,7 +135,6 @@ export default function Stage1Init() {
         artStyle: form.artStyle === 'auto' && recommendation?.recommendedArtStyle
           ? recommendation.recommendedArtStyle
           : form.artStyle as ArtStyle,
-        aspectRatio: '3:4' as AspectRatio,
       };
       
       // 更新项目信息

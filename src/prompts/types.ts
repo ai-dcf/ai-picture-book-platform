@@ -73,15 +73,6 @@ export interface BuildStoryboardPromptParams {
   customParams?: PromptCustomParams;
 }
 
-export interface VisualRuleSet {
-  targetAgeLabel: string;
-  ageGuidance: string[];
-  colorRules: string[];
-  compositionRules: string[];
-  detailRules: string[];
-  textSafeAreaRules: string[];
-}
-
 export interface StyleRuleSet {
   styleLabel: string;
   styleMood: string;
@@ -120,7 +111,6 @@ export interface ModelRuleSet {
 
 export interface PromptRuleBundle {
   context: PromptContext;
-  visual: VisualRuleSet;
   style: StyleRuleSet;
   genre: GenreRuleSet;
   continuity: ContinuityRuleSet;

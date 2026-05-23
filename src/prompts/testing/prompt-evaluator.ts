@@ -150,7 +150,7 @@ function buildCaseMetrics(
     pagePromptCorpus.includes(rules.style.styleLabel),
     rules.style.colorRules.every((rule) => pagePromptCorpus.includes(rule)),
     rules.style.textureRules.every((rule) => pagePromptCorpus.includes(rule)),
-    pages.every((page) => page.prompt.includes(`受众 Audience: ${rules.visual.targetAgeLabel}`)),
+    pages.every((page) => page.prompt.includes(`受众 Audience: ${rules.context.targetAge}`)),
     pages.every((page) => page.prompt.includes(`模型参数 Model Tags: ${rules.model.parameterTags.join("; ")}`)),
   ].filter(Boolean).length;
 
