@@ -103,7 +103,7 @@ interface ProjectConfigRecommendation {
 
 这一阶段的 use-case 只负责：
 
-- 选择默认文本模型。
+- 选择默认文本模型，复用当前已配置的默认文本模型（与故事生成相同或更轻量均可），无需引入新模型配置。
 - 调用推荐 prompt。
 - 解析并校验推荐结果。
 - 将合法结果返回给 `Stage1Init`。
@@ -156,15 +156,7 @@ interface ProjectConfigRecommendation {
 
 - `recommendedTargetAge` 只能是 `0-3 / 3-6 / 6-9 / 9-12`
 - `recommendedPageCount` 只能是 `8 / 12 / 16 / 24 / 32`
-- `recommendedArtStyle` 只能是现有风格枚举：
-  - `水彩温暖风`
-  - `蜡笔童趣风`
-  - `剪纸拼贴风`
-  - `日系清新风`
-  - `素描淡彩风`
-  - `波普大胆风`
-  - `水墨东方风`
-  - `极简线条风`
+- `recommendedArtStyle` 必须与系统中 `ArtStyle` 类型定义、`getStyleSpec` 支持列表完全一致，代码中直接引用同一个枚举来源，不维护重复列表，确保后续新增风格时只需修改一处即可。
 
 ### 风格别名兼容
 
@@ -175,9 +167,10 @@ interface ProjectConfigRecommendation {
 
 兼容策略原则：
 
-- 只处理已明确确认的少量高频别名。
-- 不能进行模糊猜测式映射，避免把不确定值写入项目状态。
-- 无法识别的值直接丢弃，不回填。
+- 映射表仅限于常见近义词且必须明确，不进行语义猜测。
+- 所有映射逻辑统一放在 `project-config-recommend-parser.ts` 中，不分散到其他文件。
+- 每个映射规则必须配备单元测试用例，确保映射结果符合预期。
+- 无法识别的值直接视为失败，不做兜底回填。
 
 ## 前端交互设计
 
@@ -193,10 +186,9 @@ interface ProjectConfigRecommendation {
 
 若推荐失败：
 
-- 不阻断项目创建。
-- 保持当前降级策略。
+- 直接阻断项目创建，给用户明确友好的错误提示。
 - 用户已经显式选择的字段维持不变。
-- 仍为 `auto` 的字段可继续保留 `auto`，由后续默认 normalize 逻辑兜底。
+- 不使用默认 normalize 逻辑兜底，确保只有模型推荐的合法值才会被写入项目配置。
 
 ### Stage2Story
 
@@ -262,6 +254,7 @@ interface ProjectConfigRecommendation {
 6. `StoryData` 移除推荐字段后，Stage2 与相关类型检查通过。
 7. `Stage2Story` 不再包含推荐回填逻辑。
 8. 最近修改文件的 TypeScript/ESLint 诊断无新增错误。
+9. 移除 `StoryData` 中的推荐字段后，执行全局 grep 扫描，确保没有遗漏的引用（如旧的 `generate-story.ts` 返回值、`Stage2Story` 中的死代码、可能存在的测试文件等）。
 
 ## 风险与取舍
 
