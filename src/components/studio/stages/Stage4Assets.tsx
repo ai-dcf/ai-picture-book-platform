@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  Expand,
   History,
   ImageIcon,
   Loader2,
@@ -155,14 +154,6 @@ function AssetPromptEditor({
     triggerSave();
   }
 
-  async function handleRegeneratePrompt() {
-    if (assetType === 'characters' && onGeneratePrompt) {
-      await onGeneratePrompt();
-      return;
-    }
-    await handleResetPrompt();
-  }
-
   return (
     <>
       <div className="space-y-1.5 mb-3">
@@ -181,19 +172,11 @@ function AssetPromptEditor({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:justify-end">
             <button
               type="button"
-              onClick={handleRegeneratePrompt}
-              disabled={promptActionDisabled}
-              className="text-[11px] text-primary font-body hover:underline"
-            >
-              {isPromptGenerating ? '重新生成中…' : '重新生成AI绘画提示词'}
-            </button>
-            <button
-              type="button"
               onClick={handleResetPrompt}
               disabled={promptActionDisabled}
               className="text-[11px] text-primary font-body hover:underline"
             >
-              {isPromptGenerating ? '重置中…' : '重置系统提示词'}
+              {isPromptGenerating ? '重新生成中…' : '重新生成AI绘画提示词'}
             </button>
           </div>
         </div>
