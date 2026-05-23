@@ -1,4 +1,5 @@
 export * from "@/prompts/builders/story";
+export * from "@/prompts/builders/project-config-recommend";
 export * from "@/prompts/builders/storyboard";
 export * from "@/prompts/builders/asset";
 export * from "@/prompts/builders/page";

@@ -47,9 +47,6 @@ export async function generateStory(
       characterCount: story.characters.length,
       sceneCount: story.scenes.length,
       emotionPointCount: story.emotionCurve.length,
-      recommendedTargetAge: story.recommendedTargetAge,
-      recommendedArtStyle: story.recommendedArtStyle,
-      recommendedPageCount: story.recommendedPageCount,
     });
     return { success: true, data: story };
   } catch (err) {

@@ -104,8 +104,8 @@ function createPageItem(page: StoryboardPageData, projectInfo: ProjectInfo): Pag
   return {
     index: page.pageIndex,
     storyText: page.text,
-    characterRefs: page.characterRefs,
-    sceneRefs: page.sceneRefs,
+    characterRefs: [],
+    sceneRefs: [],
     prompt: "",
     promptUserEdited: false,
     imageUrl: null,

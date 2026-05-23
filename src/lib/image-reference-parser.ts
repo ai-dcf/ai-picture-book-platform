@@ -1,4 +1,4 @@
-import type { AssetItem, StoryboardPageData } from '@/types/picturebook';
+import type { AssetItem, StoryboardPageData, PageItem } from '@/types/picturebook';
 
 export type ImageReferenceType = 
   | 'character' 
@@ -294,7 +294,7 @@ export function removeReferences(
 }
 
 export function validatePageReferences(
-  page: StoryboardPageData,
+  page: PageItem,
   characters: AssetItem[],
   scenes: AssetItem[]
 ): { valid: boolean; errors: string[] } {

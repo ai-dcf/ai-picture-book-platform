@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type {
   ProjectInfo,
+  ProjectConfigRecommendation,
   StoryData,
   StoryboardData,
   AssetItem,
@@ -49,6 +50,27 @@ export function useStudioGenerate() {
   const [error, setError] = useState<GenerateError | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
+
+  const recommendProjectConfig = useCallback(
+    async (projectInfo: ProjectInfo): Promise<ProjectConfigRecommendation | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<ProjectConfigRecommendation>("/api/studio/recommend-project-config", { projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "参数推荐失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const generateStory = useCallback(
     async (projectInfo: ProjectInfo): Promise<StoryData | null> => {
@@ -145,6 +167,7 @@ export function useStudioGenerate() {
   );
 
   return {
+    recommendProjectConfig,
     generateStory,
     generateStoryboard,
     generateAssetImage,

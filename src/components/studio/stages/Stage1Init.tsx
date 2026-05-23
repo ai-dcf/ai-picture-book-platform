@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { AlertTriangle, Sparkles, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import {
   TARGET_AGES,
   PAGE_COUNTS,
@@ -25,7 +25,7 @@ import {
 
 export default function Stage1Init() {
   const { state, dispatch, triggerSave } = useStudio();
-  const { generateStory } = useStudioGenerate();
+  const { generateStory, recommendProjectConfig } = useStudioGenerate();
   const { projectInfo, stageStatuses } = state;
   const hasDownstream = Object.values(stageStatuses).some(
     (s, i) => i > 0 && s !== 'idle'
@@ -41,6 +41,7 @@ export default function Stage1Init() {
   const [showImpact, setShowImpact] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 自动调整文本框高度
@@ -89,8 +90,8 @@ export default function Stage1Init() {
     if (!form.title.trim()) return;
     
     setIsAnalyzing(true);
+    setCreateError(null);
     try {
-      // 调用AI分析故事内容，获取推荐参数
       const tempProjectInfo: ProjectInfo = {
         ...projectInfo,
         title: form.title,
@@ -100,20 +101,41 @@ export default function Stage1Init() {
         aspectRatio: '3:4' as AspectRatio,
       };
       
-      const story = await generateStory(tempProjectInfo);
-      
-      // 合并AI推荐参数和用户选择的参数
+      const needsRecommendation =
+        form.targetAge === 'auto' || form.pageCount === 'auto' || form.artStyle === 'auto';
+
+      const recommendation = needsRecommendation
+        ? await recommendProjectConfig(tempProjectInfo)
+        : null;
+
+      if (needsRecommendation && !recommendation) {
+        setCreateError('项目参数推荐失败，请重试或先在设置中配置可用模型');
+        return;
+      }
+
+      if (form.targetAge === 'auto' && !recommendation?.recommendedTargetAge) {
+        setCreateError('未能推荐目标年龄，请重试');
+        return;
+      }
+      if (form.pageCount === 'auto' && !recommendation?.recommendedPageCount) {
+        setCreateError('未能推荐页数，请重试');
+        return;
+      }
+      if (form.artStyle === 'auto' && !recommendation?.recommendedArtStyle) {
+        setCreateError('未能推荐绘本风格，请重试');
+        return;
+      }
+
       const finalProjectInfo = {
         title: form.title.trim(),
-        // 如果用户选择自动，使用AI推荐值，否则使用用户选择的值
-        targetAge: form.targetAge === 'auto' && story?.recommendedTargetAge 
-          ? story.recommendedTargetAge 
+        targetAge: form.targetAge === 'auto' && recommendation?.recommendedTargetAge
+          ? recommendation.recommendedTargetAge
           : form.targetAge as TargetAge,
-        pageCount: form.pageCount === 'auto' && story?.recommendedPageCount 
-          ? story.recommendedPageCount 
+        pageCount: form.pageCount === 'auto' && recommendation?.recommendedPageCount
+          ? recommendation.recommendedPageCount
           : form.pageCount as PageCount,
-        artStyle: form.artStyle === 'auto' && story?.recommendedArtStyle 
-          ? story.recommendedArtStyle 
+        artStyle: form.artStyle === 'auto' && recommendation?.recommendedArtStyle
+          ? recommendation.recommendedArtStyle
           : form.artStyle as ArtStyle,
         aspectRatio: '3:4' as AspectRatio,
       };
@@ -131,23 +153,7 @@ export default function Stage1Init() {
       dispatch({ type: 'SET_STAGE', payload: 2 });
     } catch (err) {
       console.error('项目创建失败', err);
-      // 即使分析失败，也继续创建项目，使用用户输入的参数
-      dispatch({
-        type: 'SET_PROJECT_INFO',
-        payload: {
-          title: form.title.trim(),
-          targetAge: form.targetAge as TargetAge,
-          pageCount: form.pageCount as PageCount,
-          artStyle: form.artStyle as ArtStyle,
-          aspectRatio: '3:4' as AspectRatio,
-        },
-      });
-      
-      if (!projectInfo.projectId) {
-        dispatch({ type: 'CREATE_DRAFT' });
-      }
-      triggerSave();
-      dispatch({ type: 'SET_STAGE', payload: 2 });
+      setCreateError(err instanceof Error ? err.message : '项目参数推荐失败，请重试');
     } finally {
       setIsAnalyzing(false);
     }
@@ -173,6 +179,12 @@ export default function Stage1Init() {
       </div>
 
       <div className="flex-1 space-y-6 max-w-lg">
+        {createError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span className="flex-1 font-body">{createError}</span>
+          </div>
+        )}
         <div className="space-y-2">
           <label className="text-sm font-body font-medium text-foreground">
             绘本主题/故事概要

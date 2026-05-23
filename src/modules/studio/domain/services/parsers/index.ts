@@ -1,4 +1,5 @@
 export { extractJSON, parseStoryResponse } from "./story-parser";
+export { parseProjectConfigRecommendResponse } from "./project-config-recommend-parser";
 export {
   parseStoryboardResponse,
   parseStoryboardOutlineResponse,

@@ -70,23 +70,6 @@ export default function Stage2Story() {
     const result = await generateStory(projectInfo);
     if (result) {
       dispatch({ type: 'SET_STORY', payload: { ...result, generating: false } });
-      
-      // 更新自动推荐的参数
-      const updates: Partial<ProjectInfo> = {};
-      if (result.recommendedTargetAge && projectInfo.targetAge === 'auto') {
-        updates.targetAge = result.recommendedTargetAge;
-      }
-      if (result.recommendedArtStyle && projectInfo.artStyle === 'auto') {
-        updates.artStyle = result.recommendedArtStyle;
-      }
-      if (result.recommendedPageCount && projectInfo.pageCount === 'auto') {
-        updates.pageCount = result.recommendedPageCount;
-      }
-      
-      if (Object.keys(updates).length > 0) {
-        dispatch({ type: 'SET_PROJECT_INFO', payload: updates });
-      }
-      
       triggerSave();
     } else {
       dispatch({ type: 'SET_STORY_GENERATING', payload: false });

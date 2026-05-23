@@ -1,10 +1,7 @@
 import type {
-  ArtStyle,
   EmotionCurvePoint,
-  PageCount,
   StoryData,
   StoryEntry,
-  TargetAge,
 } from "@/types/picturebook";
 
 export function extractJSON(text: string): string {
@@ -20,11 +17,7 @@ export function extractJSON(text: string): string {
   return text.trim();
 }
 
-export function parseStoryResponse(raw: string): StoryData & {
-  recommendedTargetAge?: TargetAge;
-  recommendedArtStyle?: ArtStyle;
-  recommendedPageCount?: PageCount;
-} {
+export function parseStoryResponse(raw: string): StoryData {
   const json = extractJSON(raw);
   const parsed = JSON.parse(json);
 
@@ -53,28 +46,13 @@ export function parseStoryResponse(raw: string): StoryData & {
     })
   );
 
-  const result: StoryData & {
-    recommendedTargetAge?: TargetAge;
-    recommendedArtStyle?: ArtStyle;
-    recommendedPageCount?: PageCount;
-  } = {
+  const result: StoryData = {
     characters,
     storyOutline: parsed.storyOutline || "",
     emotionCurve,
     scenes,
     generating: false,
   };
-
-  // 提取推荐参数
-  if (parsed.recommendedTargetAge && parsed.recommendedTargetAge !== "auto") {
-    result.recommendedTargetAge = parsed.recommendedTargetAge as Exclude<TargetAge, "auto">;
-  }
-  if (parsed.recommendedArtStyle && parsed.recommendedArtStyle !== "auto") {
-    result.recommendedArtStyle = parsed.recommendedArtStyle as Exclude<ArtStyle, "auto">;
-  }
-  if (parsed.recommendedPageCount && parsed.recommendedPageCount !== "auto") {
-    result.recommendedPageCount = parsed.recommendedPageCount as Exclude<PageCount, "auto">;
-  }
 
   return result;
 }

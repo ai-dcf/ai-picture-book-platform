@@ -165,6 +165,7 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
     });
 
     try {
+      // 保留请求消息日志：用于排查prompt问题
       console.info(`${LOG_PREFIX} 文本请求消息`, {
         alias: this.config.alias,
         model,
@@ -172,19 +173,6 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
         batchIndex: requestBatchIndex,
         pageRange: requestPageRange,
         messages,
-      });
-      console.info(`${LOG_PREFIX} 文本请求发送中`, {
-        alias: this.config.alias,
-        model,
-        endpoint,
-        stage: requestStage,
-        batchIndex: requestBatchIndex,
-        pageRange: requestPageRange,
-        timeoutMs: requestTimeoutMs,
-        messageCount: messages.length,
-        effectiveMaxTokens,
-        effectiveTemperature,
-        effectiveMaxRetries,
       });
       const invokeStartAt = Date.now();
       const response = await llm.invoke(messages);
@@ -196,6 +184,7 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
         pageRange: requestPageRange,
         invokeDurationMs: Date.now() - invokeStartAt,
       });
+      // 保留原始响应日志：用于排查返回内容问题
       console.info(`${LOG_PREFIX} 文本原始响应`, {
         alias: this.config.alias,
         model,
@@ -205,18 +194,7 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
       const outputText = extractTextFromResponseContent(response.content);
       const responsePreview = outputText.slice(0, 300);
       const responseMeta = (response as unknown as { response_metadata?: unknown; usage_metadata?: unknown }) ?? {};
-      console.info(`${LOG_PREFIX} 文本响应详情`, {
-        alias: this.config.alias,
-        model,
-        stage: requestStage,
-        batchIndex: requestBatchIndex,
-        pageRange: requestPageRange,
-        outputChars: outputText.length,
-        responseText: outputText,
-        preview: responsePreview,
-        responseMetadata: responseMeta.response_metadata,
-        usageMetadata: responseMeta.usage_metadata,
-      });
+      // 移除冗余日志：文本响应详情
       if (!outputText) {
         console.warn(`${LOG_PREFIX} 文本响应为空`, {
           alias: this.config.alias,
