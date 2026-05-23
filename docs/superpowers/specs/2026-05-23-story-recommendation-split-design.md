@@ -155,9 +155,10 @@ interface ProjectConfigRecommendation {
 
 推荐解析器必须对三个字段做白名单校验：
 
-- `recommendedTargetAge` 只能是 `0-3 / 3-6 / 6-9 / 9-12`
-- `recommendedPageCount` 只能是 `8 / 12 / 16 / 24 / 32`
-- `recommendedArtStyle` 必须与系统中 `ArtStyle` 类型定义、`getStyleSpec` 支持列表完全一致，代码中直接引用同一个枚举来源，不维护重复列表，确保后续新增风格时只需修改一处即可。
+- `recommendedTargetAge` 必须与系统中 `TargetAge` 类型定义完全一致，直接引用同一个枚举来源，不维护重复列表。
+- `recommendedPageCount` 必须与系统中 `PageCount` 类型定义完全一致，直接引用同一个枚举来源，不维护重复列表。
+- `recommendedArtStyle` 必须与系统中 `ArtStyle` 类型定义、`getStyleSpec` 支持列表完全一致，代码中直接引用同一个枚举来源，不维护重复列表，确保后续新增风格/年龄/页数时只需修改一处即可。
+- 提示词中展示的枚举选项直接从配置文件加载，不硬编码，方便统一维护和管理。
 
 ### 风格别名兼容
 
