@@ -4,7 +4,7 @@ import { buildPagePrompt, buildPromptRuleBundle } from "@/prompts";
 import { noModelError, generationFailedError } from "@/modules/studio/domain/errors";
 import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_image_strategy } from "./_helpers";
-import type { AssetsData, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
+import type { AssetsData, CoverData, GenerateTargetKind, ImageRef, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
 import type { ImageGenerateParams, ImageRefInput } from "@/platform/ai/contracts/image-model-gateway";
 import { replaceRefTagsWithDescription } from "@/lib/prompt-ref-parser";
 import type { PromptCustomParams } from "@/prompts";
@@ -22,30 +22,47 @@ function stableSeedFromString(input: string): number {
 }
 
 export async function generatePageImage(
-  page: PageItem,
+  target: PageItem | CoverData,
   assets: AssetsData,
   projectInfo: ProjectInfo,
   storyboardPage?: StoryboardPageData,
-  promptOptions: PromptCustomParams = {}
+  arg5: GenerateTargetKind | PromptCustomParams = {},
+  arg6: PromptCustomParams | GenerateTargetKind = {}
 ): Promise<GenerateResult<string>> {
   const strategy = get_default_image_strategy();
   if (!strategy) return { success: false, error: noModelError() };
 
   try {
-    const effectiveRatio = page.aspectRatio || '16:9';
+    const kind = typeof arg5 === "string"
+      ? arg5
+      : typeof arg6 === "string"
+        ? arg6
+        : "page";
+    const promptOptions = (
+      typeof arg5 === "string"
+        ? (typeof arg6 === "string" ? {} : arg6)
+        : arg5
+    ) as PromptCustomParams;
+    const effectiveRatio = target.aspectRatio || '16:9';
     const effectiveProjectInfo = { ...projectInfo, aspectRatio: effectiveRatio };
     const rules = buildPromptRuleBundle(
       effectiveProjectInfo,
       promptOptions
     );
-    const currentPrompt = page.prompt?.trim();
+    const currentPrompt = target.prompt?.trim();
     const promptResult =
       currentPrompt
-        ? { prompt: page.prompt, imageRefs: page.imageRefs || [] }
+        ? { prompt: target.prompt, imageRefs: target.imageRefs || [] }
         : buildPagePrompt({
-            pageIndex: page.index,
-            page,
-            storyboardPage,
+            pageIndex: kind === "cover" ? 0 : (target as PageItem).index,
+            pageLabel: kind === "cover" ? "封面" : undefined,
+            page: kind === "cover"
+              ? {
+                  title: (target as CoverData).title,
+                  visualGoal: (target as CoverData).visualGoal,
+                }
+              : target,
+            storyboardPage: kind === "cover" ? undefined : storyboardPage,
             assets,
             projectInfo: effectiveProjectInfo,
             customParams: promptOptions,
@@ -79,7 +96,11 @@ export async function generatePageImage(
     const generateParams: ImageGenerateParams = {
       prompt: processedPrompt,
       negativePrompt: [...rules.compliance.negativePrompt, ...rules.model.negativePrompt].join(", "),
-      seed: stableSeedFromString(`${projectInfo.projectId}:page:${page.index}`),
+      seed: stableSeedFromString(
+        kind === "cover"
+          ? `${projectInfo.projectId}:cover`
+          : `${projectInfo.projectId}:page:${(target as PageItem).index}`
+      ),
       size: sizeMap[effectiveRatio] || "1024x1024",
     };
 

@@ -219,6 +219,22 @@ export interface ImageRef {
   refToken?: string;
 }
 
+export type GenerateTargetKind = 'page' | 'cover';
+
+// ─── Cover (Stage 3 / Stage 5) ──────────────────────────────────────────────
+export interface CoverData {
+  title: string;
+  visualGoal: string;
+  userModified: boolean;
+  prompt: string;
+  promptUserEdited: boolean;
+  imageUrl: string | null;
+  status: PageStatus;
+  generating: boolean;
+  imageRefs: ImageRef[];
+  aspectRatio?: AspectRatio;
+}
+
 // ─── Pages (PRD §8.5) ───────────────────────────────────────────────────────
 export interface PageItem {
   index: number;
@@ -269,6 +285,7 @@ export interface PictureBookState {
   stageStatuses: Record<StageNumber, StageStatus>;
   story: StoryData;
   storyboard: StoryboardData;
+  cover: CoverData;
   assets: AssetsData;
   pages: PageItem[];
   editorStates: EditorPageState[];

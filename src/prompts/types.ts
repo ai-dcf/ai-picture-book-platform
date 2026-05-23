@@ -2,6 +2,7 @@ import type {
   AssetItem,
   AspectRatio,
   ArtStyle,
+  CoverData,
   ImageRef,
   PageCount,
   PageItem,
@@ -59,7 +60,9 @@ export interface GeneratePagePromptResult extends BuildPagePromptResult {}
 
 export interface BuildPagePromptParams {
   pageIndex: number;
-  page: Pick<PageItem, "storyText" | "pageText" | "visualGoal" | "characterRefs" | "sceneRefs">;
+  pageLabel?: string;
+  page: Pick<PageItem, "storyText" | "pageText" | "visualGoal" | "characterRefs" | "sceneRefs">
+    | Pick<CoverData, "title" | "visualGoal">;
   storyboardPage?: StoryboardPageData;
   assets: {
     characters: AssetItem[];

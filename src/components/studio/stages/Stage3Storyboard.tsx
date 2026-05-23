@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
@@ -18,22 +18,64 @@ import {
 
 export default function Stage3Storyboard() {
   const { state, dispatch, triggerSave } = useStudio();
-  const { storyboard, story, projectInfo } = state;
-  const { generateStoryboard, error, clearError, getErrorMessage } = useStudioGenerate();
+  const { storyboard, story, projectInfo, cover } = state;
+  const { generateStoryboard, generateCover, error, clearError, getErrorMessage } = useStudioGenerate();
   const [expandedPage, setExpandedPage] = useState<number | null>(0);
   const autoTriggeredRef = useRef(false);
 
   const handleGenerate = useCallback(async () => {
     dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: true });
+    dispatch({ type: 'SET_COVER_GENERATING', payload: true });
     clearError();
-    const result = await generateStoryboard(story, projectInfo);
-    if (result) {
-      dispatch({ type: 'SET_STORYBOARD', payload: { ...result, generating: false } });
-      triggerSave();
+    const storyboardResult = await generateStoryboard(story, projectInfo);
+    const coverResult = await generateCover(story, projectInfo);
+
+    if (storyboardResult) {
+      dispatch({ type: 'SET_STORYBOARD', payload: { ...storyboardResult, generating: false } });
     } else {
       dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
     }
-  }, [dispatch, story, projectInfo, generateStoryboard, clearError, triggerSave]);
+
+    if (coverResult) {
+      dispatch({
+        type: 'SET_COVER',
+        payload: {
+          title: coverResult.title,
+          visualGoal: coverResult.visualGoal,
+          userModified: false,
+          generating: false,
+          status: coverResult.title.trim() || coverResult.visualGoal.trim() ? 'pending' : 'idle',
+        },
+      });
+    } else {
+      dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+    }
+
+    if (storyboardResult || coverResult) {
+      triggerSave();
+    }
+  }, [clearError, dispatch, generateCover, generateStoryboard, projectInfo, story, triggerSave]);
+
+  const handleRegenerateCover = useCallback(async () => {
+    dispatch({ type: 'SET_COVER_GENERATING', payload: true });
+    clearError();
+    const result = await generateCover(story, projectInfo);
+    if (result) {
+      dispatch({
+        type: 'SET_COVER',
+        payload: {
+          title: result.title,
+          visualGoal: result.visualGoal,
+          userModified: false,
+          generating: false,
+          status: result.title.trim() || result.visualGoal.trim() ? 'pending' : 'idle',
+        },
+      });
+      triggerSave();
+    } else {
+      dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+    }
+  }, [clearError, dispatch, generateCover, projectInfo, story, triggerSave]);
 
   const hasStoryboardResult = useMemo(
     () =>
@@ -43,6 +85,10 @@ export default function Stage3Storyboard() {
           p.visualGoal.trim().length > 0
       ),
     [storyboard.pages]
+  );
+  const hasCoverResult = useMemo(
+    () => cover.title.trim().length > 0 || cover.visualGoal.trim().length > 0,
+    [cover.title, cover.visualGoal]
   );
 
   useEffect(() => {
@@ -55,7 +101,9 @@ export default function Stage3Storyboard() {
     if (
       autoTriggeredRef.current ||
       storyboard.generating ||
+      cover.generating ||
       hasStoryboardResult ||
+      hasCoverResult ||
       !canAutoGenerate
     ) {
       return;
@@ -65,7 +113,9 @@ export default function Stage3Storyboard() {
     void handleGenerate();
   }, [
     handleGenerate,
+    hasCoverResult,
     hasStoryboardResult,
+    cover.generating,
     projectInfo.title,
     storyboard.generating,
     story.storyOutline,
@@ -79,9 +129,11 @@ export default function Stage3Storyboard() {
     triggerSave();
   }
 
-  const canConfirm = storyboard.pages.length > 0 && storyboard.pages.some(p => p.text.trim().length > 0);
-
-
+  const canConfirm =
+    storyboard.pages.length > 0 &&
+    storyboard.pages.some(p => p.text.trim().length > 0) &&
+    cover.title.trim().length > 0 &&
+    cover.visualGoal.trim().length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -97,14 +149,14 @@ export default function Stage3Storyboard() {
       <div className="flex gap-2 mb-4">
         <Button
           onClick={handleGenerate}
-          disabled={storyboard.generating}
+          disabled={storyboard.generating || cover.generating}
           className="gap-2 font-body gradient-hero text-primary-foreground border-0"
         >
           {storyboard.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
           {storyboard.generating ? '生成中…' : hasStoryboardResult ? '再次手动触发分镜生成' : '整本生成分镜'}
         </Button>
         {hasStoryboardResult && (
-          <Button onClick={handleGenerate} disabled={storyboard.generating} variant="outline" className="gap-2 font-body">
+          <Button onClick={handleGenerate} disabled={storyboard.generating || cover.generating} variant="outline" className="gap-2 font-body">
             <RefreshCw className="w-3.5 h-3.5" />
             重新生成
           </Button>
@@ -112,7 +164,7 @@ export default function Stage3Storyboard() {
 
       </div>
 
-      {error && !storyboard.generating && (
+      {error && !storyboard.generating && !cover.generating && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{getErrorMessage(error)}</span>
@@ -134,9 +186,59 @@ export default function Stage3Storyboard() {
         </div>
       )}
 
-      {!storyboard.generating && hasStoryboardResult && (
+      {!storyboard.generating && (hasStoryboardResult || hasCoverResult) && (
         <ScrollArea className="flex-1 -mr-4 pr-4">
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground text-sm">封面设置</span>
+                  {cover.userModified && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-body">已修改</span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => void handleRegenerateCover()}
+                  disabled={cover.generating || storyboard.generating}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 font-body text-xs"
+                >
+                  {cover.generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  {cover.generating ? '生成中…' : '重新生成封面内容'}
+                </Button>
+              </div>
+              <div className="px-3 py-3 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-body font-medium text-muted-foreground">封面标题</label>
+                  <Textarea
+                    value={cover.title}
+                    onChange={e => {
+                      dispatch({ type: 'UPDATE_COVER_STORYBOARD_FIELDS', payload: { title: e.target.value } });
+                      triggerSave();
+                    }}
+                    className="font-body text-sm resize-none min-h-[64px]"
+                    placeholder="请输入封面标题，可基于项目标题继续微调为更适合绘本封面的展示标题"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-body font-medium text-muted-foreground">封面画面描述</label>
+                  <Textarea
+                    value={cover.visualGoal}
+                    onChange={e => {
+                      dispatch({ type: 'UPDATE_COVER_STORYBOARD_FIELDS', payload: { visualGoal: e.target.value } });
+                      triggerSave();
+                    }}
+                    className="font-body text-sm resize-none min-h-[120px]"
+                    placeholder="请输入封面插画的主体、动作、场景、构图、光影、色彩和标题留白区域；封面只生成纯插画，不要要求直接把标题画进图里"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    提示：封面描述同样只写“看得见的东西”，可补充主角、关键道具、场景关系、光影方向、主色调和标题留白位置。
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {storyboard.pages.map(page => {
               const isExpanded = expandedPage === page.pageIndex;
               return (
@@ -202,14 +304,14 @@ export default function Stage3Storyboard() {
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
               <BookOpen className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-sm font-body text-muted-foreground">首次进入本阶段会自动生成分镜；如需重试，也可以手动触发生成</p>
+            <p className="text-sm font-body text-muted-foreground">首次进入本阶段会自动生成正文分镜和封面内容；如需重试，也可以手动触发生成</p>
           </div>
         </div>
       )}
 
-      {hasStoryboardResult && !storyboard.generating && (
+      {(hasStoryboardResult || hasCoverResult) && !storyboard.generating && (
         <div className="pt-4 mt-auto border-t border-border flex items-center justify-between gap-4">
-          <p className="text-xs font-body text-muted-foreground">确认分镜后将进入素材设定阶段，每页角色和场景引用将被固定</p>
+          <p className="text-xs font-body text-muted-foreground">确认分镜后将进入素材设定阶段，封面与内页将共同进入后续生成流程</p>
           <Button
             onClick={handleConfirm}
             disabled={!canConfirm}

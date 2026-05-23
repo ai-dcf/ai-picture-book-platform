@@ -1,4 +1,4 @@
-import type { StoryboardData, StoryboardPageData } from "@/types/picturebook";
+import type { CoverData, StoryboardData, StoryboardPageData } from "@/types/picturebook";
 import { extractJSON } from "./story-parser";
 
 export interface StoryboardOutlinePageDraft {
@@ -35,6 +35,16 @@ export function parseStoryboardResponse(raw: string, pageCount: number): Storybo
   }
 
   return { pages, generating: false };
+}
+
+export function parseCoverResponse(raw: string): Pick<CoverData, "title" | "visualGoal"> {
+  const json = extractJSON(raw);
+  const parsed = JSON.parse(json);
+
+  return {
+    title: String(parsed.title || "").trim(),
+    visualGoal: String(parsed.visualGoal || "").trim(),
+  };
 }
 
 export function parseStoryboardOutlineResponse(raw: string, pageCount: number): StoryboardOutlinePageDraft[] {

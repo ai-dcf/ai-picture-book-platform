@@ -12,6 +12,8 @@ import type { GenerateResult } from "@/modules/studio/domain/errors";
 import { get_default_text_strategy, summarizeProjectInfo, LOG_PREFIX } from "./_helpers";
 import type {
   AssetsData,
+  CoverData,
+  GenerateTargetKind,
   ImageRef,
   PageItem,
   ProjectInfo,
@@ -83,15 +85,27 @@ function sortNamesByPromptOrder(prompt: string, names: string[]): string[] {
 }
 
 export async function generatePagePrompt(
-  page: PageItem,
+  target: PageItem | CoverData,
   assets: AssetsData,
   projectInfo: ProjectInfo,
-  storyboardPage?: StoryboardPageData
+  storyboardPage?: StoryboardPageData,
+  arg5: GenerateTargetKind = "page"
 ): Promise<GenerateResult<GeneratePagePromptResult>> {
   const startTime = Date.now();
+  const kind = arg5;
+  const pageIndex = kind === "page" ? (target as PageItem).index : -1;
+  const pageLabel = kind === "cover" ? "封面" : `第 ${pageIndex + 1} 页`;
+  const promptTarget = kind === "cover"
+    ? {
+        title: (target as CoverData).title,
+        visualGoal: (target as CoverData).visualGoal,
+      }
+    : target;
+
   console.info(`${LOG_PREFIX} 页面提示词生成开始`, {
     ...summarizeProjectInfo(projectInfo),
-    pageIndex: page.index,
+    kind,
+    pageIndex,
   });
 
   const strategy = get_default_text_strategy();
@@ -103,24 +117,29 @@ export async function generatePagePrompt(
   try {
     const effectiveProjectInfo = {
       ...projectInfo,
-      aspectRatio: page.aspectRatio || projectInfo.aspectRatio,
+      aspectRatio: target.aspectRatio || projectInfo.aspectRatio,
     };
 
     console.info(`${LOG_PREFIX} [步骤1] 开始第一次模型调用：生成页面主体画面描述`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       hasStoryboardPage: !!storyboardPage,
       assetsCharCount: assets.characters.length,
       assetsSceneCount: assets.scenes.length,
-      pageText: (page.pageText || page.storyText || "").slice(0, 50),
-      visualGoal: (page.visualGoal || "").slice(0, 50),
+      pageText: ("title" in promptTarget
+        ? promptTarget.title
+        : (promptTarget.pageText || promptTarget.storyText || "")
+      ).slice(0, 50),
+      visualGoal: (promptTarget.visualGoal || "").slice(0, 50),
     });
 
     const result = await strategy.generate({
       systemPrompt: buildPagePromptGenerationSystemPrompt(),
       prompt: buildPagePromptGenerationUserPrompt({
-        pageIndex: page.index,
-        page,
-        storyboardPage,
+        pageIndex: kind === "cover" ? 0 : pageIndex,
+        pageLabel,
+        page: promptTarget,
+        storyboardPage: kind === "cover" ? undefined : storyboardPage,
         assets,
         projectInfo: effectiveProjectInfo,
       }),
@@ -142,7 +161,8 @@ export async function generatePagePrompt(
     }
 
     console.info(`${LOG_PREFIX} [步骤1] 第一次模型调用成功`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       rawLength: result.text.length,
       rawPreview: result.text.slice(0, 80),
     });
@@ -162,7 +182,8 @@ export async function generatePagePrompt(
     });
 
     console.info(`${LOG_PREFIX} [步骤1] 主 prompt 拼接完成`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       promptLength: prompt.length,
       promptPreview: prompt.slice(0, 120),
     });
@@ -183,7 +204,8 @@ export async function generatePagePrompt(
     ];
 
     console.info(`${LOG_PREFIX} [步骤2] 候选图片引用构建完成`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       totalAssetsChars: assets.characters.length,
       totalAssetsScenes: assets.scenes.length,
       charsWithImage: allCharacterImageRefs.length,
@@ -200,13 +222,15 @@ export async function generatePagePrompt(
     );
 
     console.info(`${LOG_PREFIX} [步骤2] 本地顺序匹配结果`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       localMatchedNames: matchedAssetNames,
     });
 
     if (candidateImageRefs.length > 0) {
       console.info(`${LOG_PREFIX} [步骤2] 页面引用识别开始：调用第二次模型`, {
-        pageIndex: page.index,
+        kind,
+        pageIndex,
         candidateCount: candidateImageRefs.length,
         candidates: candidateImageRefs.map(ref => ref.assetName),
       });
@@ -218,7 +242,8 @@ export async function generatePagePrompt(
       });
 
       console.info(`${LOG_PREFIX} [步骤2] 第二次模型调用返回`, {
-        pageIndex: page.index,
+        kind,
+        pageIndex,
         success: refSelection.success,
         hasText: !!refSelection.text,
         textPreview: refSelection.text?.slice(0, 100),
@@ -230,26 +255,30 @@ export async function generatePagePrompt(
         : null;
 
       console.info(`${LOG_PREFIX} [步骤2] JSON 解析结果`, {
-        pageIndex: page.index,
+        kind,
+        pageIndex,
         parsedNames,
       });
 
       if (parsedNames && parsedNames.length > 0) {
         matchedAssetNames = sortNamesByPromptOrder(prompt, parsedNames);
         console.info(`${LOG_PREFIX} [步骤2] 页面引用识别完成`, {
-          pageIndex: page.index,
+          kind,
+          pageIndex,
           matchedAssetNames,
         });
       } else {
         console.info(`${LOG_PREFIX} [步骤2] 页面引用识别回退为本地顺序匹配`, {
-          pageIndex: page.index,
+          kind,
+          pageIndex,
           matchedAssetNames,
           rawResult: refSelection.success ? refSelection.text || "" : refSelection.error?.message || "模型调用失败",
         });
       }
     } else {
       console.info(`${LOG_PREFIX} [步骤2] 跳过引用识别：无候选图片引用`, {
-        pageIndex: page.index,
+        kind,
+        pageIndex,
         totalChars: assets.characters.length,
         totalScenes: assets.scenes.length,
       });
@@ -258,7 +287,8 @@ export async function generatePagePrompt(
     const annotated = annotatePromptWithNumberedRefs(prompt, candidateImageRefs, matchedAssetNames);
 
     console.info(`${LOG_PREFIX} [步骤2] 编号标注完成`, {
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       annotatedPromptPreview: annotated.prompt.slice(0, 120),
       annotatedImageRefCount: annotated.imageRefs.length,
       annotatedImageRefs: annotated.imageRefs.map(ref => `${ref.refLabel} -> ${ref.assetName}`),
@@ -266,7 +296,8 @@ export async function generatePagePrompt(
 
     console.info(`${LOG_PREFIX} 页面提示词生成成功`, {
       durationMs: Date.now() - startTime,
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       outputLength: annotated.prompt.length,
       imageRefCount: annotated.imageRefs.length,
     });
@@ -281,7 +312,8 @@ export async function generatePagePrompt(
   } catch (err) {
     console.error(`${LOG_PREFIX} 页面提示词生成异常`, {
       durationMs: Date.now() - startTime,
-      pageIndex: page.index,
+      kind,
+      pageIndex,
       error: err instanceof Error ? err.message : String(err),
     });
     return {

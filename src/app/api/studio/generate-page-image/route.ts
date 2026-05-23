@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePageImage } from "@/modules/studio/application/use-cases/generate-page-image";
-import type { AssetItem, AssetsData, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
+import type { AssetsData, CoverData, GenerateTargetKind, PageItem, ProjectInfo, StoryboardPageData } from "@/types/picturebook";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const page = body.page as PageItem | undefined;
+    const page = body.page as PageItem | CoverData | undefined;
     const projectInfo = body.projectInfo as ProjectInfo | undefined;
     const assets = body.assets as AssetsData | undefined;
     const storyboardPage = body.storyboardPage as StoryboardPageData | undefined;
+    const kind = (body.kind as GenerateTargetKind | undefined) || "page";
 
     if (!page || !projectInfo || !assets) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await generatePageImage(page, assets, projectInfo, storyboardPage);
+    const result = await generatePageImage(page, assets, projectInfo, storyboardPage, kind);
     const status = result.success ? 200 : 422;
     return NextResponse.json(result, { status });
   } catch (err) {

@@ -102,6 +102,70 @@ export function buildStoryboardUserPrompt(
     .join("\n");
 }
 
+export function buildCoverSystemPrompt(
+  targetAge?: string,
+  customParams: PromptCustomParams = {}
+): string {
+  const genreLine = buildStoryboardGenreLine(customParams);
+  const resolvedAge = targetAge ? normalizeTargetAge(targetAge as import("@/types/picturebook").TargetAge) : undefined;
+  const ageSpecificRequirements = resolvedAge ? getPageTextPrompt(resolvedAge) : "";
+
+  return `你是一位专业儿童绘本封面设计师。请根据故事内容输出适合绘本封面的标题和纯视觉化封面画面描述。
+
+你必须严格按以下 JSON 格式输出，不要输出任何其他内容：
+{
+  "title": "封面标题",
+  "visualGoal": "封面画面描述"
+}
+
+要求：
+- title 必须是适合儿童绘本封面的简洁标题，优先参考用户当前项目标题，不要附加多余说明
+- visualGoal 必须只描述封面中看得见的画面内容，不要描述心理活动、抽象氛围或设计说明
+- visualGoal 必须明确主体角色、关键道具、场景元素、构图、景别、光影、色彩与留白区域
+- visualGoal 必须适合生成纯插画封面，不得要求在图中生成任何文字、标题、Logo、水印或装饰边框
+- 角色稳定外观默认继承输入中的角色设定；无变化时只写名称
+- 页面中出现的角色只能来自输入角色列表，不允许新增任何额外角色
+- 标题需适合目标年龄段：${ageSpecificRequirements || "请根据目标年龄段输出简洁、适龄、易理解的标题"}
+${genreLine}`;
+}
+
+export function buildCoverUserPrompt(
+  story: StoryData,
+  projectInfo: ProjectInfo,
+  customParams: PromptCustomParams = {}
+): string {
+  const { rules, characterList, sceneList } = buildStoryboardBaseContext(story, projectInfo, customParams);
+
+  return [
+    `当前项目标题：${projectInfo.title || "待定"}`,
+    `角色：${characterList}`,
+    `场景：${sceneList}`,
+    "",
+    `故事大纲：${story.storyOutline}`,
+    "",
+    `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}`,
+    rules.context.genre ? `题材偏好：${rules.context.genre}` : "",
+    rules.context.educationalGoal ? `教育目标：${rules.context.educationalGoal}` : "",
+    "",
+    formatRuleBlock("风格视觉规则", [
+      ...rules.style.lightingRules.slice(0, 2),
+      ...rules.style.textureRules.slice(0, 2),
+      ...rules.style.colorRules.slice(0, 2),
+      ...rules.style.compositionRules.slice(0, 2),
+    ]),
+    formatRuleBlock("连续性重点规则", [
+      ...rules.continuity.characterRules.slice(0, 2),
+      ...rules.continuity.sceneRules.slice(0, 1),
+      ...rules.continuity.transitionRules.slice(0, 2),
+    ]),
+    "",
+    "请输出一个适合作为绘本封面的标题，以及一个可直接用于生成纯插画封面的 visualGoal。",
+    "封面 visualGoal 必须说明主体、动作、场景、构图、光影、色彩和文字留白区域，但不得要求在图中直接生成文字。",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function buildStoryboardOutlineSystemPrompt(
   pageCount: number,
   targetAge?: string,

@@ -8,6 +8,8 @@ import type {
   StoryboardData,
   AssetItem,
   AssetsData,
+  CoverData,
+  GenerateTargetKind,
   PageItem,
   StoryboardPageData,
 } from "@/types/picturebook";
@@ -115,6 +117,27 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateCover = useCallback(
+    async (story: StoryData, projectInfo: ProjectInfo): Promise<Pick<CoverData, "title" | "visualGoal"> | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<Pick<CoverData, "title" | "visualGoal">>("/api/studio/generate-cover", { story, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "封面内容生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const generateAssetImage = useCallback(
     async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
       setLoading(true);
@@ -159,10 +182,11 @@ export function useStudioGenerate() {
 
   const generatePageImage = useCallback(
     async (
-      page: PageItem,
+      page: PageItem | CoverData,
       assets: AssetsData,
       projectInfo: ProjectInfo,
-      storyboardPage?: StoryboardPageData
+      storyboardPage?: StoryboardPageData,
+      kind: GenerateTargetKind = "page"
     ): Promise<string | null> => {
       setLoading(true);
       setError(null);
@@ -172,6 +196,7 @@ export function useStudioGenerate() {
           assets,
           projectInfo,
           storyboardPage,
+          kind,
         });
         if (!result.success || !result.data) {
           setError(result.error || { code: "GENERATION_FAILED", message: "页面图片生成失败" });
@@ -190,10 +215,11 @@ export function useStudioGenerate() {
 
   const generatePagePrompt = useCallback(
     async (
-      page: PageItem,
+      page: PageItem | CoverData,
       assets: AssetsData,
       projectInfo: ProjectInfo,
-      storyboardPage?: StoryboardPageData
+      storyboardPage?: StoryboardPageData,
+      kind: GenerateTargetKind = "page"
     ): Promise<GeneratePagePromptResult | null> => {
       setLoading(true);
       setError(null);
@@ -203,6 +229,7 @@ export function useStudioGenerate() {
           assets,
           projectInfo,
           storyboardPage,
+          kind,
         });
         if (!result.success || !result.data) {
           setError(result.error || { code: "GENERATION_FAILED", message: "页面提示词生成失败" });
@@ -223,6 +250,7 @@ export function useStudioGenerate() {
     recommendProjectConfig,
     generateStory,
     generateStoryboard,
+    generateCover,
     generateCharacterPrompt,
     generateAssetImage,
     generatePagePrompt,

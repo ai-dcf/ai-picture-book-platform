@@ -6,6 +6,7 @@ import {
   StoryData,
   StoryEntry,
   EmotionCurvePoint,
+  CoverData,
   StoryboardData,
   StoryboardPageData,
   AssetItem,
@@ -71,6 +72,21 @@ function buildInitialStoryboard(count: number): StoryboardData {
   };
 }
 
+function buildInitialCover(projectInfo: ProjectInfo): CoverData {
+  return {
+    title: projectInfo.title || '',
+    visualGoal: '',
+    userModified: false,
+    prompt: '',
+    promptUserEdited: false,
+    imageUrl: null,
+    status: 'idle' as PageStatus,
+    generating: false,
+    imageRefs: [],
+    aspectRatio: projectInfo.aspectRatio,
+  };
+}
+
 function generateProjectId(): string {
   return `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -105,10 +121,27 @@ const initialState: PictureBookState = {
     generating: false,
   },
   storyboard: buildInitialStoryboard(24),
+  cover: buildInitialCover({
+    projectId: '',
+    title: '',
+    targetAge: 'auto',
+    pageCount: 'auto',
+    artStyle: 'auto',
+    aspectRatio: '3:4',
+    saveStatus: 'saved',
+    projectStatus: 'draft',
+  }),
   assets: { characters: [], scenes: [] },
   pages: buildInitialPages(24),
   editorStates: buildInitialEditorStates(24),
 };
+
+function markCoverReview(cover: CoverData): CoverData {
+  if (cover.status === 'generated' || cover.status === 'finalized') {
+    return { ...cover, status: 'review' as PageStatus };
+  }
+  return cover;
+}
 
 function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
@@ -128,6 +161,7 @@ function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
     ...state,
     stageStatuses,
     pages,
+    cover: markCoverReview(state.cover),
     projectInfo: { ...state.projectInfo, projectStatus: 'review' as ProjectStatus },
   };
 }
@@ -148,6 +182,7 @@ function applyCascadeForStyleParams(state: PictureBookState): PictureBookState {
     ...state,
     stageStatuses,
     pages,
+    cover: markCoverReview(state.cover),
     projectInfo: { ...state.projectInfo, projectStatus: 'review' as ProjectStatus },
   };
 }
@@ -168,7 +203,7 @@ function markDownstreamReview(state: PictureBookState, fromStage: StageNumber): 
     return p;
   });
 
-  return { ...state, stageStatuses, pages };
+  return { ...state, stageStatuses, pages, cover: markCoverReview(state.cover) };
 }
 
 function rebuildPagesForCount(state: PictureBookState, count: number): PictureBookState {
@@ -177,6 +212,7 @@ function rebuildPagesForCount(state: PictureBookState, count: number): PictureBo
     pages: buildInitialPages(count),
     editorStates: buildInitialEditorStates(count),
     storyboard: buildInitialStoryboard(count),
+    cover: buildInitialCover(state.projectInfo),
   };
 }
 
@@ -227,6 +263,14 @@ function markReferencedPagesReview(pages: PageItem[], assetName?: string) {
   });
 }
 
+function markReferencedCoverReview(cover: CoverData, assetName?: string) {
+  if (!assetName) return cover;
+  const uses = (cover.imageRefs || []).some(
+    ref => ref.assetName === assetName || ref.refLabel === assetName
+  );
+  return uses ? markCoverReview(cover) : cover;
+}
+
 function nextAssetDraftStatus(asset: AssetItem): AssetStatus {
   if (asset.status === 'pending_update') return 'pending_update';
   if (asset.officialImageUrl) return 'official_confirmed';
@@ -265,6 +309,12 @@ type Action =
   | { type: 'SET_STORYBOARD_GENERATING'; payload: boolean }
   | { type: 'SET_STORYBOARD'; payload: Partial<StoryboardData> }
   | { type: 'UPDATE_STORYBOARD_PAGE'; payload: { pageIndex: number; data: Partial<StoryboardPageData> } }
+  | { type: 'SET_COVER'; payload: Partial<CoverData> }
+  | { type: 'UPDATE_COVER_STORYBOARD_FIELDS'; payload: { title?: string; visualGoal?: string; userModified?: boolean } }
+  | { type: 'UPDATE_COVER_CONFIG'; payload: Partial<CoverData> }
+  | { type: 'SET_COVER_GENERATING'; payload: boolean }
+  | { type: 'SET_COVER_IMAGE'; payload: { imageUrl: string } }
+  | { type: 'SET_COVER_STATUS'; payload: PageStatus }
   | { type: 'INIT_ASSETS' }
   | { type: 'SET_ASSET_GENERATING'; payload: { type: 'characters' | 'scenes'; id: string; generating: boolean; phase: AssetItem['generatingPhase'] } }
   | { type: 'SET_CHARACTER_BASE_IMAGE'; payload: { id: string; imageUrl: string } }
@@ -302,6 +352,12 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         generating: false,
         pageStatus: p.pageStatus === 'generating' ? 'pending' as PageStatus : p.pageStatus,
       }));
+      const cover = {
+        ...loaded.cover,
+        imageRefs: loaded.cover.imageRefs || [],
+        generating: false,
+        status: loaded.cover.status === 'generating' ? 'pending' as PageStatus : loaded.cover.status,
+      };
       const assets: AssetsData = {
         characters: (loaded.assets?.characters || []).map(a => ({
           ...a,
@@ -317,6 +373,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return {
         ...loaded,
         pages,
+        cover,
         assets,
         story: { ...loaded.story, generating: false },
         storyboard: { ...loaded.storyboard, generating: false },
@@ -336,7 +393,24 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const artStyleChanged = action.payload.artStyle !== undefined
         && action.payload.artStyle !== state.projectInfo.artStyle;
 
-      let result: PictureBookState = { ...state, projectInfo: newInfo };
+      const nextCoverTitle = action.payload.title !== undefined && !state.cover.userModified
+        ? action.payload.title
+        : state.cover.title;
+      const nextCoverAspectRatio = action.payload.aspectRatio !== undefined && (
+        !state.cover.aspectRatio || state.cover.aspectRatio === state.projectInfo.aspectRatio
+      )
+        ? action.payload.aspectRatio
+        : state.cover.aspectRatio;
+
+      let result: PictureBookState = {
+        ...state,
+        projectInfo: newInfo,
+        cover: {
+          ...state.cover,
+          title: nextCoverTitle,
+          aspectRatio: nextCoverAspectRatio,
+        },
+      };
 
       if (
         action.payload.pageCount &&
@@ -373,6 +447,9 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           ...state.projectInfo,
           projectId,
           saveStatus: 'saved',
+        },
+        cover: {
+          ...state.cover,
         },
       };
     }
@@ -448,6 +525,80 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       );
       return { ...state, storyboard: { ...state.storyboard, pages } };
     }
+
+    case 'SET_COVER':
+      return { ...state, cover: { ...state.cover, ...action.payload } };
+
+    case 'UPDATE_COVER_STORYBOARD_FIELDS': {
+      const updated = {
+        ...state.cover,
+        title: action.payload.title ?? state.cover.title,
+        visualGoal: action.payload.visualGoal ?? state.cover.visualGoal,
+        userModified: action.payload.userModified ?? true,
+      };
+      if (state.cover.status === 'generated' || state.cover.status === 'finalized') {
+        updated.status = 'review';
+      } else if (
+        state.cover.status === 'idle' &&
+        (
+          updated.title.trim().length > 0 ||
+          updated.visualGoal.trim().length > 0 ||
+          updated.prompt.trim().length > 0
+        )
+      ) {
+        updated.status = 'pending';
+      }
+      return { ...state, cover: updated };
+    }
+
+    case 'UPDATE_COVER_CONFIG': {
+      const nextPromptUserEdited =
+        action.payload.prompt !== undefined
+          ? (action.payload.promptUserEdited ?? true)
+          : state.cover.promptUserEdited;
+      const updated = {
+        ...state.cover,
+        ...action.payload,
+        promptUserEdited: nextPromptUserEdited,
+      };
+      if (state.cover.status === 'generated' || state.cover.status === 'finalized') {
+        updated.status = 'review';
+      } else if (
+        state.cover.status === 'idle' &&
+        (
+          updated.title.trim().length > 0 ||
+          updated.visualGoal.trim().length > 0 ||
+          updated.prompt.trim().length > 0
+        )
+      ) {
+        updated.status = 'pending';
+      }
+      return { ...state, cover: updated };
+    }
+
+    case 'SET_COVER_GENERATING':
+      return {
+        ...state,
+        cover: {
+          ...state.cover,
+          generating: action.payload,
+          status: action.payload ? 'generating' as PageStatus : state.cover.status,
+        },
+      };
+
+    case 'SET_COVER_IMAGE':
+      return {
+        ...state,
+        cover: {
+          ...state.cover,
+          imageUrl: action.payload.imageUrl,
+          status: 'generated' as PageStatus,
+          generating: false,
+        },
+      };
+
+    case 'SET_COVER_STATUS':
+      return { ...state, cover: { ...state.cover, status: action.payload } };
 
     case 'INIT_ASSETS': {
       const toCharacterAsset = (entry: StoryEntry, idx: number): AssetItem => ({
@@ -584,6 +735,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         ...state,
         assets: { ...state.assets, characters },
         pages: replacedOfficial ? markReferencedPagesReview(state.pages, target.name) : state.pages,
+        cover: replacedOfficial ? markReferencedCoverReview(state.cover, target.name) : state.cover,
       };
     }
 
@@ -608,6 +760,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         ...state,
         assets: { ...state.assets, scenes },
         pages: replacedOfficial ? markReferencedPagesReview(state.pages, target.name) : state.pages,
+        cover: replacedOfficial ? markReferencedCoverReview(state.cover, target.name) : state.cover,
       };
     }
 

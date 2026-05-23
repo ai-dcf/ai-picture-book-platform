@@ -12,6 +12,9 @@ function resolvePageText({
   page,
   storyboardPage,
 }: Pick<BuildPagePromptParams, "page" | "storyboardPage">): string {
+  if ("title" in page) {
+    return page.title?.trim() || "";
+  }
   return page.pageText?.trim() || page.storyText?.trim() || storyboardPage?.text || "";
 }
 
@@ -95,6 +98,7 @@ export function buildPagePromptGenerationSystemPrompt(): string {
 
 export function buildPagePromptGenerationUserPrompt({
   pageIndex,
+  pageLabel,
   page,
   storyboardPage,
   assets,
@@ -112,7 +116,7 @@ export function buildPagePromptGenerationUserPrompt({
 
   return [
     `项目标题：${projectInfo.title || "待定"}`,
-    `页码：第 ${pageIndex + 1} 页`,
+    `页码：${pageLabel || `第 ${pageIndex + 1} 页`}`,
     `目标年龄：${rules.context.targetAge}岁`,
     `绘本风格：${rules.context.artStyle}`,
     `项目统一风格片段：${stylePrefix}`,
@@ -136,6 +140,7 @@ export function buildPagePromptGenerationUserPrompt({
 
 export function buildPagePrompt({
   pageIndex,
+  pageLabel,
   page,
   storyboardPage,
   assets,
@@ -151,7 +156,7 @@ export function buildPagePrompt({
   const sceneDetails = findAssetDescriptions(sceneRefs, assets.scenes);
 
   const baseContent = [
-    `页码 Page: ${pageIndex + 1}`,
+    `页码 Page: ${pageLabel || `第 ${pageIndex + 1} 页`}`,
     `页面文字 Page Text: ${pageText || "无页面文字。"}`,
     `画面目标 Visual Goal: ${visualGoal}`,
     ...buildRuleSummary(rules),
@@ -200,6 +205,7 @@ export function buildPagePrompt({
 
 export function buildUserFriendlyPagePrompt({
   pageIndex: _pageIndex,
+  pageLabel,
   page,
   storyboardPage,
   assets,
@@ -231,7 +237,7 @@ export function buildUserFriendlyPagePrompt({
         targetAge: rules.context.targetAge,
       },
       {
-        name: pageText || `第 ${_pageIndex + 1} 页`,
+        name: pageText || pageLabel || `第 ${_pageIndex + 1} 页`,
         visualGoal,
         sceneName,
         sceneDescription,
