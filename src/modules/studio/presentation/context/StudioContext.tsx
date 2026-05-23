@@ -8,7 +8,6 @@ import {
   EmotionCurvePoint,
   StoryboardData,
   StoryboardPageData,
-  SpreadItem,
   AssetItem,
   AssetsData,
   AspectRatio,
@@ -59,14 +58,10 @@ function buildInitialEditorStates(count: number): EditorPageState[] {
 
 function buildInitialStoryboard(count: number): StoryboardData {
   return {
-    spreads: [],
     pages: Array.from({ length: count }, (_, i) => ({
       pageIndex: i,
       text: '',
       visualGoal: '',
-      pageTurnMotivation: 'none' as const,
-      characterRefs: [],
-      sceneRefs: [],
       userModified: false,
     })),
     generating: false,
@@ -189,16 +184,14 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
       page.pageStatus === 'idle' && !page.storyText.trim()
         ? (storyboardPage?.text || '')
         : page.storyText;
-    const nextCharacterRefs = storyboardPage?.characterRefs || page.characterRefs;
-    const nextSceneRefs = storyboardPage?.sceneRefs || page.sceneRefs;
     const nextPromptResult = page.promptUserEdited
       ? { prompt: page.prompt, imageRefs: page.imageRefs }
       : buildUserFriendlyPagePrompt({
           pageIndex: page.index,
           page: {
             storyText: nextStoryText,
-            characterRefs: nextCharacterRefs,
-            sceneRefs: nextSceneRefs,
+            characterRefs: page.characterRefs,
+            sceneRefs: page.sceneRefs,
           },
           storyboardPage,
           assets: state.assets,
@@ -208,7 +201,7 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
     let nextPageStatus = page.pageStatus;
     if (
       nextPageStatus === 'idle' &&
-      (nextCharacterRefs.length > 0 || nextSceneRefs.length > 0 || nextPromptResult.prompt.trim().length > 0)
+      (page.characterRefs.length > 0 || page.sceneRefs.length > 0 || nextPromptResult.prompt.trim().length > 0)
     ) {
       nextPageStatus = 'pending';
     }
@@ -216,8 +209,6 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
     return {
       ...page,
       storyText: nextStoryText,
-      characterRefs: nextCharacterRefs,
-      sceneRefs: nextSceneRefs,
       prompt: nextPromptResult.prompt,
       imageRefs: nextPromptResult.imageRefs,
       pageStatus: nextPageStatus,

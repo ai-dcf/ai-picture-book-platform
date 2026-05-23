@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS story_data (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL UNIQUE,
-  one_line_story TEXT NOT NULL DEFAULT '',
   characters TEXT NOT NULL DEFAULT '[]',
   story_outline TEXT NOT NULL DEFAULT '',
   emotion_curve TEXT NOT NULL DEFAULT '[]',
@@ -36,7 +35,6 @@ CREATE TABLE IF NOT EXISTS story_data (
 CREATE TABLE IF NOT EXISTS storyboard_data (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL UNIQUE,
-  spreads TEXT NOT NULL DEFAULT '[]',
   pages TEXT NOT NULL DEFAULT '[]',
   generating INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,

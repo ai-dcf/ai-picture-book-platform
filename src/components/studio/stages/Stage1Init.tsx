@@ -76,7 +76,7 @@ export default function Stage1Init() {
       const story = await generateStory(tempProjectInfo);
       if (story) {
         // 使用生成的故事大纲作为优化后的内容
-        handleChange('title', story.storyOutline || story.oneLineStory || form.title);
+        handleChange('title', story.storyOutline || form.title);
       }
     } catch (err) {
       console.error('优化失败', err);

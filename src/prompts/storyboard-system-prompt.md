@@ -8,10 +8,7 @@
   "pages": [
     {
       "text": "本页正文文字",
-      "visualGoal": "画面视觉目标描述",
-      "pageTurnMotivation": "suspense|emotion|discovery|none",
-      "characterRefs": ["出现的角色名"],
-      "sceneRefs": ["出现的场景名"]
+      "visualGoal": "画面视觉目标描述"
     }
   ]
 }
@@ -19,7 +16,5 @@
 
 要求：
 - 输出恰好 {pageCount} 页
-- 每页文字 20-80 字，适合儿童阅读节奏
-- 画面目标具体可执行，包含构图、色调、氛围
-- pageTurnMotivation 驱动翻页欲望
-- characterRefs 和 sceneRefs 必须引用故事中的角色和场景名称
+- text 为本页呈现的文字内容，需适配目标儿童年龄段
+- visualGoal 必须仅包含客观可呈现的视觉内容描述，包含构图、色调、氛围等可直接用于图片生成的要素

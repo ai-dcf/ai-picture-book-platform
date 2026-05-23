@@ -15,8 +15,8 @@ export function buildPagePrompt({
   const rules = buildPromptRuleBundle(projectInfo, customParams);
   const storyText = page.storyText || storyboardPage?.text || "";
   const visualGoal = storyboardPage?.visualGoal || "延续当前分镜设定";
-  const characterRefs = page.characterRefs.length > 0 ? page.characterRefs : (storyboardPage?.characterRefs || []);
-  const sceneRefs = page.sceneRefs.length > 0 ? page.sceneRefs : (storyboardPage?.sceneRefs || []);
+  const characterRefs = page.characterRefs;
+  const sceneRefs = page.sceneRefs;
   const characterDetails = findAssetDescriptions(characterRefs, assets.characters);
   const sceneDetails = findAssetDescriptions(sceneRefs, assets.scenes);
 
@@ -96,8 +96,8 @@ export function buildUserFriendlyPagePrompt({
 }: BuildPagePromptParams): { prompt: string; imageRefs: BuildPagePromptResult["imageRefs"] } {
   const rules = buildPromptRuleBundle(projectInfo, customParams);
   const visualGoal = storyboardPage?.visualGoal || "延续当前分镜设定";
-  const characterRefs = page.characterRefs.length > 0 ? page.characterRefs : (storyboardPage?.characterRefs || []);
-  const sceneRefs = page.sceneRefs.length > 0 ? page.sceneRefs : (storyboardPage?.sceneRefs || []);
+  const characterRefs = page.characterRefs;
+  const sceneRefs = page.sceneRefs;
 
   const refNames = [...characterRefs, ...sceneRefs].filter((name) => {
     const charAsset = assets.characters.find((a) => a.name === name);

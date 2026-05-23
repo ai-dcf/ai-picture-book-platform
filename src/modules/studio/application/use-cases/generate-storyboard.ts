@@ -37,7 +37,7 @@ async function generateStoryboardOutline(
   promptOptions: PromptCustomParams
 ): Promise<StoryboardOutlinePageDraft[]> {
   const result = await strategy.generate({
-    systemPrompt: buildStoryboardOutlineSystemPrompt(pageCount, promptOptions),
+    systemPrompt: buildStoryboardOutlineSystemPrompt(pageCount, projectInfo.targetAge, promptOptions),
     prompt: buildStoryboardOutlineUserPrompt(story, projectInfo, promptOptions),
     temperature: 0.7,
     maxTokens: STORYBOARD_OUTLINE_MAX_TOKENS,
@@ -128,15 +128,11 @@ export async function generateStoryboard(
     );
 
     const storyboard: StoryboardData = {
-      spreads: [],
       generating: false,
       pages: outlinePages.map((page) => ({
         pageIndex: page.pageIndex,
         text: page.text,
         visualGoal: visualGoalMap.get(page.pageIndex) || page.visualSummary,
-        pageTurnMotivation: page.pageTurnMotivation,
-        characterRefs: page.characterRefs,
-        sceneRefs: page.sceneRefs,
         userModified: false,
       })),
     };

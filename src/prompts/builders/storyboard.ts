@@ -2,6 +2,7 @@ import type { ProjectInfo, StoryData } from "@/types/picturebook";
 import type { PromptCustomParams } from "@/prompts/types";
 import { buildPromptRuleBundle } from "@/prompts/specs";
 import { formatRuleBlock } from "@/prompts/builders/shared";
+import { getAgeGroupPageTextPromptByTargetAge } from "@/config/age-group.config";
 
 function buildStoryboardGenreLine(customParams: PromptCustomParams): string {
   return customParams.genre
@@ -23,9 +24,11 @@ function buildStoryboardBaseContext(story: StoryData, projectInfo: ProjectInfo, 
 
 export function buildStoryboardSystemPrompt(
   pageCount: number,
+  targetAge?: string,
   customParams: PromptCustomParams = {}
 ): string {
   const genreLine = buildStoryboardGenreLine(customParams);
+  const ageSpecificRequirements = targetAge ? getAgeGroupPageTextPromptByTargetAge(targetAge) : "";
 
   return `你是一位专业绘本分镜导演。请根据故事内容为 ${pageCount} 页绘本创作分镜脚本。
 
@@ -33,31 +36,20 @@ export function buildStoryboardSystemPrompt(
 {
   "pages": [
     {
-      "text": "本页正文文字",
-      "visualGoal": "画面视觉目标描述",
-      "pageTurnMotivation": "suspense|emotion|discovery|none",
-      "characterRefs": ["出现的角色名"],
-      "sceneRefs": ["出现的场景名"]
+      "text": "本页呈现的文字内容",
+      "visualGoal": "客观画面内容描述"
     }
   ]
 }
 
 要求：
 - 输出恰好 ${pageCount} 页
-- 每页文字 20-80 字，适合儿童阅读节奏
-- visualGoal 必须可直接用于图片生成，并使用多行结构化描述
-- visualGoal 至少包含以下标签：
-  - Shot（景别/镜头）：close-up/medium/wide + 视角 + 焦点主体
-  - Composition（构图）：主体位置 + 前中后景关系 + 留白策略
-  - Lighting（光影）：主光方向 + 氛围
-  - Color（色彩）：主色调/点缀色 + 冷暖倾向
-  - Action & Emotion（动作与情绪）：角色动作 + 情绪表达
-  - Background（背景叙事）：环境要素 2-4 个
-  - Text Safe Area（排版留白）：明确配文安全区
-  - No Text（禁止事项）：不得生成任何文字/水印/Logo/签名/边框
-- pageTurnMotivation 必须明确驱动翻页欲望
-- characterRefs 和 sceneRefs 必须引用故事中的角色和场景名称
-- 相邻页之间必须体现连续性：镜头衔接、道具状态、角色朝向、场景延续至少命中其一
+- text 文字要求：${ageSpecificRequirements || "请根据目标年龄段输出简洁、适龄、易理解的页面文字"}
+- visualGoal 必须仅包含客观可呈现的视觉内容描述，完全避免任何抽象心理活动、情绪感受类描述：
+  - 仅描述可见元素：角色动作、场景环境、物品位置、光影色彩等
+  - 必须可直接用于图片生成，使用结构化描述，包含景别、构图、光影、色彩、动作、背景等元素
+  - 禁止出现“很开心”“生气”“难过”这类主观情绪描述
+- 相邻页之间必须体现故事的逻辑连续性
 ${genreLine}`;
 }
 
@@ -105,9 +97,11 @@ export function buildStoryboardUserPrompt(
 
 export function buildStoryboardOutlineSystemPrompt(
   pageCount: number,
+  targetAge?: string,
   customParams: PromptCustomParams = {}
 ): string {
   const genreLine = buildStoryboardGenreLine(customParams);
+  const ageSpecificRequirements = targetAge ? getAgeGroupPageTextPromptByTargetAge(targetAge) : "";
 
   return `你是一位专业绘本分镜导演。请先根据故事内容为 ${pageCount} 页绘本生成轻量分页页纲。
 
@@ -115,22 +109,17 @@ export function buildStoryboardOutlineSystemPrompt(
 {
   "pages": [
     {
-      "text": "本页正文文字",
-      "visualSummary": "本页画面目标摘要",
-      "pageTurnMotivation": "suspense|emotion|discovery|none",
-      "characterRefs": ["出现的角色名"],
-      "sceneRefs": ["出现的场景名"]
+      "text": "本页呈现的文字内容",
+      "visualSummary": "本页画面内容摘要"
     }
   ]
 }
 
 要求：
 - 输出恰好 ${pageCount} 页
-- 每页文字 20-80 字，适合儿童阅读节奏
-- visualSummary 用 1-2 句概括本页最重要的画面动作与情绪，不要展开成长篇图片提示词
-- pageTurnMotivation 必须明确驱动翻页欲望
-- characterRefs 和 sceneRefs 必须引用故事中的角色和场景名称
-- 相邻页之间必须体现连续性：镜头衔接、道具状态、角色朝向、场景延续至少命中其一
+- text 文字要求：${ageSpecificRequirements || "请根据目标年龄段输出简洁、适龄、易理解的页面文字"}
+- visualSummary 用1-2句概括本页核心可见画面内容，不要包含心理情绪描述
+- 相邻页之间体现故事的逻辑连续性
 ${genreLine}`;
 }
 
@@ -147,8 +136,6 @@ export function buildStoryboardOutlineUserPrompt(
   ];
 
   return [
-    `故事概要：${story.oneLineStory}`,
-    "",
     `角色：${characterList}`,
     `场景：${sceneList}`,
     "",
@@ -216,9 +203,6 @@ export function buildStoryboardVisualGoalUserPrompt(
   batchPages: Array<{
     pageIndex: number;
     text: string;
-    pageTurnMotivation: string;
-    characterRefs: string[];
-    sceneRefs: string[];
     visualSummary: string;
   }>,
   customParams: PromptCustomParams = {}
@@ -226,7 +210,6 @@ export function buildStoryboardVisualGoalUserPrompt(
   const { rules, characterList, sceneList } = buildStoryboardBaseContext(story, projectInfo, customParams);
 
   return [
-    `故事概要：${story.oneLineStory}`,
     `角色：${characterList}`,
     `场景：${sceneList}`,
     `目标年龄：${rules.context.targetAge}岁，画面风格：${rules.context.artStyle}，画面比例：${rules.context.aspectRatio}`,
@@ -254,9 +237,6 @@ export function buildStoryboardVisualGoalUserPrompt(
         pageIndex: page.pageIndex,
         text: page.text,
         visualSummary: page.visualSummary,
-        pageTurnMotivation: page.pageTurnMotivation,
-        characterRefs: page.characterRefs,
-        sceneRefs: page.sceneRefs,
       })),
       null,
       2

@@ -72,12 +72,12 @@ export default function Stage5Pages() {
   const page = pages[currentPage];
   const sbPage = storyboard.pages[currentPage];
   const effectiveCharacterRefs = useMemo(
-    () => (page?.characterRefs.length ? page.characterRefs : (sbPage?.characterRefs || [])),
-    [page?.characterRefs, sbPage?.characterRefs]
+    () => page?.characterRefs || [],
+    [page?.characterRefs]
   );
   const effectiveSceneRefs = useMemo(
-    () => (page?.sceneRefs.length ? page.sceneRefs : (sbPage?.sceneRefs || [])),
-    [page?.sceneRefs, sbPage?.sceneRefs]
+    () => page?.sceneRefs || [],
+    [page?.sceneRefs]
   );
 
   const needsPageSync = useMemo(
@@ -88,16 +88,14 @@ export default function Stage5Pages() {
           item.pageStatus === 'idle' && !item.storyText.trim()
             ? (storyboardPage?.text || '')
             : item.storyText;
-        const nextCharacterRefs = storyboardPage?.characterRefs || item.characterRefs;
-        const nextSceneRefs = storyboardPage?.sceneRefs || item.sceneRefs;
         const nextPromptResult = item.promptUserEdited
           ? { prompt: item.prompt, imageRefs: item.imageRefs }
           : buildUserFriendlyPagePrompt({
               pageIndex: index,
               page: {
                 storyText: nextStoryText,
-                characterRefs: nextCharacterRefs,
-                sceneRefs: nextSceneRefs,
+                characterRefs: item.characterRefs,
+                sceneRefs: item.sceneRefs,
               },
               storyboardPage,
               assets,
@@ -106,8 +104,6 @@ export default function Stage5Pages() {
 
         return (
           item.storyText !== nextStoryText ||
-          !arraysEqual(item.characterRefs, nextCharacterRefs) ||
-          !arraysEqual(item.sceneRefs, nextSceneRefs) ||
           item.prompt !== nextPromptResult.prompt
         );
       }),

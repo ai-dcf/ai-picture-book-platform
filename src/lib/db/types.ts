@@ -13,7 +13,6 @@ import type {
   EditorPageState,
   StoryEntry,
   EmotionCurvePoint,
-  SpreadItem,
   StoryboardPageData,
   AssetItem,
 } from '@/types/picturebook';
@@ -52,7 +51,6 @@ export interface DbProject {
 export interface DbStoryData {
   id: string;
   project_id: string;
-  one_line_story: string;
   characters: string;
   story_outline: string;
   emotion_curve: string;
@@ -65,7 +63,6 @@ export interface DbStoryData {
 export interface DbStoryboardData {
   id: string;
   project_id: string;
-  spreads: string;
   pages: string;
   generating: number;
   created_at: number;
@@ -155,7 +152,6 @@ export interface ParsedProject {
 }
 
 export interface ParsedStoryData {
-  one_line_story: string;
   characters: StoryEntry[];
   story_outline: string;
   emotion_curve: EmotionCurvePoint[];
@@ -164,7 +160,6 @@ export interface ParsedStoryData {
 }
 
 export interface ParsedStoryboardData {
-  spreads: SpreadItem[];
   pages: StoryboardPageData[];
   generating: boolean;
 }

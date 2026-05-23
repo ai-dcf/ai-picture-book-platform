@@ -170,40 +170,14 @@ export interface StoryData {
 }
 
 // ─── Storyboard (PRD §8.3) ──────────────────────────────────────────────────
-export type PageTurnMotivation = 'suspense' | 'emotion' | 'discovery' | 'none';
-
-export const PAGE_TURN_MOTIVATION_LABELS: Record<PageTurnMotivation, string> = {
-  suspense: '悬念翻页',
-  emotion: '情绪翻页',
-  discovery: '发现翻页',
-  none: '无',
-};
-
-export const PAGE_TURN_MOTIVATIONS: PageTurnMotivation[] = ['suspense', 'emotion', 'discovery', 'none'];
-
-export type SpreadType = 'full' | 'split' | 'bleed';
-
-export interface SpreadItem {
-  spreadIndex: number;
-  type: SpreadType;
-  functionLabel: string;
-  emotionWord: string;
-  pageTurnMotivation: PageTurnMotivation;
-  pageIndices: number[];
-}
-
 export interface StoryboardPageData {
   pageIndex: number;
   text: string;
   visualGoal: string;
-  pageTurnMotivation: PageTurnMotivation;
-  characterRefs: string[];
-  sceneRefs: string[];
   userModified: boolean;
 }
 
 export interface StoryboardData {
-  spreads: SpreadItem[];
   pages: StoryboardPageData[];
   generating: boolean;
 }

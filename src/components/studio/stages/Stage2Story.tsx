@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -11,30 +10,7 @@ import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronU
 import { EmotionCurvePoint, ProjectInfo, StoryEntry, EMOTION_INTENSITY_MAP } from '@/types/picturebook';
 import EmotionCurveChart from './EmotionCurveChart';
 
-function generateMockStory(title: string, pages: number) {
-  return {
-    oneLineStory: `一只活泼的小兔子在森林里学会了分享和友爱的温暖故事`,
-    characters: [
-      { name: '小兔子', description: '白色毛发，大耳朵，总是背着红色小书包，天真活泼，是故事的主角', userModified: false },
-      { name: '熊猫老师', description: '黑白相间的大熊猫，戴着圆框眼镜，声音温柔，充满耐心和智慧', userModified: false },
-      { name: '松鼠小明', description: '棕色松鼠，大尾巴，爱囤坚果，机灵好动，是小兔子的好朋友', userModified: false },
-    ],
-    storyOutline: `在一个宁静的森林里，住着一只活泼可爱的小兔子和一位温和睿智的熊猫老师。这是一个关于"${title}"的温暖故事，讲述了小动物们在成长过程中学习、友爱与互助的美好时光。\n\n故事从小兔子每天蹦蹦跳跳上学开始，通过和松鼠小明的相处，慢慢学会分享。在熊猫老师的引导下，小兔子最终懂得了友爱的真谛。全书共 ${pages} 页，适合亲子共读。`,
-    emotionCurve: [
-      { label: '起（日常）', emotion: '温馨', intensity: 2, isTurningPoint: false },
-      { label: '承（触发）', emotion: '好奇', intensity: 3, isTurningPoint: true },
-      { label: '转1（发展）', emotion: '紧张', intensity: -2, isTurningPoint: false },
-      { label: '转2（高潮）', emotion: '震撼', intensity: -4, isTurningPoint: true },
-      { label: '合（解决）', emotion: '释然', intensity: 2, isTurningPoint: true },
-      { label: '尾声', emotion: '温暖', intensity: 2, isTurningPoint: false },
-    ] as EmotionCurvePoint[],
-    scenes: [
-      { name: '森林小路', description: '铺满落叶的蜿蜒小路，两侧是参天大树，晨光透过树叶洒下斑驳光影', userModified: false },
-      { name: '温馨教室', description: '木质小屋改建的教室，墙上挂着彩色画作，摆着圆形小课桌', userModified: false },
-      { name: '大树广场', description: '村子中央的大橡树下，是动物们玩耍和聚会的地方', userModified: false },
-    ],
-  };
-}
+
 
 interface EntryCardProps {
   entry: StoryEntry;

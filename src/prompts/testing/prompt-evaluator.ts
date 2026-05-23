@@ -118,18 +118,13 @@ function createPageItem(page: StoryboardPageData, projectInfo: ProjectInfo): Pag
 
 function collectReferencedEntries(
   story: StoryData,
-  storyboardPages: StoryboardPageData[],
+  _storyboardPages: StoryboardPageData[],
   projectInfo: ProjectInfo
 ): AssetsData {
-  const characterSet = new Set(storyboardPages.flatMap((page) => page.characterRefs));
-  const sceneSet = new Set(storyboardPages.flatMap((page) => page.sceneRefs));
-
   return {
     characters: story.characters
-      .filter((entry) => characterSet.has(entry.name))
       .map((entry, index) => createCharacterAsset(entry, index)),
     scenes: story.scenes
-      .filter((entry) => sceneSet.has(entry.name))
       .map((entry, index) => createSceneAsset(entry, index, projectInfo)),
   };
 }
