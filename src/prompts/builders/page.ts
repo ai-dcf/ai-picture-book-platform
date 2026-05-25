@@ -31,6 +31,17 @@ function collectAssetNames(
   return assets.map(asset => asset.name.trim()).filter(Boolean);
 }
 
+function hasExplicitShotInstruction(text: string): boolean {
+  return /(远景|全景|大全景|中景|近景|特写|半身|局部|俯视|仰视|鸟瞰|顶视|平视)/.test(text);
+}
+
+function buildShotInstruction(visualGoal: string): string {
+  if (hasExplicitShotInstruction(visualGoal)) {
+    return "当前页已明确提供镜头或构图要求，请优先遵循这些要求，不要回退到默认远景规则。";
+  }
+  return "当前页未明确提供镜头要求，默认使用远景/全景构图，优先完整展示角色全身、角色之间的位置关系和主要场景空间关系。";
+}
+
 function collectPromptMatchedNames(prompt: string, names: string[]): string[] {
   return names
     .map(name => ({ name, index: prompt.indexOf(name) }))
@@ -90,6 +101,10 @@ export function buildPagePromptGenerationSystemPrompt(): string {
     "- 不要重复输出项目统一风格片段中的风格名称和风格约束",
     "- 必须使用客观、可见、可绘制的视觉语言",
     "- 必须覆盖角色、场景、动作、构图、光影和色调等与当前页面相关的可见信息",
+    "- 角色固定形象由参考图片承接，不要主动补写固定服饰、固定配饰、固定鞋帽、固定外观或固定颜色方案",
+    "- 只有当前页描述中明确出现的新增可见变化，才允许写入页面主体画面描述",
+    "- 如果角色没有明确变化，只描述角色名称、数量、站位、朝向、动作、表情以及与场景的关系",
+    "- 若当前页没有明确镜头要求，默认按远景或全景构图组织画面，优先完整展示角色全身和主要场景",
     "- 可以引用角色名和场景名，但不要输出提示工程说明或模型参数",
     "- 不要写心理活动、抽象氛围词、镜头外信息或创作说明",
     "- 输出为一行自然中文，适合拼接进最终 AI 绘画提示词",
@@ -110,9 +125,9 @@ export function buildPagePromptGenerationUserPrompt({
   const visualGoal = resolveVisualGoal({ page, storyboardPage }) || "请根据页面文字补足适合儿童绘本的单页画面描述。";
   const characterNames = collectAssetNames(assets.characters);
   const sceneNames = collectAssetNames(assets.scenes);
-  const characterDetails = findAssetDescriptions(characterNames, assets.characters) || "无";
   const sceneDetails = findAssetDescriptions(sceneNames, assets.scenes) || "无";
   const stylePrefix = buildPageProjectStylePrefix(projectInfo, customParams);
+  const shotInstruction = buildShotInstruction(visualGoal);
 
   return [
     `项目标题：${projectInfo.title || "待定"}`,
@@ -123,14 +138,17 @@ export function buildPagePromptGenerationUserPrompt({
     `页面文字：${pageText}`,
     `画面内容描述：${visualGoal}`,
     `项目角色名称列表：${formatRefs(characterNames, "无明确角色")}`,
-    `角色设定概览：${characterDetails}`,
+    "角色参考图规则：角色固定形象已由参考图承接，不要复述固定服饰、固定配饰、固定鞋帽、固定外观或固定颜色方案。",
+    "角色变化规则：只有当前页画面内容描述中明确写出的可见变化才允许写入，例如汗珠、淋湿、手里新增道具或临时装束变化；如果没有明确变化，只写角色名称、数量、站位、朝向、动作、表情和与场景关系。",
     `项目场景名称列表：${formatRefs(sceneNames, "无明确场景")}`,
     `场景设定概览：${sceneDetails}`,
+    `镜头构图规则：${shotInstruction}`,
     "",
     "请只生成页面主体画面描述，必须同时满足：",
     "- 与上述项目统一风格片段保持一致",
     "- 覆盖本页角色、场景、动作、构图、光影和色调等可见信息",
     "- 优先使用画面内容描述中的构图、光影和色彩线索",
+    "- 默认让角色和场景完整入画，避免在未明确要求时只截取局部或半身",
     "- 不要重复风格名称或风格规则",
     "- 不要输出解释、标题、模型参数或 Markdown",
     "",

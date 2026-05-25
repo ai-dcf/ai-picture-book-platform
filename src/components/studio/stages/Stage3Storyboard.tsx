@@ -27,32 +27,42 @@ export default function Stage3Storyboard() {
     dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: true });
     dispatch({ type: 'SET_COVER_GENERATING', payload: true });
     clearError();
-    const storyboardResult = await generateStoryboard(story, projectInfo);
-    const coverResult = await generateCover(story, projectInfo);
+    try {
+      const storyboardResult = await generateStoryboard(story, projectInfo);
+      const coverResult = await generateCover(story, projectInfo);
 
-    if (storyboardResult) {
-      dispatch({ type: 'SET_STORYBOARD', payload: { ...storyboardResult, generating: false } });
-    } else {
+      if (storyboardResult) {
+        dispatch({ type: 'SET_STORYBOARD', payload: { ...storyboardResult, generating: false } });
+      } else {
+        dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
+      }
+
+      if (coverResult) {
+        dispatch({
+          type: 'SET_COVER',
+          payload: {
+            title: coverResult.title,
+            visualGoal: coverResult.visualGoal,
+            userModified: false,
+            generating: false,
+            status: coverResult.title.trim() || coverResult.visualGoal.trim() ? 'pending' : 'idle',
+          },
+        });
+      } else {
+        dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+      }
+
+      if (storyboardResult || coverResult) {
+        triggerSave();
+      }
+    } catch (err) {
+      console.error('生成分镜失败', err);
       dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
-    }
-
-    if (coverResult) {
-      dispatch({
-        type: 'SET_COVER',
-        payload: {
-          title: coverResult.title,
-          visualGoal: coverResult.visualGoal,
-          userModified: false,
-          generating: false,
-          status: coverResult.title.trim() || coverResult.visualGoal.trim() ? 'pending' : 'idle',
-        },
-      });
-    } else {
       dispatch({ type: 'SET_COVER_GENERATING', payload: false });
-    }
-
-    if (storyboardResult || coverResult) {
-      triggerSave();
+      setError({ 
+        code: "GENERATION_FAILED", 
+        message: err instanceof Error ? err.message : '生成分镜失败，请重试' 
+      });
     }
   }, [clearError, dispatch, generateCover, generateStoryboard, projectInfo, story, triggerSave]);
 

@@ -1,8 +1,8 @@
 import JSZip from 'jszip';
-import type { EditorPageState, PageItem } from '@/types/picturebook';
+import type { AspectRatio, CoverData, EditorPageState, PageItem } from '@/types/picturebook';
 
-const EXPORT_SIZE = 2048;
-const FONT_FAMILY = "'Noto Serif SC', serif";
+const EXPORT_LONG_SIDE = 2048;
+const EXPORT_TITLE_MAX_LENGTH = 24;
 
 export class ExportError extends Error {
   constructor(message: string) {
@@ -12,18 +12,27 @@ export class ExportError extends Error {
 }
 
 interface ExportPageInput {
-  page: Pick<PageItem, 'index' | 'imageUrl'>;
-  editorState: Pick<EditorPageState, 'textContent' | 'style' | 'layout'>;
+  page: Pick<PageItem, 'index' | 'imageUrl' | 'aspectRatio'>;
+  editorState?: Pick<EditorPageState, 'textContent' | 'style' | 'layout'>;
+  projectTitle?: string;
+}
+
+interface ExportCoverInput {
+  cover: Pick<CoverData, 'title' | 'visualGoal' | 'imageUrl' | 'aspectRatio'>;
   projectTitle?: string;
 }
 
 interface ExportAllPagesInput {
-  pages: Pick<PageItem, 'index' | 'imageUrl'>[];
+  cover?: Pick<CoverData, 'title' | 'visualGoal' | 'imageUrl' | 'aspectRatio'>;
+  pages: Pick<PageItem, 'index' | 'imageUrl' | 'aspectRatio'>[];
   editorStates: Pick<EditorPageState, 'textContent' | 'style' | 'layout'>[];
   projectTitle?: string;
 }
 
 interface ExportAllPagesResult {
+  coverIncluded: boolean;
+  coverFailed: boolean;
+  coverSkipped: boolean;
   successPages: number[];
   failedPages: number[];
   skippedPages: number[];
@@ -36,132 +45,89 @@ function sanitizeFileName(value?: string) {
   return trimmed.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, '-');
 }
 
+function getSafeTitleSegment(value?: string) {
+  const sanitized = sanitizeFileName(value);
+  if (sanitized === 'picturebook') return sanitized;
+  return sanitized.slice(0, EXPORT_TITLE_MAX_LENGTH).replace(/[-_.\s]+$/g, '') || 'picturebook';
+}
+
 function getPageFileName(projectTitle: string | undefined, pageIndex: number) {
-  const safeTitle = sanitizeFileName(projectTitle);
+  const safeTitle = getSafeTitleSegment(projectTitle);
   const sequence = String(pageIndex + 1).padStart(2, '0');
   return `${sequence}-${safeTitle}-第${pageIndex + 1}页.png`;
 }
 
+function getCoverFileName(projectTitle: string | undefined) {
+  const safeTitle = getSafeTitleSegment(projectTitle);
+  return `00-${safeTitle}-封面.png`;
+}
+
 function getArchiveFileName(projectTitle: string | undefined) {
-  const safeTitle = sanitizeFileName(projectTitle);
+  const safeTitle = getSafeTitleSegment(projectTitle);
   return safeTitle === 'picturebook' ? 'picturebook-export.zip' : `${safeTitle}-绘本导出.zip`;
+}
+
+function isSameOriginUrl(src: string) {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URL(src, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function resolveExportImageUrl(src: string) {
+  if (!src) return src;
+  if (src.startsWith('data:') || src.startsWith('blob:')) return src;
+  if (src.startsWith('/')) return src;
+  if (isSameOriginUrl(src)) return src;
+  if (/^https?:\/\//i.test(src)) {
+    return `/api/image-proxy?url=${encodeURIComponent(src)}`;
+  }
+  return src;
 }
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
-    if (!src.startsWith('data:') && !src.startsWith('blob:')) {
+    const resolvedSrc = resolveExportImageUrl(src);
+    if (!resolvedSrc.startsWith('data:') && !resolvedSrc.startsWith('blob:') && !isSameOriginUrl(resolvedSrc)) {
       image.crossOrigin = 'anonymous';
     }
     image.onload = () => resolve(image);
     image.onerror = () => reject(new ExportError('当前图片源不支持导出'));
-    image.src = src;
+    image.src = resolvedSrc;
   });
 }
 
-function drawRoundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-) {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+function getCanvasSize(aspectRatio: AspectRatio | undefined) {
+  switch (aspectRatio) {
+    case '3:4':
+      return { width: Math.round(EXPORT_LONG_SIDE * 3 / 4), height: EXPORT_LONG_SIDE };
+    case '9:16':
+      return { width: Math.round(EXPORT_LONG_SIDE * 9 / 16), height: EXPORT_LONG_SIDE };
+    case '1:1':
+      return { width: EXPORT_LONG_SIDE, height: EXPORT_LONG_SIDE };
+    case '16:9':
+    default:
+      return { width: EXPORT_LONG_SIDE, height: Math.round(EXPORT_LONG_SIDE * 9 / 16) };
+  }
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  const paragraphs = text.replace(/\r\n/g, '\n').split('\n');
-  const lines: string[] = [];
-
-  for (const paragraph of paragraphs) {
-    if (!paragraph) {
-      lines.push('');
-      continue;
+async function renderImageToCanvas(input: ExportPageInput | ExportCoverInput) {
+  const item = 'page' in input ? input.page : input.cover;
+  if (!item.imageUrl) {
+    if ('page' in input) {
+      throw new ExportError(`第 ${input.page.index + 1} 页缺少插画，无法导出`);
     }
-
-    let currentLine = '';
-    for (const char of paragraph) {
-      const nextLine = currentLine + char;
-      if (ctx.measureText(nextLine).width <= maxWidth || !currentLine) {
-        currentLine = nextLine;
-      } else {
-        lines.push(currentLine);
-        currentLine = char;
-      }
-    }
-
-    if (currentLine) lines.push(currentLine);
+    throw new ExportError('封面缺少插画，无法导出');
   }
 
-  return lines;
-}
-
-function drawTextBox(ctx: CanvasRenderingContext2D, input: ExportPageInput) {
-  const { layout, style, textContent } = input.editorState;
-  if (!textContent.trim()) return;
-
-  const x = (layout.x / 100) * EXPORT_SIZE;
-  const y = (layout.y / 100) * EXPORT_SIZE;
-  const width = (layout.w / 100) * EXPORT_SIZE;
-  const height = (layout.h / 100) * EXPORT_SIZE;
-
-  ctx.save();
-  drawRoundedRect(ctx, x, y, width, height, 24);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
-  ctx.fill();
-  ctx.restore();
-
-  const paddingX = Math.max(24, width * 0.06);
-  const paddingY = Math.max(18, height * 0.12);
-  const drawX = x + paddingX;
-  const drawY = y + paddingY;
-  const maxTextWidth = Math.max(0, width - paddingX * 2);
-  const maxTextHeight = Math.max(0, height - paddingY * 2);
-
-  ctx.save();
-  ctx.font = `${style.fontWeight === 'bold' ? '700' : '400'} ${style.fontSize * 4}px ${FONT_FAMILY}`;
-  ctx.fillStyle = style.textColor;
-  ctx.textAlign = style.textAlign;
-  ctx.textBaseline = 'top';
-
-  const lineHeight = style.fontSize * 4 * 1.6;
-  const lines = wrapText(ctx, textContent, maxTextWidth);
-  const visibleLineCount = Math.max(1, Math.floor(maxTextHeight / lineHeight));
-  const visibleLines = lines.slice(0, visibleLineCount);
-  const contentHeight = visibleLines.length * lineHeight;
-  const startY = drawY + Math.max(0, (maxTextHeight - contentHeight) / 2);
-
-  let anchorX = drawX;
-  if (style.textAlign === 'center') anchorX = x + width / 2;
-  if (style.textAlign === 'right') anchorX = x + width - paddingX;
-
-  visibleLines.forEach((line, index) => {
-    ctx.fillText(line, anchorX, startY + index * lineHeight, maxTextWidth);
-  });
-  ctx.restore();
-}
-
-async function renderPageToCanvas(input: ExportPageInput) {
-  if (!input.page.imageUrl) {
-    throw new ExportError(`第 ${input.page.index + 1} 页缺少插画，无法导出`);
-  }
-
-  const image = await loadImage(input.page.imageUrl);
+  const image = await loadImage(item.imageUrl);
+  const { width, height } = getCanvasSize(item.aspectRatio);
   const canvas = document.createElement('canvas');
-  canvas.width = EXPORT_SIZE;
-  canvas.height = EXPORT_SIZE;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -169,9 +135,8 @@ async function renderPageToCanvas(input: ExportPageInput) {
   }
 
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
-  ctx.drawImage(image, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
-  drawTextBox(ctx, input);
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
 
   return canvas;
 }
@@ -205,22 +170,53 @@ async function exportSinglePage(input: ExportPageInput) {
   downloadBlob(blob, fileName);
 }
 
-async function renderPageToBlob(input: ExportPageInput) {
-  const canvas = await renderPageToCanvas(input);
+async function exportSingleCover(input: ExportCoverInput) {
+  const blob = await renderPageToBlob(input);
+  const fileName = getCoverFileName(input.projectTitle);
+  downloadBlob(blob, fileName);
+}
+
+async function renderPageToBlob(input: ExportPageInput | ExportCoverInput) {
+  const canvas = await renderImageToCanvas(input);
   return canvasToBlob(canvas);
 }
 
-export async function exportPageAsPng(input: ExportPageInput) {
-  await exportSinglePage(input);
+export async function exportPageAsPng(input: ExportPageInput | ExportCoverInput) {
+  if ('page' in input) {
+    await exportSinglePage(input);
+    return;
+  }
+  await exportSingleCover(input);
 }
 
 export async function exportAllPagesAsZip(input: ExportAllPagesInput): Promise<ExportAllPagesResult> {
   const result: ExportAllPagesResult = {
+    coverIncluded: false,
+    coverFailed: false,
+    coverSkipped: false,
     successPages: [],
     failedPages: [],
     skippedPages: [],
   };
   const zip = new JSZip();
+
+  if (input.cover) {
+    if (!input.cover.imageUrl) {
+      result.coverSkipped = true;
+    } else {
+      try {
+        const blob = await renderPageToBlob({
+          cover: input.cover,
+          projectTitle: input.projectTitle,
+        });
+        zip.file(getCoverFileName(input.projectTitle), blob);
+        result.coverIncluded = true;
+        await new Promise(resolve => window.setTimeout(resolve, 120));
+      } catch {
+        result.coverFailed = true;
+      }
+    }
+  }
 
   for (const page of input.pages) {
     if (!page.imageUrl) {

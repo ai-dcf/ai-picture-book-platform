@@ -50,18 +50,6 @@ export function normalizeTargetAge(targetAge: TargetAge): ConcreteTargetAge {
   return targetAge === "auto" ? DEFAULT_TARGET_AGE : targetAge;
 }
 
-export function getAgeGroupKey(targetAge: ConcreteTargetAge): AgeGroupKey {
-  return AGE_GROUP_MAP[targetAge];
-}
-
-export function getAgeGroupConfig(targetAge: ConcreteTargetAge): AgeGroupConfig {
-  return AGE_GROUP_CONFIGS[AGE_GROUP_MAP[targetAge]];
-}
-
-export function getAgeLabel(targetAge: ConcreteTargetAge): string {
-  return AGE_GROUP_CONFIGS[AGE_GROUP_MAP[targetAge]].label;
-}
-
 export function getPageTextPrompt(targetAge: ConcreteTargetAge): string {
   return AGE_GROUP_CONFIGS[AGE_GROUP_MAP[targetAge]].pageTextPrompt;
 }
