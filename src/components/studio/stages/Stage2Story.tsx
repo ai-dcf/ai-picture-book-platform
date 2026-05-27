@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
 import { EmotionCurvePoint, ProjectInfo, StoryEntry, EMOTION_INTENSITY_MAP } from '@/types/picturebook';
 import EmotionCurveChart from './EmotionCurveChart';
+import type { StoryPackCheckReport } from '@/prompts/builders/story-pack';
 
 
 
@@ -60,88 +61,157 @@ function EntryCard({ entry, onDescChange, colorClass }: EntryCardProps) {
 export default function Stage2Story() {
   const { state, dispatch, triggerSave } = useStudio();
   const { story, storyboard, cover, projectInfo, stageStatuses } = state;
-  const { generateStory, generateStoryboard, generateCover, error, clearError, getErrorMessage } = useStudioGenerate();
+  const { generateStoryPack, checkStoryPack, repairStoryPack, error, clearError, getErrorMessage } = useStudioGenerate();
   const [selectedEmotionIndex, setSelectedEmotionIndex] = useState<number | null>(null);
   const [expandedPage, setExpandedPage] = useState<number | null>(0);
-  const autoStoryTriggeredRef = useRef(false);
-  const autoStoryboardTriggeredRef = useRef(false);
+  const autoStoryPackTriggeredRef = useRef(false);
+  const [checkReport, setCheckReport] = useState<StoryPackCheckReport | null>(null);
+  const [lastGeneratedJson, setLastGeneratedJson] = useState<string>('');
+  const [lastRationale, setLastRationale] = useState<string>('');
 
-  const handleGenerateStory = useCallback(async () => {
+  const handleGenerateAll = useCallback(async () => {
     dispatch({ type: 'SET_STORY_GENERATING', payload: true });
-    clearError();
-    const result = await generateStory(projectInfo);
-    if (result) {
-      dispatch({ type: 'SET_STORY', payload: { ...result, generating: false } });
-      triggerSave();
-    } else {
-      dispatch({ type: 'SET_STORY_GENERATING', payload: false });
-    }
-  }, [dispatch, projectInfo, generateStory, clearError, triggerSave]);
-
-  const handleGenerateStoryboard = useCallback(async () => {
     dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: true });
     dispatch({ type: 'SET_COVER_GENERATING', payload: true });
     clearError();
     try {
-      const storyboardResult = await generateStoryboard(story, projectInfo);
-      const coverResult = await generateCover(story, projectInfo);
-
-      if (storyboardResult) {
-        dispatch({ type: 'SET_STORYBOARD', payload: { ...storyboardResult, generating: false } });
-      } else {
+      setCheckReport(null);
+      const result = await generateStoryPack(projectInfo, projectInfo.title);
+      if (!result) {
+        dispatch({ type: 'SET_STORY_GENERATING', payload: false });
         dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
-      }
-
-      if (coverResult) {
-        dispatch({
-          type: 'SET_COVER',
-          payload: {
-            title: coverResult.title,
-            visualGoal: coverResult.visualGoal,
-            userModified: false,
-            generating: false,
-            status: coverResult.title.trim() || coverResult.visualGoal.trim() ? 'pending' : 'idle',
-          },
-        });
-      } else {
         dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+        return;
       }
 
-      if (storyboardResult || coverResult) {
-        triggerSave();
-      }
+      dispatch({
+        type: 'SET_PROJECT_INFO',
+        payload: {
+          targetAge: result.meta.targetAge,
+          pageCount: result.meta.pageCount,
+          artStyle: result.meta.artStyle,
+        },
+      });
+      dispatch({ type: 'SET_STORY', payload: { ...result.story, generating: false } });
+      dispatch({ type: 'SET_STORYBOARD', payload: { ...result.storyboard, generating: false } });
+      dispatch({
+        type: 'SET_COVER',
+        payload: {
+          title: result.cover.title,
+          visualGoal: result.cover.visualGoal,
+          userModified: false,
+          generating: false,
+          status: result.cover.title.trim() || result.cover.visualGoal.trim() ? 'pending' : 'idle',
+        },
+      });
+
+      const generatedJson = JSON.stringify({
+        meta: {
+          targetAge: result.meta.targetAge,
+          pageCount: result.meta.pageCount,
+          artStyle: result.meta.artStyle,
+          rationale: result.meta.rationale || '',
+        },
+        story: result.story,
+        storyboard: result.storyboard,
+        cover: result.cover,
+      });
+      setLastGeneratedJson(generatedJson);
+      setLastRationale(result.meta.rationale || '');
+      triggerSave();
     } catch (err) {
-      console.error('生成分镜失败', err);
+      console.error('生成绘本内容失败', err);
       dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
       dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+      dispatch({ type: 'SET_STORY_GENERATING', payload: false });
     }
-  }, [clearError, dispatch, generateCover, generateStoryboard, projectInfo, story, triggerSave]);
+  }, [clearError, dispatch, generateStoryPack, projectInfo, triggerSave]);
 
-  const handleRegenerateCover = useCallback(async () => {
-    dispatch({ type: 'SET_COVER_GENERATING', payload: true });
+  const handleCheck = useCallback(async () => {
     clearError();
-    try {
-      const result = await generateCover(story, projectInfo);
-      if (result) {
-        dispatch({
-          type: 'SET_COVER',
-          payload: {
-            title: result.title,
-            visualGoal: result.visualGoal,
-            userModified: false,
-            generating: false,
-            status: result.title.trim() || result.visualGoal.trim() ? 'pending' : 'idle',
-          },
-        });
-        triggerSave();
-      } else {
-        dispatch({ type: 'SET_COVER_GENERATING', payload: false });
-      }
-    } catch (err) {
-      console.error('生成封面内容失败', err);
-      dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+    const generatedJson = lastGeneratedJson || JSON.stringify({
+      meta: {
+        targetAge: projectInfo.targetAge,
+        pageCount: projectInfo.pageCount,
+        artStyle: projectInfo.artStyle,
+        rationale: lastRationale || '',
+      },
+      story,
+      storyboard,
+      cover: { title: cover.title, visualGoal: cover.visualGoal },
+    });
+    setLastGeneratedJson(generatedJson);
+    const report = await checkStoryPack(projectInfo.title, generatedJson);
+    if (report) {
+      setCheckReport(report);
     }
-  }, [clearError, dispatch, generateCover, projectInfo, story, triggerSave]);
+  }, [checkStoryPack, clearError, cover.title, cover.visualGoal, lastGeneratedJson, lastRationale, projectInfo, story, storyboard]);
+
+  const handleRepair = useCallback(async () => {
+    if (!checkReport) return;
+    clearError();
+    const originalJson = lastGeneratedJson || JSON.stringify({
+      meta: {
+        targetAge: projectInfo.targetAge,
+        pageCount: projectInfo.pageCount,
+        artStyle: projectInfo.artStyle,
+        rationale: lastRationale || '',
+      },
+      story,
+      storyboard,
+      cover: { title: cover.title, visualGoal: cover.visualGoal },
+    });
+    setLastGeneratedJson(originalJson);
+
+    dispatch({ type: 'SET_STORY_GENERATING', payload: true });
+    dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: true });
+    dispatch({ type: 'SET_COVER_GENERATING', payload: true });
+    setCheckReport(null);
+
+    const result = await repairStoryPack(projectInfo.title, originalJson, checkReport);
+    if (!result) {
+      dispatch({ type: 'SET_STORY_GENERATING', payload: false });
+      dispatch({ type: 'SET_STORYBOARD_GENERATING', payload: false });
+      dispatch({ type: 'SET_COVER_GENERATING', payload: false });
+      return;
+    }
+
+    dispatch({
+      type: 'SET_PROJECT_INFO',
+      payload: {
+        targetAge: result.meta.targetAge,
+        pageCount: result.meta.pageCount,
+        artStyle: result.meta.artStyle,
+      },
+    });
+    dispatch({ type: 'SET_STORY', payload: { ...result.story, generating: false } });
+    dispatch({ type: 'SET_STORYBOARD', payload: { ...result.storyboard, generating: false } });
+    dispatch({
+      type: 'SET_COVER',
+      payload: {
+        title: result.cover.title,
+        visualGoal: result.cover.visualGoal,
+        userModified: false,
+        generating: false,
+        status: result.cover.title.trim() || result.cover.visualGoal.trim() ? 'pending' : 'idle',
+      },
+    });
+
+    const generatedJson = JSON.stringify({
+      meta: {
+        targetAge: result.meta.targetAge,
+        pageCount: result.meta.pageCount,
+        artStyle: result.meta.artStyle,
+        rationale: result.meta.rationale || '',
+      },
+      story: result.story,
+      storyboard: result.storyboard,
+      cover: result.cover,
+    });
+    setLastGeneratedJson(generatedJson);
+    setLastRationale(result.meta.rationale || '');
+    triggerSave();
+  }, [checkReport, clearError, cover.title, cover.visualGoal, dispatch, lastGeneratedJson, lastRationale, projectInfo, repairStoryPack, story, storyboard, triggerSave]);
 
   const hasStoryResult = useMemo(
     () =>
@@ -151,20 +221,6 @@ export default function Stage2Story() {
       story.emotionCurve.length > 0,
     [story]
   );
-
-  useEffect(() => {
-    if (
-      autoStoryTriggeredRef.current ||
-      story.generating ||
-      hasStoryResult ||
-      projectInfo.title.trim().length === 0
-    ) {
-      return;
-    }
-
-    autoStoryTriggeredRef.current = true;
-    void handleGenerateStory();
-  }, [handleGenerateStory, hasStoryResult, projectInfo.title, story.generating]);
 
   const hasStoryboardResult = useMemo(
     () =>
@@ -177,30 +233,31 @@ export default function Stage2Story() {
   );
 
   useEffect(() => {
-    const canAutoGenerate =
-      projectInfo.title.trim().length > 0 &&
-      (story.storyOutline.trim().length > 0 || story.characters.length > 0 || story.scenes.length > 0);
+    const hasAnyResult = hasStoryResult || hasStoryboardResult || hasCoverResult;
+    const canAutoGenerate = projectInfo.title.trim().length > 0;
 
     if (
-      autoStoryboardTriggeredRef.current ||
+      autoStoryPackTriggeredRef.current ||
+      story.generating ||
       storyboard.generating ||
       cover.generating ||
-      hasStoryboardResult ||
-      hasCoverResult ||
+      hasAnyResult ||
       !canAutoGenerate
     ) {
       return;
     }
 
-    autoStoryboardTriggeredRef.current = true;
-    void handleGenerateStoryboard();
+    autoStoryPackTriggeredRef.current = true;
+    void handleGenerateAll();
   }, [
     cover.generating,
-    handleGenerateStoryboard,
+    handleGenerateAll,
     hasCoverResult,
     hasStoryboardResult,
+    hasStoryResult,
     projectInfo.title,
     storyboard.generating,
+    story.generating,
     story.characters.length,
     story.scenes.length,
     story.storyOutline,
@@ -257,15 +314,15 @@ export default function Stage2Story() {
 
       <div className="flex gap-2 mb-6">
         <Button
-          onClick={handleGenerateStory}
+          onClick={handleGenerateAll}
           disabled={story.generating || storyboard.generating || cover.generating}
           className="gap-2 font-body gradient-hero text-primary-foreground border-0"
         >
           {story.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-          {story.generating ? '生成中…' : hasStoryResult ? '再次手动触发生成' : '一键生成故事架构'}
+          {story.generating ? '生成中…' : hasStoryResult || hasStoryboardResult || hasCoverResult ? '重新生成绘本内容' : '一键生成绘本内容'}
         </Button>
-        {hasStoryResult && (
-          <Button onClick={handleGenerateStory} disabled={story.generating || storyboard.generating || cover.generating} variant="outline" className="gap-2 font-body">
+        {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
+          <Button onClick={handleGenerateAll} disabled={story.generating || storyboard.generating || cover.generating} variant="outline" className="gap-2 font-body">
             <RefreshCw className="w-3.5 h-3.5" />
             重新生成
           </Button>
@@ -277,7 +334,7 @@ export default function Stage2Story() {
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{getErrorMessage(error)}</span>
           <Button
-            onClick={hasStoryResult ? handleGenerateStoryboard : handleGenerateStory}
+            onClick={handleGenerateAll}
             size="sm"
             variant="outline"
             className="gap-1.5 font-body text-xs h-7 border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
@@ -476,17 +533,17 @@ export default function Stage2Story() {
                 </h3>
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleGenerateStoryboard}
-                    disabled={storyboard.generating || cover.generating}
+                    onClick={handleGenerateAll}
+                    disabled={story.generating || storyboard.generating || cover.generating}
                     className="gap-2 font-body gradient-hero text-primary-foreground border-0"
                   >
                     {storyboard.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                    {storyboard.generating ? '生成中…' : hasStoryboardResult ? '再次手动触发分镜生成' : '整本生成分镜'}
+                    {storyboard.generating ? '生成中…' : '重新生成绘本内容'}
                   </Button>
-                  {hasStoryboardResult && (
+                  {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
                     <Button
-                      onClick={handleGenerateStoryboard}
-                      disabled={storyboard.generating || cover.generating}
+                      onClick={handleGenerateAll}
+                      disabled={story.generating || storyboard.generating || cover.generating}
                       variant="outline"
                       className="gap-2 font-body"
                     >
@@ -494,6 +551,22 @@ export default function Stage2Story() {
                       重新生成
                     </Button>
                   )}
+                  <Button
+                    onClick={handleCheck}
+                    disabled={story.generating || storyboard.generating || cover.generating || !(hasStoryResult || hasStoryboardResult || hasCoverResult)}
+                    variant="outline"
+                    className="font-body"
+                  >
+                    检查
+                  </Button>
+                  <Button
+                    onClick={handleRepair}
+                    disabled={story.generating || storyboard.generating || cover.generating || !checkReport}
+                    variant="outline"
+                    className="font-body"
+                  >
+                    修复
+                  </Button>
                 </div>
               </div>
 
@@ -525,8 +598,8 @@ export default function Stage2Story() {
                         )}
                       </div>
                       <Button
-                        onClick={() => void handleRegenerateCover()}
-                        disabled={cover.generating || storyboard.generating}
+                        onClick={handleGenerateAll}
+                        disabled={story.generating || cover.generating || storyboard.generating}
                         variant="outline"
                         size="sm"
                         className="gap-1.5 font-body text-xs"
@@ -565,6 +638,48 @@ export default function Stage2Story() {
                       </div>
                     </div>
                   </div>
+
+                  {checkReport && (
+                    <div className="rounded-lg border border-border bg-card px-3 py-3 text-sm font-body">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-foreground">检查结果</span>
+                        <span className="text-xs text-muted-foreground">完整性 {checkReport.completenessScore}/10</span>
+                        <span className="text-xs text-muted-foreground">连续性 {checkReport.continuityScore}/10</span>
+                        <span className="text-xs text-muted-foreground">密度 {checkReport.densityScore}/10</span>
+                        <span className={cn("text-xs font-medium", checkReport.overallPass ? "text-green-600" : "text-amber-600")}>
+                          {checkReport.overallPass ? "通过" : "待修复"}
+                        </span>
+                      </div>
+                      {checkReport.summary && (
+                        <p className="mt-2 text-xs text-muted-foreground">{checkReport.summary}</p>
+                      )}
+                      {(checkReport.completenessIssues.length > 0 ||
+                        checkReport.continuityIssues.length > 0 ||
+                        checkReport.densityIssues.length > 0) && (
+                        <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                          {checkReport.completenessIssues.length > 0 && (
+                            <div>完整性问题：{checkReport.completenessIssues.join("；")}</div>
+                          )}
+                          {checkReport.continuityIssues.length > 0 && (
+                            <div>
+                              连续性问题：
+                              {checkReport.continuityIssues
+                                .map((i) => `${i.pagePair} ${i.issue}`)
+                                .join("；")}
+                            </div>
+                          )}
+                          {checkReport.densityIssues.length > 0 && (
+                            <div>
+                              密度问题：
+                              {checkReport.densityIssues
+                                .map((i) => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`)
+                                .join("；")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {storyboard.pages.map(page => {
                     const isExpanded = expandedPage === page.pageIndex;

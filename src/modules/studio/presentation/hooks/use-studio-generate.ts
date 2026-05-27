@@ -14,6 +14,7 @@ import type {
   StoryboardPageData,
 } from "@/types/picturebook";
 import type { GeneratePagePromptResult } from "@/prompts";
+import type { StoryPackData, StoryPackCheckReport } from "@/prompts/builders/story-pack";
 
 export type GenerateError = {
   code: string;
@@ -125,6 +126,69 @@ export function useStudioGenerate() {
         const result = await callApi<Pick<CoverData, "title" | "visualGoal">>("/api/studio/generate-cover", { story, projectInfo });
         if (!result.success || !result.data) {
           setError(result.error || { code: "GENERATION_FAILED", message: "封面内容生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateStoryPack = useCallback(
+    async (projectInfo: ProjectInfo, userIdea: string): Promise<StoryPackData | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackData>("/api/studio/generate-story-pack", { projectInfo, userIdea });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本内容生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const checkStoryPack = useCallback(
+    async (userIdea: string, generatedJson: string): Promise<StoryPackCheckReport | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackCheckReport>("/api/studio/check-story-pack", { userIdea, generatedJson });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本检查失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const repairStoryPack = useCallback(
+    async (userIdea: string, originalJson: string, checkReport: StoryPackCheckReport): Promise<StoryPackData | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackData>("/api/studio/repair-story-pack", { userIdea, originalJson, checkReport });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本修复失败" });
           return null;
         }
         return result.data;
@@ -251,6 +315,9 @@ export function useStudioGenerate() {
     generateStory,
     generateStoryboard,
     generateCover,
+    generateStoryPack,
+    checkStoryPack,
+    repairStoryPack,
     generateCharacterPrompt,
     generateAssetImage,
     generatePagePrompt,

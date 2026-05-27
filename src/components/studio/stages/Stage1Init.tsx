@@ -16,7 +16,6 @@ import {
   TARGET_AGES,
   PAGE_COUNTS,
   ART_STYLES,
-  ProjectInfo,
   TargetAge,
   PageCount,
   ArtStyle,
@@ -24,7 +23,7 @@ import {
 
 export default function Stage1Init() {
   const { state, dispatch, triggerSave } = useStudio();
-  const { generateStory, recommendProjectConfig } = useStudioGenerate();
+  const { generateStoryPack } = useStudioGenerate();
   const { projectInfo, stageStatuses } = state;
   const hasDownstream = Object.values(stageStatuses).some(
     (s, i) => i > 0 && s !== 'idle'
@@ -64,19 +63,9 @@ export default function Stage1Init() {
     
     setIsOptimizing(true);
     try {
-      // 调用大模型优化故事概要
-      const tempProjectInfo: ProjectInfo = {
-        ...projectInfo,
-        title: form.title,
-        targetAge: form.targetAge,
-        pageCount: form.pageCount,
-        artStyle: form.artStyle,
-      };
-      
-      const story = await generateStory(tempProjectInfo);
-      if (story) {
-        // 使用生成的故事大纲作为优化后的内容
-        handleChange('title', story.storyOutline || form.title);
+      const pack = await generateStoryPack(projectInfo, form.title);
+      if (pack?.story?.storyOutline) {
+        handleChange('title', pack.story.storyOutline);
       }
     } catch (err) {
       console.error('优化失败', err);
@@ -91,50 +80,11 @@ export default function Stage1Init() {
     setIsAnalyzing(true);
     setCreateError(null);
     try {
-      const tempProjectInfo: ProjectInfo = {
-        ...projectInfo,
-        title: form.title,
-        targetAge: form.targetAge,
-        pageCount: form.pageCount,
-        artStyle: form.artStyle,
-      };
-      
-      const needsRecommendation =
-        form.targetAge === 'auto' || form.pageCount === 'auto' || form.artStyle === 'auto';
-
-      const recommendation = needsRecommendation
-        ? await recommendProjectConfig(tempProjectInfo)
-        : null;
-
-      if (needsRecommendation && !recommendation) {
-        setCreateError('项目参数推荐失败，请重试或先在设置中配置可用模型');
-        return;
-      }
-
-      if (form.targetAge === 'auto' && !recommendation?.recommendedTargetAge) {
-        setCreateError('未能推荐目标年龄，请重试');
-        return;
-      }
-      if (form.pageCount === 'auto' && !recommendation?.recommendedPageCount) {
-        setCreateError('未能推荐页数，请重试');
-        return;
-      }
-      if (form.artStyle === 'auto' && !recommendation?.recommendedArtStyle) {
-        setCreateError('未能推荐绘本风格，请重试');
-        return;
-      }
-
       const finalProjectInfo = {
         title: form.title.trim(),
-        targetAge: form.targetAge === 'auto' && recommendation?.recommendedTargetAge
-          ? recommendation.recommendedTargetAge
-          : form.targetAge as TargetAge,
-        pageCount: form.pageCount === 'auto' && recommendation?.recommendedPageCount
-          ? recommendation.recommendedPageCount
-          : form.pageCount as PageCount,
-        artStyle: form.artStyle === 'auto' && recommendation?.recommendedArtStyle
-          ? recommendation.recommendedArtStyle
-          : form.artStyle as ArtStyle,
+        targetAge: 'auto' as TargetAge,
+        pageCount: 'auto' as PageCount,
+        artStyle: 'auto' as ArtStyle,
       };
       
       // 更新项目信息
