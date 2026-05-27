@@ -97,7 +97,6 @@ const initialStageStatuses: Record<StageNumber, StageStatus> = {
   3: 'idle',
   4: 'idle',
   5: 'idle',
-  6: 'idle',
 };
 
 const initialState: PictureBookState = {
@@ -146,7 +145,7 @@ function markCoverReview(cover: CoverData): CoverData {
 function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
   if (stageStatuses[2] === 'done') stageStatuses[2] = 'invalid';
-  if (stageStatuses[3] === 'done') stageStatuses[3] = 'invalid';
+  if (stageStatuses[3] === 'done') stageStatuses[3] = 'review';
   if (stageStatuses[4] === 'done') stageStatuses[4] = 'review';
   if (stageStatuses[5] !== 'idle') stageStatuses[5] = 'review';
 
@@ -168,7 +167,8 @@ function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
 
 function applyCascadeForStyleParams(state: PictureBookState): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
-  if (stageStatuses[4] === 'done') stageStatuses[4] = 'review';
+  if (stageStatuses[3] === 'done') stageStatuses[3] = 'review';
+  if (stageStatuses[4] !== 'idle') stageStatuses[4] = 'review';
   if (stageStatuses[5] !== 'idle') stageStatuses[5] = 'review';
 
   const pages = state.pages.map(p => {
@@ -189,7 +189,7 @@ function applyCascadeForStyleParams(state: PictureBookState): PictureBookState {
 
 function markDownstreamReview(state: PictureBookState, fromStage: StageNumber): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
-  for (let s = fromStage + 1; s <= 6; s++) {
+  for (let s = fromStage + 1; s <= 5; s++) {
     const sn = s as StageNumber;
     if (stageStatuses[sn] === 'done') {
       stageStatuses[sn] = 'review';
@@ -459,17 +459,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
 
     case 'COMPLETE_STAGE': {
       const completed = action.payload;
-      const next = Math.min(completed + 1, 6) as StageNumber;
+      const next = Math.min(completed + 1, 5) as StageNumber;
       const stageStatuses = { ...state.stageStatuses };
       stageStatuses[completed] = 'done';
       if (stageStatuses[next] === 'idle') stageStatuses[next] = 'in-progress';
 
       let projectStatus: ProjectStatus = state.projectInfo.projectStatus;
       if (completed === 1) projectStatus = 'draft';
-      if (completed === 2) projectStatus = 'story_confirmed';
-      if (completed === 3) projectStatus = 'storyboard_confirmed';
-      if (completed === 4) projectStatus = 'assets_confirmed';
-      if (completed === 5) projectStatus = 'creating';
+      if (completed === 2) projectStatus = 'storyboard_confirmed';
+      if (completed === 3) projectStatus = 'assets_confirmed';
+      if (completed === 4) projectStatus = 'creating';
 
       return {
         ...state,
@@ -492,7 +491,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           : c
       );
       let result: PictureBookState = { ...state, story: { ...state.story, characters } };
-      if (state.stageStatuses[3] !== 'idle') {
+      if (
+        state.stageStatuses[3] !== 'idle' ||
+        state.stageStatuses[4] !== 'idle' ||
+        state.stageStatuses[5] !== 'idle'
+      ) {
         result = markDownstreamReview(result, 2);
       }
       return result;
@@ -505,7 +508,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           : s
       );
       let result: PictureBookState = { ...state, story: { ...state.story, scenes } };
-      if (state.stageStatuses[3] !== 'idle') {
+      if (
+        state.stageStatuses[3] !== 'idle' ||
+        state.stageStatuses[4] !== 'idle' ||
+        state.stageStatuses[5] !== 'idle'
+      ) {
         result = markDownstreamReview(result, 2);
       }
       return result;
@@ -950,7 +957,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return {
         ...state,
         projectInfo: { ...state.projectInfo, projectStatus: 'exportable' as ProjectStatus },
-        stageStatuses: { ...state.stageStatuses, 6: 'done' as StageStatus },
+        stageStatuses: { ...state.stageStatuses, 5: 'done' as StageStatus },
       };
     }
 

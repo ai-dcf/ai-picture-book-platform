@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ import {
   STAGE_LABELS,
 } from '@/types/picturebook';
 
-const STAGES: StageNumber[] = [1, 2, 3, 4, 5, 6];
+const STAGES: StageNumber[] = [1, 2, 3, 4, 5];
 
 function StageIcon({ status }: { status: StageStatus }) {
   if (status === 'done') return <CheckCircle2 className="w-4 h-4 text-green-500" />;
@@ -87,7 +87,7 @@ function SidebarContent() {
                   {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
                 </button>
 
-                {s === 5 && (currentStage === 5 || status === 'done') && (
+                {s === 4 && (currentStage === 4 || status === 'done') && (
                   <div className="ml-7 mt-1 space-y-0.5 max-h-40 overflow-y-auto">
                     {pages.map(p => (
                       <button
@@ -115,7 +115,7 @@ function SidebarContent() {
         <div className="space-y-1 text-xs font-body">
           <div className="flex justify-between text-muted-foreground">
             <span>已完成阶段</span>
-            <span className="font-medium text-foreground">{completedStages} / 6</span>
+            <span className="font-medium text-foreground">{completedStages} / 5</span>
           </div>
           {currentStage >= 5 && (
             <>

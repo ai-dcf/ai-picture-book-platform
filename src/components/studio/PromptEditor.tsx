@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -157,9 +157,17 @@ export default function PromptEditor({
       } satisfies ImageRef;
     })();
 
-    const nextText = `${currentText.slice(0, hashOffset)}${targetRef.refToken}${currentText.slice(hashOffset + 1)}`;
-    const knownRefs = existingRef ? imageRefs : [...imageRefs, targetRef];
-    pendingSelectionRef.current = hashOffset + targetRef.refToken.length;
+    const refLabel = targetRef.refLabel ?? `图片${getNextRefIndex(imageRefs)}`;
+    const refToken = targetRef.refToken ?? `#(${refLabel})`;
+    const nextText = `${currentText.slice(0, hashOffset)}${refToken}${currentText.slice(hashOffset + 1)}`;
+    const knownRefs = existingRef
+      ? imageRefs.map((ref) =>
+        ref.assetId === targetRef.assetId
+          ? { ...ref, refLabel, refToken }
+          : ref
+      )
+      : [...imageRefs, { ...targetRef, refLabel, refToken }];
+    pendingSelectionRef.current = hashOffset + refToken.length;
     emitChange(nextText, knownRefs);
     closePicker();
   }, [closePicker, draft, emitChange, hashOffset, imageRefs]);

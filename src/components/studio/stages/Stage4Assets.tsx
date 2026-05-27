@@ -985,7 +985,7 @@ export default function Stage4Assets() {
   const hasAssets = assets.characters.length > 0 || assets.scenes.length > 0;
 
   function handleConfirm() {
-    dispatch({ type: 'COMPLETE_STAGE', payload: 4 });
+    dispatch({ type: 'COMPLETE_STAGE', payload: 3 });
     triggerSave();
   }
 
@@ -994,7 +994,7 @@ export default function Stage4Assets() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <ImageIcon className="w-4 h-4 text-primary" />
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 4 · 素材设定</span>
+          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 3 · 素材设定</span>
         </div>
         <h2 className="font-display text-2xl text-foreground">素材设定</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">

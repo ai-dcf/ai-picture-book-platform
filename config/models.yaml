@@ -1,10 +1,11 @@
 textModels:
   enabledOrder:
     - 阿里云百炼
+    - '111'
   items:
     - alias: '111'
       strategy: openai-compatible-text
-      enabled: false
+      enabled: true
       credentials:
         apiKey: ark-bab9dd9c-8576-460e-9c65-eb309afdf1cd-ff4fe
         endpoint: https://ark.cn-beijing.volces.com/api/plan/v3

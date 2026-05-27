@@ -54,16 +54,15 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 // ─── Stage Status ────────────────────────────────────────────────────────────
 export type StageStatus = 'idle' | 'in-progress' | 'done' | 'invalid' | 'review';
 
-// ─── Stage Number (PRD §4.1: 6 stages) ───────────────────────────────────────
-export type StageNumber = 1 | 2 | 3 | 4 | 5 | 6;
+// ─── Stage Number (PRD §4.1: 5 stages) ───────────────────────────────────────
+export type StageNumber = 1 | 2 | 3 | 4 | 5;
 
 export const STAGE_LABELS: Record<StageNumber, string> = {
   1: '项目初始化',
-  2: '故事架构',
-  3: '分镜拆页',
-  4: '素材设定',
-  5: '逐页生成',
-  6: '编辑定稿与导出',
+  2: '故事架构与分镜拆页',
+  3: '素材设定',
+  4: '逐页生成',
+  5: '编辑定稿与导出',
 };
 
 // ─── Page Status (PRD §7.2) ──────────────────────────────────────────────────

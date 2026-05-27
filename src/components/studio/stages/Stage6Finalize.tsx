@@ -218,7 +218,7 @@ export default function Stage6Finalize() {
       <div className="px-6 py-5 border-b border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
           <CheckCircle2 className="w-4 h-4 text-primary" />
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 6 · 编辑定稿与导出</span>
+          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 5 · 编辑定稿与导出</span>
         </div>
         <h2 className="font-display text-2xl text-foreground">编辑定稿与导出</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">
@@ -248,7 +248,7 @@ export default function Stage6Finalize() {
           {!allGenerated && (
             <Button
               variant="outline"
-              onClick={() => dispatch({ type: 'SET_STAGE', payload: 5 })}
+              onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
               className="gap-2 font-body"
             >
               <RefreshCw className="w-4 h-4" />
@@ -279,7 +279,7 @@ export default function Stage6Finalize() {
 
           <Button
             variant="outline"
-            onClick={() => dispatch({ type: 'SET_STAGE', payload: 5 })}
+            onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
             className="gap-2 font-body"
           >
             <ArrowRight className="w-4 h-4 rotate-180" />
@@ -331,7 +331,7 @@ export default function Stage6Finalize() {
                 <div className="space-y-1">
                   <p className="text-xs font-body text-muted-foreground">当前状态</p>
                   <p className="text-sm font-body text-foreground">
-                    {cover.imageUrl ? '封面已生成，可预览或导出' : '尚未生成封面，请返回阶段 5 完成生成'}
+                    {cover.imageUrl ? '封面已生成，可预览或导出' : '尚未生成封面，请返回阶段 4 完成生成'}
                   </p>
                 </div>
 
@@ -349,11 +349,11 @@ export default function Stage6Finalize() {
                   ) : (
                     <Button
                       variant="outline"
-                      onClick={() => dispatch({ type: 'SET_STAGE', payload: 5 })}
+                      onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
                       className="gap-2 font-body"
                     >
                       <RefreshCw className="w-4 h-4" />
-                      返回阶段 5 生成
+                      返回阶段 4 生成
                     </Button>
                   )}
                 </div>
@@ -407,7 +407,7 @@ export default function Stage6Finalize() {
                         ? '已完成编辑定稿'
                         : page.imageUrl
                         ? '已生成，待进入编辑页确认定稿'
-                        : '尚未生成插画，请返回阶段 5 完成生成'}
+                          : '尚未生成插画，请返回阶段 4 完成生成'}
                     </p>
                   </div>
 
@@ -438,11 +438,11 @@ export default function Stage6Finalize() {
                     ) : (
                       <Button
                         variant="outline"
-                        onClick={() => dispatch({ type: 'SET_STAGE', payload: 5 })}
+                        onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
                         className="gap-2 font-body"
                       >
                         <RefreshCw className="w-4 h-4" />
-                        返回阶段 5 生成
+                        返回阶段 4 生成
                       </Button>
                     )}
                   </div>

@@ -669,7 +669,7 @@ export default function Stage5Pages() {
             {allGenerated ? (
               <Button
                 onClick={() => {
-                  dispatch({ type: 'COMPLETE_STAGE', payload: 5 });
+                  dispatch({ type: 'COMPLETE_STAGE', payload: 4 });
                   triggerSave();
                 }}
                 className="w-full gap-2 font-body text-sm"

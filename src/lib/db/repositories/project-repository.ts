@@ -40,7 +40,6 @@ export const ProjectRepository = {
       3: 'idle',
       4: 'idle',
       5: 'idle',
-      6: 'idle',
     });
 
     db.prepare(
@@ -115,7 +114,6 @@ export const ProjectRepository = {
         3: 'idle',
         4: 'idle',
         5: 'idle',
-        6: 'idle',
       });
 
       db.prepare(
