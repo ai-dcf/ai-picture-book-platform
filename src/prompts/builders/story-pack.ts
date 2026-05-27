@@ -1,23 +1,9 @@
-import type { CoverData, PageCount, StoryData, StoryboardData, TargetAge, ArtStyle } from "@/types/picturebook";
-
-const ART_STYLE_CHOICES: ArtStyle[] = [
-  "水彩温暖风",
-  "蜡笔童趣风",
-  "剪纸拼贴风",
-  "日系清新风",
-  "素描淡彩风",
-  "波普大胆风",
-  "水墨东方风",
-  "极简线条风",
-];
-
-const TARGET_AGE_CHOICES: TargetAge[] = ["1-3", "3-5", "5-7", "7-9"];
-const PAGE_COUNT_CHOICES: PageCount[] = [8, 12, 16, 24, 32];
+import type { ArtStyle, CoverData, PageCount, StoryData, StoryboardData, TargetAge } from "@/types/picturebook";
 
 export type StoryPackMeta = {
-  targetAge: TargetAge;
+  targetAge: Exclude<TargetAge, "auto">;
   pageCount: Exclude<PageCount, "auto">;
-  artStyle: ArtStyle;
+  artStyle: Exclude<ArtStyle, "auto">;
   rationale: string;
 };
 
@@ -40,52 +26,44 @@ export type StoryPackCheckReport = {
 };
 
 export function buildStoryPackGeneratorSystemPrompt(): string {
-  const artStyleList = ART_STYLE_CHOICES.map((s) => `'${s}'`).join("|");
-  const ageList = TARGET_AGE_CHOICES.map((s) => `'${s}'`).join("|");
-  const pageCountList = PAGE_COUNT_CHOICES.join("|");
+  return `你是一位专业儿童绘本编剧、绘本分镜导演与封面设计师。用户只提供“绘本灵感/主题”。你必须先在内部自动分析并适配目标年龄、总页数和画面风格，然后一次性输出完整绘本内容。
 
-  return `你是一位专业儿童绘本编剧、绘本分镜导演与封面设计师。用户只提供“绘本灵感/主题”。你必须先在内部自动分析并适配：
-- 目标年龄 targetAge（只能从：${ageList} 中选择）
-- 总页数 pageCount（只能从：${pageCountList} 中选择）
-- 画面风格 artStyle（只能从以下集合中选择：${artStyleList}；如无法判断请选择最适合主题的一个）
-
-重要：targetAge/pageCount/artStyle 不是外部限制，而是你根据“故事完整性 + 连续性 + 中等信息密度”推断出的最合适结果。你要优先保证故事表达完整、丰富，分页合理，且整体信息密度为“中等”。
+重要：目标年龄/总页数/画面风格不是外部限制，而是你根据“故事完整性 + 连续性 + 中等信息密度”推断出的最合适结果。你要优先保证故事表达完整、丰富，分页合理，且整体信息密度为“中等”。
 
 你必须严格按以下 JSON 格式输出，不要输出任何其他内容（不要解释、不要 Markdown、不要代码块）：
 
 {
   "meta": {
-    "targetAge": "1-3 或 3-5 或 5-7 或 7-9",
-    "pageCount": 8或12或16或24或32,
-    "artStyle": "从指定风格集合中选择一个",
+    "targetAge": "例如 3-6、4-8、5-9（或其他合理区间）",
+    "pageCount": 例如 9、12、16、17（正整数）,
+    "artStyle": "一句话风格描述（自由文本，例如：柔和水彩/蜡笔质感/自然手绘/夜空发光元素等）",
     "rationale": "一句话说明为何选择该年龄段、页数、风格（围绕连续性与信息密度）"
   },
   "story": {
     "characters": [
-      { "name": "角色名", "description": "角色可视化描述（仅静态外观，可直接绘制）" }
+      { "name": "角色名", "description": "角色设定卡（非人类优先，见下方要求）" }
     ],
     "scenes": [
-      { "name": "场景名", "description": "场景可视化描述（景别/构图/时间天气/光线色温/主色调/材质纹理）" }
-    ],
-    "emotionCurve": [
-      { "label": "情节标签", "emotion": "情绪词", "intensity": -6到6的整数, "isTurningPoint": 布尔值 }
+      { "name": "场景名", "description": "场景设定卡（标准版，见下方要求）" }
     ],
     "storyOutline": "200-400字，清晰起承转合"
   },
   "storyboard": {
     "pages": [
-      { "text": "本页文字（<=30字，适龄）", "visualGoal": "客观画面描述（可画、可量化，禁止情绪词）" }
+      { "text": "本页文字（<=30字，适龄）", "visualGoal": "本页自然语言画面描述（见下方要求）" }
     ]
   },
   "cover": {
     "title": "封面标题",
-    "visualGoal": "封面画面描述，包含标题留白区域，禁止在图中生成文字"
+    "visualGoal": "封面自然语言画面描述（见下方要求；包含标题留白区域；禁止在图中生成文字）"
   }
 }
 
 硬约束（必须遵守）：
 - 输出纯 JSON，可被 JSON.parse 解析；不要包含注释、不要包含多余字段、不要包含 null/undefined/NaN
+- meta.pageCount 必须是正整数，且 storyboard.pages 的长度必须恰好等于 meta.pageCount
 - storyboard.pages 的长度必须恰好等于 meta.pageCount
+- meta.pageCount 建议在 8-20 页之间，除非主题确实需要更多分页；优先保证中等信息密度与连续性，不要为了凑页数而重复画面
 - 信息密度目标：中等
   - 每页 1-2 个情节推进点
   - visualGoal 至少 3 个可区分画面元素
@@ -93,15 +71,50 @@ export function buildStoryPackGeneratorSystemPrompt(): string {
 - 连续性：相邻页必须逻辑衔接；角色状态变化（位置/道具/场景切换）要有交代或过渡元素
 - 所有 description / visualGoal 必须是“看得见的东西”，不得出现心理、情绪、氛围等抽象词
   - 如需表达情绪，只能转译成可见细节（例如“嘴角上扬露齿，眼睛弯成月牙形”）
-- 角色外观全书稳定：
-  - story.characters[].description 只写静态外观（物种/轮廓/主辅色/服饰款式颜色材质/显著辨识点），禁止动作/表情/情绪
-  - 分镜里无变化时只写角色名称，有变化时才补充变化点（动作/姿态/位置/面部可见状态）
+- storyboard.pages[].visualGoal 禁止包含任何性格/心理/感受/氛围/价值观词汇（例如：勇敢、懒惰、谨慎、开心、紧张、温暖、治愈等），必须只写可见画面元素与可量化细节
+- 重要：每一页的 visualGoal 都必须自洽完整，不依赖“上一页变化点”或默认继承；即使后续逐页独立生成，也能仅凭本页 visualGoal 生成正确画面
+- 角色设定与稳定性：
+  - story.characters[].description 必须是“角色设定卡”，每个角色都必须包含且仅包含以下字段（按行输出，拼成一个字符串）：
+    - 物种：（必须，例如小猪/狼/兔子/小熊/机器人猫/小龙）
+    - 拟人化设定：（必须，直立行走/是否穿衣/是否会说话/是否使用工具）
+    - 年龄段：（必须，幼崽/少年/成年/老年；或“相当于人类 4-6 岁/7-9 岁”等）
+    - 外形关键特征：（必须，可画；体型与比例、毛色/羽色/鳞片颜色、头部特征（耳朵/角/喙/胡须/鼻子形状）、眼睛形状与瞳色、尾巴/爪/蹄等）
+    - 服装与配饰：（必须具体；每项=款式+主色+辅色+材质+图案；若不穿衣也要写“无服装，但有××配饰/自然纹理”）
+  - story.characters[].description 不得包含情绪词、心理描述、氛围描述、抽象评价词
+  - 分镜中角色外观必须与设定卡一致；每一页 visualGoal 都必须逐个点名角色，且角色名必须与 story.characters[].name 完全一致（禁止“三只小猪/小猪们/大家”等泛称）
+  - story.characters 数量建议 1-4 个；避免输出过多角色导致分镜冗长与生成超时
+- 场景设定与稳定性：
+  - story.scenes[].description 必须是“场景设定卡（中等标准版）”，每个场景都必须包含且仅包含以下字段（按行输出，拼成一个字符串）：
+    - 场景类型：（必填，室内/室外/半室内；自然/城镇/幻想空间）
+    - 时间与天气：（必填，季节 + 时间段（清晨/正午/黄昏/夜晚）+ 天气）
+    - 空间结构：（必填，前景/中景/背景各有什么；主要区域划分）
+    - 关键可画元素（固定清单）：（必填，列出 6-10 个稳定存在的物件/植被/建筑细节）
+    - 材质与纹理：（必填，地面 + 主要背景表面 + 1-2 个关键道具的材质纹理）
+    - 光线设定：（必填，主光方向 + 色温（暖黄/冷蓝等）+ 阴影软硬）
+    - 色彩方案：（必填，主色/辅色/强调色，使用具体颜色词）
+  - story.scenes[].description 不得包含情绪词、心理描述、氛围描述、抽象评价词
+  - 分镜中每一页 visualGoal 必须包含场景名，且场景名必须与 story.scenes[].name 完全一致（禁止“森林里/屋子里”等泛称）
+- story.scenes 数量建议 3-6 个；每个场景的设定卡尽量精炼（每行 20-40 字），保证可复用且不拖慢生成
+- storyboard.pages[].visualGoal 输出格式（每一页必须是一段自然语言画面描述，不要用“角色：/场景：/镜头：”这种列表格式）：
+  - 形式：2-4 句自然语言，建议 60-140 字；语言必须客观、可画、可量化
+  - 必须明确写出本页场景名（且场景名必须与 story.scenes[].name 完全一致）
+  - 必须逐个点名本页出现的角色（且角色名必须与 story.characters[].name 完全一致；禁止“三只小猪/小猪们/大家”等泛称）
+  - 必须包含镜头信息：景别/视角/构图（例如“中景平视，主体在画面左侧，前景/中景/背景分层”）
+  - 必须包含动作与位置关系：每个角色的动作、朝向、相对位置关系；以及关键道具的交互（谁拿着/靠着/推着/拉着）
+  - 必须包含光线与色彩：主光方向 + 色温 + 至少 2 个具体颜色词
+  - 必须包含材质与纹理：至少 2 项（例如稻草纤维、原木木纹、砖块粗糙面、金属锅反光）
+- cover.visualGoal 输出格式（封面必须是一段自然语言画面描述，不要列表格式）：
+  - 形式：2-5 句自然语言，建议 80-180 字；语言必须客观、可画、可量化
+  - 必须逐个点名封面出现的角色（匹配 story.characters[].name；禁止泛称）
+  - 必须包含场景、镜头构图、动作位置、光线色彩、材质纹理（同内页要求）
+  - 必须包含标题留白：留白位置 + 留白范围（例如上方 1/3）+ 背景干净程度
+  - 禁止：不得要求在图中生成任何文字/标题/Logo/水印/边框
 - 分镜与封面不得出现 story.characters 之外的新核心角色
 - cover.visualGoal 必须适合生成纯插画封面：包含主体、动作、场景、构图、光影、色彩、留白；不得要求在图中生成任何文字/标题/Logo/水印/边框`;
 }
 
 export function buildStoryPackGeneratorUserPrompt(userIdea: string): string {
-  return `绘本灵感/主题：\n${userIdea}\n\n任务：请根据以上灵感，自动推断 targetAge/pageCount/artStyle（按系统约束的可选集合），保持中等信息密度与强连续性，然后按系统要求只输出纯 JSON。`;
+  return `绘本灵感/主题：\n${userIdea}\n\n任务：请根据以上灵感，自动分析并适配目标年龄、总页数和画面风格，保持中等信息密度与强连续性，然后按系统要求只输出纯 JSON。`;
 }
 
 export function buildStoryPackCheckerSystemPrompt(): string {

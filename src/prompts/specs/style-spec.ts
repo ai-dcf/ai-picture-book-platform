@@ -1,7 +1,7 @@
 import type { ArtStyle } from "@/types/picturebook";
 import type { StyleRuleSet } from "@/prompts/types";
 
-const STYLE_SPECS: Record<Exclude<ArtStyle, "auto">, StyleRuleSet> = {
+const STYLE_SPECS: Record<string, StyleRuleSet> = {
   "水彩温暖风": {
     styleLabel: "水彩温暖风",
     styleMood: "柔和、治愈、通透明亮",
@@ -76,6 +76,7 @@ const STYLE_SPECS: Record<Exclude<ArtStyle, "auto">, StyleRuleSet> = {
   },
 };
 
-export function getStyleSpec(artStyle: Exclude<ArtStyle, "auto">): StyleRuleSet {
-  return STYLE_SPECS[artStyle];
+export function getStyleSpec(artStyle: ArtStyle): StyleRuleSet {
+  if (artStyle === "auto") return STYLE_SPECS["水彩温暖风"];
+  return STYLE_SPECS[artStyle] || STYLE_SPECS["水彩温暖风"];
 }

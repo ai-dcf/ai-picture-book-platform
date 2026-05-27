@@ -124,11 +124,17 @@ class OpenAICompatibleTextStrategy implements TextModelGateway {
   async generate(params: TextGenerateParams): Promise<TextGenerateResult> {
     const { apiKey, endpoint } = this.config.credentials;
     const model = (this.config.params?.model as string) || "gpt-3.5-turbo";
-    const requestTimeoutMs = getNumberConfigValue(this.config.params?.timeoutMs, 180000);
+    const requestStage = params.headers?.["x-stage"] || "default";
+    const requestTimeoutMs = getNumberConfigValue(this.config.params?.timeoutMs, 300000);
     const effectiveTemperature = typeof params.temperature === "number" ? params.temperature : undefined;
     const effectiveMaxTokens = params.maxTokens ?? getOptionalNumberValue(this.config.params?.maxTokens);
-    const effectiveMaxRetries = getOptionalNumberValue(this.config.params?.maxRetries) ?? 0;
-    const requestStage = params.headers?.["x-stage"] || "default";
+    const configMaxRetries = getOptionalNumberValue(this.config.params?.maxRetries);
+    const effectiveMaxRetries =
+      typeof configMaxRetries === "number"
+        ? configMaxRetries
+        : requestStage === "story-pack" || requestStage === "story-pack-repair"
+          ? 1
+          : 0;
     const requestPageRange = params.headers?.["x-page-range"];
     const requestBatchIndex = params.headers?.["x-batch-index"];
     const startTime = Date.now();

@@ -46,7 +46,6 @@ export async function generateStory(
       outputLength: result.text.length,
       characterCount: story.characters.length,
       sceneCount: story.scenes.length,
-      emotionPointCount: story.emotionCurve.length,
     });
     return { success: true, data: story };
   } catch (err) {

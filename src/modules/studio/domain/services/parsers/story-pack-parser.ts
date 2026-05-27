@@ -1,41 +1,20 @@
-import type {
-  ArtStyle,
-  CoverData,
-  PageCount,
-  StoryData,
-  StoryboardData,
-  TargetAge,
-} from "@/types/picturebook";
+import type { CoverData, StoryData, StoryboardData } from "@/types/picturebook";
 import { extractJSON, parseStoryResponse } from "./story-parser";
 import { parseStoryboardResponse, parseCoverResponse } from "./storyboard-parser";
 import type { StoryPackCheckReport, StoryPackData, StoryPackMeta } from "@/prompts/builders/story-pack";
 
-const TARGET_AGE_CHOICES: TargetAge[] = ["1-3", "3-5", "5-7", "7-9"];
-const PAGE_COUNT_CHOICES: Array<Exclude<PageCount, "auto">> = [8, 12, 16, 24, 32];
-const ART_STYLE_CHOICES: ArtStyle[] = [
-  "水彩温暖风",
-  "蜡笔童趣风",
-  "剪纸拼贴风",
-  "日系清新风",
-  "素描淡彩风",
-  "波普大胆风",
-  "水墨东方风",
-  "极简线条风",
-];
-
-function coerceTargetAge(value: unknown): TargetAge {
-  const v = String(value || "").trim() as TargetAge;
-  return TARGET_AGE_CHOICES.includes(v) ? v : "3-5";
-}
-
-function coercePageCount(value: unknown): Exclude<PageCount, "auto"> {
+function coercePositiveInt(value: unknown, fallback: number): number {
   const n = Number(value);
-  return (PAGE_COUNT_CHOICES as number[]).includes(n) ? (n as Exclude<PageCount, "auto">) : 16;
+  if (!Number.isFinite(n)) return fallback;
+  const i = Math.trunc(n);
+  return i > 0 ? i : fallback;
 }
 
-function coerceArtStyle(value: unknown): ArtStyle {
-  const v = String(value || "").trim() as ArtStyle;
-  return ART_STYLE_CHOICES.includes(v) ? v : "水彩温暖风";
+function coerceTargetAge(value: unknown, fallback: string): string {
+  const v = String(value || "").trim();
+  if (!v) return fallback;
+  const match = v.match(/^\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?$/);
+  return match ? v.replace(/\s+/g, "") : fallback;
 }
 
 export function parseStoryPackGeneratorResponse(raw: string): StoryPackData {
@@ -43,17 +22,18 @@ export function parseStoryPackGeneratorResponse(raw: string): StoryPackData {
   const parsed = JSON.parse(json) as Record<string, unknown>;
 
   const metaRaw = (parsed.meta || {}) as Record<string, unknown>;
+  const pageCount = coercePositiveInt(metaRaw.pageCount, 16);
   const meta: StoryPackMeta = {
-    targetAge: coerceTargetAge(metaRaw.targetAge),
-    pageCount: coercePageCount(metaRaw.pageCount),
-    artStyle: coerceArtStyle(metaRaw.artStyle),
+    targetAge: coerceTargetAge(metaRaw.targetAge, "3-6") as StoryPackMeta["targetAge"],
+    pageCount,
+    artStyle: (String(metaRaw.artStyle || "").trim() || "水彩温暖风") as StoryPackMeta["artStyle"],
     rationale: String(metaRaw.rationale || "").trim(),
   };
 
   const story: StoryData = parseStoryResponse(JSON.stringify(parsed.story || {}));
   const storyboard: StoryboardData = parseStoryboardResponse(
     JSON.stringify(parsed.storyboard || {}),
-    meta.pageCount
+    pageCount
   );
   const cover: Pick<CoverData, "title" | "visualGoal"> = parseCoverResponse(
     JSON.stringify(parsed.cover || {})

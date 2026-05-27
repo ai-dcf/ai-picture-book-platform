@@ -1,17 +1,8 @@
 // ─── Enums (PRD §6) ──────────────────────────────────────────────────────────
-export type TargetAge = 'auto' | '1-3' | '3-5' | '5-7' | '7-9';
-export type PageCount = 'auto' | 8 | 12 | 16 | 24 | 32;
+export type TargetAge = 'auto' | `${number}-${number}`;
+export type PageCount = 'auto' | number;
 export type AspectRatio = '3:4' | '9:16' | '16:9' | '1:1';
-export type ArtStyle =
-  | 'auto'
-  | '水彩温暖风'
-  | '蜡笔童趣风'
-  | '剪纸拼贴风'
-  | '日系清新风'
-  | '素描淡彩风'
-  | '波普大胆风'
-  | '水墨东方风'
-  | '极简线条风';
+export type ArtStyle = 'auto' | string;
 
 export const TARGET_AGES: TargetAge[] = ['auto', '1-3', '3-5', '5-7', '7-9'];
 export const PAGE_COUNTS: PageCount[] = ['auto', 8, 12, 16, 24, 32];
@@ -121,46 +112,9 @@ export interface StoryEntry {
   userModified: boolean;
 }
 
-export interface EmotionCurvePoint {
-  label: string;
-  emotion: string;
-  intensity: number;
-  isTurningPoint: boolean;
-}
-
-export const EMOTION_INTENSITY_MAP: Record<string, number> = {
-  '温馨': 2,
-  '平静': 1,
-  '好奇': 3,
-  '期待': 3,
-  '紧张': -2,
-  '担忧': -3,
-  '害怕': -4,
-  '震撼': -4,
-  '悲伤': -5,
-  '绝望': -6,
-  '惊喜': 4,
-  '搞笑': 3,
-  '释然': 2,
-  '温暖': 2,
-  '希望': 3,
-  '感动': 2,
-  '兴奋': 4,
-  '愤怒': -4,
-  '恐惧': -5,
-  '满足': 2,
-  '困惑': -1,
-  '失落': -2,
-  '坚定': 1,
-  '成长': 3,
-  '勇气': 3,
-  '快乐': 4,
-};
-
 export interface StoryData {
   characters: StoryEntry[];
   storyOutline: string;
-  emotionCurve: EmotionCurvePoint[];
   scenes: StoryEntry[];
   generating: boolean;
 }

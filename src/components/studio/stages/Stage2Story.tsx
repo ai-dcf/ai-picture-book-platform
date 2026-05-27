@@ -7,8 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
-import { EmotionCurvePoint, ProjectInfo, StoryEntry, EMOTION_INTENSITY_MAP } from '@/types/picturebook';
-import EmotionCurveChart from './EmotionCurveChart';
+import { ProjectInfo, StoryEntry } from '@/types/picturebook';
 import type { StoryPackCheckReport } from '@/prompts/builders/story-pack';
 
 
@@ -62,7 +61,6 @@ export default function Stage2Story() {
   const { state, dispatch, triggerSave } = useStudio();
   const { story, storyboard, cover, projectInfo, stageStatuses } = state;
   const { generateStoryPack, checkStoryPack, repairStoryPack, error, clearError, getErrorMessage } = useStudioGenerate();
-  const [selectedEmotionIndex, setSelectedEmotionIndex] = useState<number | null>(null);
   const [expandedPage, setExpandedPage] = useState<number | null>(0);
   const autoStoryPackTriggeredRef = useRef(false);
   const [checkReport, setCheckReport] = useState<StoryPackCheckReport | null>(null);
@@ -217,8 +215,7 @@ export default function Stage2Story() {
     () =>
       story.storyOutline.trim().length > 0 ||
       story.characters.length > 0 ||
-      story.scenes.length > 0 ||
-      story.emotionCurve.length > 0,
+      story.scenes.length > 0,
     [story]
   );
 
@@ -269,25 +266,9 @@ export default function Stage2Story() {
     triggerSave();
   }
 
-  function handleEmotionPointClick(index: number) {
-    setSelectedEmotionIndex(selectedEmotionIndex === index ? null : index);
-  }
-
-  function handleEmotionChange(index: number, field: keyof EmotionCurvePoint, value: string | number | boolean) {
-    const curve = [...story.emotionCurve];
-    const point = { ...curve[index], [field]: value };
-    if (field === 'emotion' && typeof value === 'string') {
-      point.intensity = EMOTION_INTENSITY_MAP[value] ?? point.intensity;
-    }
-    curve[index] = point;
-    dispatch({ type: 'SET_STORY', payload: { emotionCurve: curve } });
-    triggerSave();
-  }
-
   const storyReady =
     story.characters.length > 0 &&
     story.storyOutline.trim().length > 0 &&
-    story.emotionCurve.length > 0 &&
     story.scenes.length > 0;
 
   const storyboardReady =
@@ -375,119 +356,6 @@ export default function Stage2Story() {
             <section>
               <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">2</span>
-                情绪曲线
-                <span className="text-xs text-muted-foreground font-normal ml-1">（点击节点可编辑情绪和强度）</span>
-              </h3>
-              <EmotionCurveChart
-                data={story.emotionCurve}
-                onPointClick={handleEmotionPointClick}
-                selectedIndex={selectedEmotionIndex}
-                editable
-              />
-
-              {selectedEmotionIndex !== null && story.emotionCurve[selectedEmotionIndex] && (
-                <div className="mt-3 p-3 rounded-lg border border-primary/20 bg-primary/5 space-y-3 animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-body font-medium text-foreground">
-                      {story.emotionCurve[selectedEmotionIndex].label}
-                    </span>
-                    <span className="text-xs font-body text-muted-foreground">—</span>
-                    <span className="text-xs font-body font-medium text-primary">
-                      {story.emotionCurve[selectedEmotionIndex].emotion}
-                    </span>
-                    <span className="text-[10px] font-body text-muted-foreground ml-1">
-                      (强度: {story.emotionCurve[selectedEmotionIndex].intensity > 0 ? '+' : ''}{story.emotionCurve[selectedEmotionIndex].intensity})
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-body text-muted-foreground">情绪词</label>
-                      <select
-                        value={story.emotionCurve[selectedEmotionIndex].emotion}
-                        onChange={e => handleEmotionChange(selectedEmotionIndex, 'emotion', e.target.value)}
-                        className="w-full h-8 text-xs font-body rounded-md border border-border bg-background px-2"
-                      >
-                        {Object.keys(EMOTION_INTENSITY_MAP).map(e => (
-                          <option key={e} value={e}>{e}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-body text-muted-foreground">情绪强度 (-6 ~ +6)</label>
-                      <input
-                        type="range"
-                        min={-6}
-                        max={6}
-                        step={1}
-                        value={story.emotionCurve[selectedEmotionIndex].intensity}
-                        onChange={e => handleEmotionChange(selectedEmotionIndex, 'intensity', Number(e.target.value))}
-                        className="w-full h-2 accent-primary"
-                      />
-                      <div className="flex justify-between text-[9px] font-body text-muted-foreground">
-                        <span>负面</span>
-                        <span className="font-medium text-foreground">{story.emotionCurve[selectedEmotionIndex].intensity}</span>
-                        <span>正面</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <label className="flex items-center gap-2 text-[10px] font-body text-muted-foreground cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={story.emotionCurve[selectedEmotionIndex].isTurningPoint}
-                      onChange={e => handleEmotionChange(selectedEmotionIndex, 'isTurningPoint', e.target.checked)}
-                      className="w-3.5 h-3.5 rounded accent-amber-500"
-                    />
-                    标记为关键转折点
-                  </label>
-
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedEmotionIndex(null)}
-                      className="text-xs font-body h-7"
-                    >
-                      关闭编辑
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {story.emotionCurve.length > 0 && (
-                <div className="mt-3 space-y-1.5">
-                  <p className="text-[10px] font-body text-muted-foreground">情节节点一览</p>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {story.emotionCurve.map((point, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleEmotionPointClick(i)}
-                        className={cn(
-                          'px-2.5 py-1.5 rounded-lg border text-xs font-body transition-smooth',
-                          selectedEmotionIndex === i
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-card text-foreground hover:border-primary/50',
-                          point.isTurningPoint && 'border-amber-300 dark:border-amber-700'
-                        )}
-                      >
-                        <span className="text-[10px] text-muted-foreground block">{point.label}</span>
-                        <span className="font-medium">
-                          {point.isTurningPoint && '⚡ '}{point.emotion}
-                          <span className="text-[9px] text-muted-foreground ml-1">
-                            ({point.intensity > 0 ? '+' : ''}{point.intensity})
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <section>
-              <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">3</span>
                 <Users className="w-3.5 h-3.5" />
                 角色设定
                 <span className="text-xs text-muted-foreground font-normal ml-1">（可编辑描述，不可新增/删除）</span>
@@ -506,7 +374,7 @@ export default function Stage2Story() {
 
             <section>
               <h3 className="text-sm font-body font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">4</span>
+                <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">3</span>
                 <MapPin className="w-3.5 h-3.5" />
                 场景清单
                 <span className="text-xs text-muted-foreground font-normal ml-1">（可编辑描述，不可新增/删除）</span>
@@ -528,7 +396,7 @@ export default function Stage2Story() {
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-body font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">5</span>
+                  <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs flex items-center justify-center font-display">4</span>
                   分镜拆页
                 </h3>
                 <div className="flex gap-2">

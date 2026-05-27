@@ -5,7 +5,6 @@ import {
   ProjectInfo,
   StoryData,
   StoryEntry,
-  EmotionCurvePoint,
   CoverData,
   StoryboardData,
   StoryboardPageData,
@@ -115,7 +114,6 @@ const initialState: PictureBookState = {
   story: {
     characters: [],
     storyOutline: '',
-    emotionCurve: [],
     scenes: [],
     generating: false,
   },

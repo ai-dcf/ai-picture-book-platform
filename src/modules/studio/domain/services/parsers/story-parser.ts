@@ -1,5 +1,4 @@
 import type {
-  EmotionCurvePoint,
   StoryData,
   StoryEntry,
 } from "@/types/picturebook";
@@ -37,19 +36,9 @@ export function parseStoryResponse(raw: string): StoryData {
     })
   );
 
-  const emotionCurve: EmotionCurvePoint[] = (parsed.emotionCurve || []).map(
-    (e: Record<string, unknown>) => ({
-      label: String(e.label || ""),
-      emotion: String(e.emotion || "平静"),
-      intensity: Number(e.intensity) || 0,
-      isTurningPoint: Boolean(e.isTurningPoint),
-    })
-  );
-
   const result: StoryData = {
     characters,
     storyOutline: parsed.storyOutline || "",
-    emotionCurve,
     scenes,
     generating: false,
   };

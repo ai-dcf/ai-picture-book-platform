@@ -24,6 +24,7 @@ export async function generateStoryPack(
       systemPrompt: buildStoryPackGeneratorSystemPrompt(),
       prompt: buildStoryPackGeneratorUserPrompt(userIdea || projectInfo.title || ""),
       temperature: 0.65,
+      maxTokens: 4500,
       headers: {
         "x-stage": "story-pack",
       },
@@ -49,4 +50,3 @@ export async function generateStoryPack(
     };
   }
 }
-

@@ -1,6 +1,6 @@
 import type { TargetAge } from "@/types/picturebook";
 
-export type ConcreteTargetAge = Exclude<TargetAge, "auto">;
+export type ConcreteTargetAge = "1-3" | "3-5" | "5-7" | "7-9";
 
 export type AgeGroupKey = "toddler" | "preschool" | "early_reader" | "older";
 
@@ -47,7 +47,23 @@ export const AGE_GROUP_CONFIGS: Record<AgeGroupKey, AgeGroupConfig> = {
 const DEFAULT_TARGET_AGE: ConcreteTargetAge = "3-5";
 
 export function normalizeTargetAge(targetAge: TargetAge): ConcreteTargetAge {
-  return targetAge === "auto" ? DEFAULT_TARGET_AGE : targetAge;
+  if (targetAge === "auto") return DEFAULT_TARGET_AGE;
+
+  const text = String(targetAge).trim();
+  if (text === "1-3" || text === "3-5" || text === "5-7" || text === "7-9") return text;
+
+  const match = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+  if (!match) return DEFAULT_TARGET_AGE;
+
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return DEFAULT_TARGET_AGE;
+
+  const mid = (a + b) / 2;
+  if (mid <= 2.5) return "1-3";
+  if (mid <= 4.5) return "3-5";
+  if (mid <= 6.5) return "5-7";
+  return "7-9";
 }
 
 export function getPageTextPrompt(targetAge: ConcreteTargetAge): string {
