@@ -70,7 +70,22 @@ export const PAGE_STATUS_LABELS: Record<PageStatus, string> = {
 
 // ─── Asset Status (PRD §7.3) ─────────────────────────────────────────────────
 export type AssetStatus = 'not_generated' | 'candidates_generated' | 'official_confirmed' | 'pending_update' | 'review';
-export type AssetGenerationPhase = 'character_prompt' | 'character_base' | 'scene_candidates' | null;
+export type AssetGenerationPhase = 'character_prompt' | 'character_base' | 'scene_prompt' | 'scene_candidates' | null;
+
+export interface AssetPromptResult {
+  id: string;
+  prompt: string;
+}
+
+export interface AssetImageResult {
+  id: string;
+  imageUrl: string;
+}
+
+export interface BatchAssetImageResult {
+  images: AssetImageResult[];
+  failedIds: string[];
+}
 
 export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   not_generated: '未生成',
@@ -170,6 +185,12 @@ export interface ImageRef {
   imageUrl: string;
   refLabel?: string;
   refToken?: string;
+}
+
+export interface PagePromptBatchResult {
+  index: number;
+  prompt: string;
+  imageRefs: ImageRef[];
 }
 
 export type GenerateTargetKind = 'page' | 'cover';

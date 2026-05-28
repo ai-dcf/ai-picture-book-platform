@@ -58,14 +58,18 @@ type SelectedTarget = 'cover' | number;
 
 export default function Stage5Pages() {
   const { state, dispatch, triggerSave } = useStudio();
-  const { generatePageImage, generatePagePrompt, error, clearError, getErrorMessage } = useStudioGenerate();
+  const { generatePageImage, generatePagePrompt, generateBatchPagePrompts, error, clearError, getErrorMessage } = useStudioGenerate();
   const router = useRouter();
   const { pages, storyboard, assets, projectInfo, cover } = state;
   const [currentTarget, setCurrentTarget] = useState<SelectedTarget>('cover');
   const [previewState, setPreviewState] = useState<{ open: boolean; imageUrl: string; alt: string }>({ open: false, imageUrl: '', alt: '' });
   const [promptGeneratingTarget, setPromptGeneratingTarget] = useState<string | null>(null);
   const [promptErrorTarget, setPromptErrorTarget] = useState<string | null>(null);
+  const [batchPromptGenerating, setBatchPromptGenerating] = useState(false);
   const autoPromptRequestedRef = useRef<Record<string, string>>({});
+  const batchPromptTriggeredRef = useRef(false);
+  const mountedRef = useRef(true);
+  const batchPromptRequestIdRef = useRef(0);
   const generatedCount = pages.filter(item => Boolean(item.imageUrl)).length;
   const allPageGenerated = pages.length > 0 && pages.every(item => Boolean(item.imageUrl));
   const allGenerated = allPageGenerated && Boolean(cover.imageUrl);
@@ -108,10 +112,71 @@ export default function Stage5Pages() {
   );
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!needsPageSync) return;
     dispatch({ type: 'SYNC_PAGES_FROM_STORYBOARD' });
     triggerSave();
   }, [dispatch, needsPageSync, triggerSave]);
+
+  useEffect(() => {
+    if (batchPromptTriggeredRef.current) return;
+    if (pages.length === 0) return;
+
+    const targets = pages.filter(item => !(item.prompt || '').trim() && !item.promptUserEdited);
+    if (targets.length === 0) return;
+
+    batchPromptTriggeredRef.current = true;
+    void (async () => {
+      const requestId = ++batchPromptRequestIdRef.current;
+      setBatchPromptGenerating(true);
+      try {
+        const promptResults = await generateBatchPagePrompts(
+          targets.map(p => ({
+            index: p.index,
+            storyText: p.storyText,
+            pageText: p.pageText,
+            visualGoal: p.visualGoal,
+            aspectRatio: p.aspectRatio,
+          })),
+          assets,
+          projectInfo,
+          storyboard.pages
+        );
+
+        console.info('[Stage5Pages] batch page prompts finished', {
+          targetCount: targets.length,
+          returnedCount: promptResults?.length || 0,
+          returnedIndexes: promptResults?.map(p => p.index),
+        });
+
+        if (!mountedRef.current || batchPromptRequestIdRef.current !== requestId) return;
+
+        if (promptResults?.length) {
+          promptResults.forEach(result => {
+            dispatch({
+              type: 'UPDATE_PAGE_CONFIG',
+              payload: {
+                index: result.index,
+                prompt: result.prompt,
+                imageRefs: result.imageRefs,
+                promptUserEdited: false,
+              },
+            });
+          });
+          triggerSave();
+        }
+      } finally {
+        if (!mountedRef.current || batchPromptRequestIdRef.current !== requestId) return;
+        setBatchPromptGenerating(false);
+      }
+    })();
+  }, [assets, dispatch, generateBatchPagePrompts, pages, projectInfo, storyboard.pages, triggerSave]);
 
   useEffect(() => {
     if (typeof currentTarget === 'number' && !pages[currentTarget]) {
@@ -200,6 +265,7 @@ export default function Stage5Pages() {
       return;
     }
 
+    if (batchPromptGenerating) return;
     if (!page || page.prompt.trim().length > 0 || page.generating || isPromptGenerating) return;
     const autoPromptKey = [
       projectInfo.artStyle,
@@ -216,6 +282,7 @@ export default function Stage5Pages() {
     currentPage,
     effectivePageText,
     effectiveVisualGoal,
+    batchPromptGenerating,
     isPromptGenerating,
     isCoverSelected,
     page,
@@ -447,7 +514,7 @@ export default function Stage5Pages() {
                   variant="outline"
                   size="sm"
                   onClick={() => void (isCoverSelected ? requestPromptForCover() : requestPromptForPage(currentPage))}
-                  disabled={isPromptGenerating}
+                  disabled={isPromptGenerating || batchPromptGenerating}
                   className="gap-1.5 font-body text-xs"
                 >
                   {isPromptGenerating ? (

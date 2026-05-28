@@ -1,5 +1,6 @@
 export { extractJSON, parseStoryResponse } from "./story-parser";
 export { parseProjectConfigRecommendResponse } from "./project-config-recommend-parser";
+export { parseAssetPromptBatchResponse } from "./asset-prompt-parser";
 export {
   parseStoryboardResponse,
   parseStoryboardOutlineResponse,

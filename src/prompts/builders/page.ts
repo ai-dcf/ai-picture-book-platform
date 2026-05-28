@@ -2,6 +2,7 @@ import { buildImageRefsFromAssets } from "@/lib/prompt-ref-parser";
 import { promptEnhancer } from "@/prompts/prompt-enhancer";
 import { buildPromptRuleBundle } from "@/prompts/specs";
 import type { BuildPagePromptParams, BuildPagePromptResult, PromptCustomParams } from "@/prompts/types";
+import type { AssetsData, PageItem, StoryboardPageData } from "@/types/picturebook";
 import { buildRuleSummary, findAssetDescriptions, formatRefs, formatRuleBlock, formatRulesAsSentence } from "@/prompts/builders/shared";
 
 function trimTrailingPunctuation(text: string): string {
@@ -153,6 +154,76 @@ export function buildPagePromptGenerationUserPrompt({
     "- 不要输出解释、标题、模型参数或 Markdown",
     "",
     "请直接输出页面主体画面描述。",
+  ].join("\n");
+}
+
+export function buildBatchPagePromptGenerationSystemPrompt(): string {
+  return [
+    "你是一位儿童绘本页面画面设计专家。",
+    "你的任务是根据项目统一风格片段、引用素材，以及多页的页面文字与画面内容描述，分别为每一页生成页面主体画面描述。",
+    "你必须严格遵守以下要求：",
+    "- 只输出严格 JSON，不要输出解释、标题、引号外文本或 Markdown 代码块",
+    '- JSON 格式必须为 {"prompts":[{"id":"page:页码","visualDescription":"页面主体画面描述"}]}',
+    "- 每一页都必须返回对应的 id（id 与输入保持一致）",
+    "- visualDescription 只写可见、可绘制的页面主体画面描述，不要重复输出项目风格名称和规则",
+    "- 必须覆盖角色、场景、动作、构图、光影和色调等与当前页相关的可见信息",
+    "- 角色固定形象由参考图承接，不要复述固定服饰/配饰/鞋帽/外观/固定配色",
+    "- 只有当前页画面内容描述中明确写出的可见变化才允许写入；没有变化时只描述角色名称、数量、站位、朝向、动作、表情和与场景关系",
+    "- 不要写心理活动、抽象氛围词、镜头外信息或创作说明",
+    "- 不要输出“完整绘本单页插画”等固定收尾词（后续会自动拼接）",
+  ].join("\n");
+}
+
+export function buildBatchPagePromptGenerationUserPrompt({
+  pages,
+  storyboardPages,
+  assets,
+  projectInfo,
+  customParams = {},
+}: {
+  pages: Array<Pick<PageItem, "index" | "storyText" | "pageText" | "visualGoal" | "aspectRatio">>;
+  storyboardPages?: StoryboardPageData[];
+  assets: AssetsData;
+  projectInfo: BuildPagePromptParams["projectInfo"];
+  customParams?: PromptCustomParams;
+}) {
+  const rules = buildPromptRuleBundle(projectInfo, customParams);
+  const characterNames = collectAssetNames(assets.characters);
+  const sceneNames = collectAssetNames(assets.scenes);
+  const sceneDetails = findAssetDescriptions(sceneNames, assets.scenes) || "无";
+  const stylePrefix = buildPageProjectStylePrefix(projectInfo, customParams);
+  const storyboardMap = new Map((storyboardPages || []).map(p => [p.pageIndex, p]));
+
+  return [
+    `项目标题：${projectInfo.title || "待定"}`,
+    `目标年龄：${rules.context.targetAge}岁`,
+    `绘本风格：${rules.context.artStyle}`,
+    `项目统一风格片段：${stylePrefix}`,
+    `项目角色名称列表：${formatRefs(characterNames, "无明确角色")}`,
+    "角色参考图规则：角色固定形象已由参考图承接，不要复述固定服饰、固定配饰、固定鞋帽、固定外观或固定颜色方案。",
+    "角色变化规则：只有当前页画面内容描述中明确写出的可见变化才允许写入，例如汗珠、淋湿、手里新增道具或临时装束变化；如果没有明确变化，只写角色名称、数量、站位、朝向、动作、表情和与场景关系。",
+    `项目场景名称列表：${formatRefs(sceneNames, "无明确场景")}`,
+    `场景设定概览：${sceneDetails}`,
+    "",
+    "请分别为以下页面生成页面主体画面描述：",
+    ...pages.map(p => {
+      const sb = storyboardMap.get(p.index);
+      const pageText = resolvePageText({ page: p, storyboardPage: sb }) || "无页面文字";
+      const visualGoal =
+        resolveVisualGoal({ page: p, storyboardPage: sb }) ||
+        "请根据页面文字补足适合儿童绘本的单页画面描述。";
+      const shotInstruction = buildShotInstruction(visualGoal);
+      return [
+        `页面：第 ${p.index + 1} 页`,
+        `- id: page:${p.index}`,
+        `- 页面文字: ${pageText}`,
+        `- 画面内容描述: ${visualGoal}`,
+        `- 镜头构图规则: ${shotInstruction}`,
+      ].join("\n");
+    }),
+    "",
+    "请输出严格 JSON：",
+    '{"prompts":[{"id":"page:页码","visualDescription":"页面主体画面描述"}]}',
   ].join("\n");
 }
 

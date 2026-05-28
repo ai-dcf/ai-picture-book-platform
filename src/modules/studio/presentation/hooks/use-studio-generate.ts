@@ -7,10 +7,13 @@ import type {
   StoryData,
   StoryboardData,
   AssetItem,
+  AssetPromptResult,
+  BatchAssetImageResult,
   AssetsData,
   CoverData,
   GenerateTargetKind,
   PageItem,
+  PagePromptBatchResult,
   StoryboardPageData,
 } from "@/types/picturebook";
 import type { GeneratePagePromptResult } from "@/prompts";
@@ -223,6 +226,30 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateBatchCharacterBaseImages = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<BatchAssetImageResult | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<BatchAssetImageResult>("/api/studio/generate-batch-character-base-images", {
+          assets,
+          projectInfo,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量角色参考图生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const generateCharacterPrompt = useCallback(
     async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
       setLoading(true);
@@ -231,6 +258,69 @@ export function useStudioGenerate() {
         const result = await callApi<string>("/api/studio/generate-character-prompt", { asset, projectInfo });
         if (!result.success || !result.data) {
           setError(result.error || { code: "GENERATION_FAILED", message: "角色提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateBatchCharacterPrompts = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<AssetPromptResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<AssetPromptResult[]>("/api/studio/generate-batch-character-prompts", { assets, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量角色提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateScenePrompt = useCallback(
+    async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<string>("/api/studio/generate-scene-prompt", { asset, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "场景提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateBatchScenePrompts = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<AssetPromptResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<AssetPromptResult[]>("/api/studio/generate-batch-scene-prompts", { assets, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量场景提示词生成失败" });
           return null;
         }
         return result.data;
@@ -310,6 +400,37 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateBatchPagePrompts = useCallback(
+    async (
+      pages: Array<Pick<PageItem, "index" | "storyText" | "pageText" | "visualGoal" | "aspectRatio">>,
+      assets: AssetsData,
+      projectInfo: ProjectInfo,
+      storyboardPages?: StoryboardPageData[]
+    ): Promise<PagePromptBatchResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<PagePromptBatchResult[]>("/api/studio/generate-batch-page-prompts", {
+          pages,
+          storyboardPages,
+          assets,
+          projectInfo,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量页面提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     recommendProjectConfig,
     generateStory,
@@ -319,8 +440,13 @@ export function useStudioGenerate() {
     checkStoryPack,
     repairStoryPack,
     generateCharacterPrompt,
+    generateBatchCharacterPrompts,
+    generateScenePrompt,
+    generateBatchScenePrompts,
     generateAssetImage,
+    generateBatchCharacterBaseImages,
     generatePagePrompt,
+    generateBatchPagePrompts,
     generatePageImage,
     loading,
     error,
