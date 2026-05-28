@@ -5,6 +5,7 @@ import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studi
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronUp, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
 import { ProjectInfo, StoryEntry } from '@/types/picturebook';
@@ -57,6 +58,44 @@ function EntryCard({ entry, onDescChange, colorClass }: EntryCardProps) {
   );
 }
 
+function buildStoryPackJson(
+  projectInfo: Pick<ProjectInfo, 'targetAge' | 'pageCount' | 'artStyle'>,
+  story: {
+    characters: StoryEntry[];
+    storyOutline: string;
+    scenes: StoryEntry[];
+  },
+  storyboard: {
+    pages: {
+      pageIndex: number;
+      text: string;
+      visualGoal: string;
+      userModified: boolean;
+    }[];
+  },
+  cover: {
+    title: string;
+    visualGoal: string;
+  },
+  rationale: string
+) {
+  return JSON.stringify({
+    meta: {
+      targetAge: projectInfo.targetAge,
+      pageCount: projectInfo.pageCount,
+      artStyle: projectInfo.artStyle,
+      rationale,
+    },
+    story,
+    storyboard,
+    cover,
+  });
+}
+
+function getOverallScore(report: StoryPackCheckReport) {
+  return ((report.completenessScore + report.continuityScore + report.densityScore) / 3).toFixed(1);
+}
+
 export default function Stage2Story() {
   const { state, dispatch, triggerSave } = useStudio();
   const { story, storyboard, cover, projectInfo, stageStatuses } = state;
@@ -66,6 +105,19 @@ export default function Stage2Story() {
   const [checkReport, setCheckReport] = useState<StoryPackCheckReport | null>(null);
   const [lastGeneratedJson, setLastGeneratedJson] = useState<string>('');
   const [lastRationale, setLastRationale] = useState<string>('');
+  const [checkingReport, setCheckingReport] = useState(false);
+
+  const runStoryPackCheck = useCallback(async (generatedJson: string, suppressFailure = false) => {
+    setCheckingReport(true);
+    const report = await checkStoryPack(projectInfo.title, generatedJson);
+    if (report) {
+      setCheckReport(report);
+    } else if (suppressFailure) {
+      clearError();
+    }
+    setCheckingReport(false);
+    return report;
+  }, [checkStoryPack, clearError, projectInfo.title]);
 
   const handleGenerateAll = useCallback(async () => {
     dispatch({ type: 'SET_STORY_GENERATING', payload: true });
@@ -103,19 +155,20 @@ export default function Stage2Story() {
         },
       });
 
-      const generatedJson = JSON.stringify({
-        meta: {
+      const generatedJson = buildStoryPackJson(
+        {
           targetAge: result.meta.targetAge,
           pageCount: result.meta.pageCount,
           artStyle: result.meta.artStyle,
-          rationale: result.meta.rationale || '',
         },
-        story: result.story,
-        storyboard: result.storyboard,
-        cover: result.cover,
-      });
+        result.story,
+        result.storyboard,
+        result.cover,
+        result.meta.rationale || ''
+      );
       setLastGeneratedJson(generatedJson);
       setLastRationale(result.meta.rationale || '');
+      void runStoryPackCheck(generatedJson, true);
       triggerSave();
     } catch (err) {
       console.error('生成绘本内容失败', err);
@@ -123,42 +176,31 @@ export default function Stage2Story() {
       dispatch({ type: 'SET_COVER_GENERATING', payload: false });
       dispatch({ type: 'SET_STORY_GENERATING', payload: false });
     }
-  }, [clearError, dispatch, generateStoryPack, projectInfo, triggerSave]);
+  }, [clearError, dispatch, generateStoryPack, projectInfo, runStoryPackCheck, triggerSave]);
 
   const handleCheck = useCallback(async () => {
     clearError();
-    const generatedJson = lastGeneratedJson || JSON.stringify({
-      meta: {
-        targetAge: projectInfo.targetAge,
-        pageCount: projectInfo.pageCount,
-        artStyle: projectInfo.artStyle,
-        rationale: lastRationale || '',
-      },
+    const generatedJson = lastGeneratedJson || buildStoryPackJson(
+      projectInfo,
       story,
       storyboard,
-      cover: { title: cover.title, visualGoal: cover.visualGoal },
-    });
+      { title: cover.title, visualGoal: cover.visualGoal },
+      lastRationale || ''
+    );
     setLastGeneratedJson(generatedJson);
-    const report = await checkStoryPack(projectInfo.title, generatedJson);
-    if (report) {
-      setCheckReport(report);
-    }
-  }, [checkStoryPack, clearError, cover.title, cover.visualGoal, lastGeneratedJson, lastRationale, projectInfo, story, storyboard]);
+    await runStoryPackCheck(generatedJson);
+  }, [clearError, cover.title, cover.visualGoal, lastGeneratedJson, lastRationale, projectInfo, runStoryPackCheck, story, storyboard]);
 
   const handleRepair = useCallback(async () => {
     if (!checkReport) return;
     clearError();
-    const originalJson = lastGeneratedJson || JSON.stringify({
-      meta: {
-        targetAge: projectInfo.targetAge,
-        pageCount: projectInfo.pageCount,
-        artStyle: projectInfo.artStyle,
-        rationale: lastRationale || '',
-      },
+    const originalJson = lastGeneratedJson || buildStoryPackJson(
+      projectInfo,
       story,
       storyboard,
-      cover: { title: cover.title, visualGoal: cover.visualGoal },
-    });
+      { title: cover.title, visualGoal: cover.visualGoal },
+      lastRationale || ''
+    );
     setLastGeneratedJson(originalJson);
 
     dispatch({ type: 'SET_STORY_GENERATING', payload: true });
@@ -195,21 +237,22 @@ export default function Stage2Story() {
       },
     });
 
-    const generatedJson = JSON.stringify({
-      meta: {
+    const generatedJson = buildStoryPackJson(
+      {
         targetAge: result.meta.targetAge,
         pageCount: result.meta.pageCount,
         artStyle: result.meta.artStyle,
-        rationale: result.meta.rationale || '',
       },
-      story: result.story,
-      storyboard: result.storyboard,
-      cover: result.cover,
-    });
+      result.story,
+      result.storyboard,
+      result.cover,
+      result.meta.rationale || ''
+    );
     setLastGeneratedJson(generatedJson);
     setLastRationale(result.meta.rationale || '');
+    void runStoryPackCheck(generatedJson, true);
     triggerSave();
-  }, [checkReport, clearError, cover.title, cover.visualGoal, dispatch, lastGeneratedJson, lastRationale, projectInfo, repairStoryPack, story, storyboard, triggerSave]);
+  }, [checkReport, clearError, cover.title, cover.visualGoal, dispatch, lastGeneratedJson, lastRationale, projectInfo, repairStoryPack, runStoryPackCheck, story, storyboard, triggerSave]);
 
   const hasStoryResult = useMemo(
     () =>
@@ -281,6 +324,7 @@ export default function Stage2Story() {
 
   const hasDownstream =
     stageStatuses[3] !== 'idle' || stageStatuses[4] !== 'idle' || stageStatuses[5] !== 'idle';
+  const overallScore = checkReport ? getOverallScore(checkReport) : null;
 
   return (
     <div className="flex flex-col h-full">
@@ -293,20 +337,83 @@ export default function Stage2Story() {
         <p className="text-sm font-body text-muted-foreground mt-1">先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        <Button
-          onClick={handleGenerateAll}
-          disabled={story.generating || storyboard.generating || cover.generating}
-          className="gap-2 font-body gradient-hero text-primary-foreground border-0"
-        >
-          {story.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-          {story.generating ? '生成中…' : hasStoryResult || hasStoryboardResult || hasCoverResult ? '重新生成绘本内容' : '一键生成绘本内容'}
-        </Button>
-        {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
-          <Button onClick={handleGenerateAll} disabled={story.generating || storyboard.generating || cover.generating} variant="outline" className="gap-2 font-body">
-            <RefreshCw className="w-3.5 h-3.5" />
-            重新生成
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={handleGenerateAll}
+            disabled={story.generating || storyboard.generating || cover.generating || checkingReport}
+            className="gap-2 font-body gradient-hero text-primary-foreground border-0"
+          >
+            {story.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {story.generating ? '生成中…' : hasStoryResult || hasStoryboardResult || hasCoverResult ? '重新生成绘本内容' : '一键生成绘本内容'}
           </Button>
+          {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
+            <Button onClick={handleGenerateAll} disabled={story.generating || storyboard.generating || cover.generating || checkingReport} variant="outline" className="gap-2 font-body">
+              <RefreshCw className="w-3.5 h-3.5" />
+              重新生成
+            </Button>
+          )}
+        </div>
+
+        {(checkingReport || checkReport) && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-body transition-smooth',
+                    checkingReport && 'border-border bg-card text-muted-foreground',
+                    !checkingReport && checkReport?.overallPass && 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300',
+                    !checkingReport && checkReport && !checkReport.overallPass && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
+                  )}
+                >
+                  {checkingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                  <span>{checkingReport ? '评分中...' : `评分 ${overallScore} / 10`}</span>
+                </button>
+              </TooltipTrigger>
+              {checkReport && (
+                <TooltipContent side="bottom" align="end" className="max-w-[360px] space-y-3 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-foreground">总分 {overallScore} / 10</span>
+                    <span className={cn('text-xs font-medium', checkReport.overallPass ? 'text-green-600' : 'text-amber-600')}>
+                      {checkReport.overallPass ? '通过' : '待修复'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div>完整性 {checkReport.completenessScore}/10</div>
+                    <div>连续性 {checkReport.continuityScore}/10</div>
+                    <div>密度 {checkReport.densityScore}/10</div>
+                  </div>
+                  {checkReport.summary && (
+                    <p className="text-xs leading-5 text-muted-foreground">{checkReport.summary}</p>
+                  )}
+                  <div className="space-y-2 text-xs leading-5 text-muted-foreground">
+                    {checkReport.completenessIssues.length > 0 && (
+                      <div>完整性问题：{checkReport.completenessIssues.join('；')}</div>
+                    )}
+                    {checkReport.continuityIssues.length > 0 && (
+                      <div>
+                        连续性问题：
+                        {checkReport.continuityIssues.map(i => `${i.pagePair} ${i.issue}`).join('；')}
+                      </div>
+                    )}
+                    {checkReport.densityIssues.length > 0 && (
+                      <div>
+                        密度问题：
+                        {checkReport.densityIssues.map(i => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`).join('；')}
+                      </div>
+                    )}
+                    {checkReport.completenessIssues.length === 0 &&
+                      checkReport.continuityIssues.length === 0 &&
+                      checkReport.densityIssues.length === 0 && (
+                        <div>未发现明显问题。</div>
+                      )}
+                  </div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 
@@ -421,11 +528,11 @@ export default function Stage2Story() {
                   )}
                   <Button
                     onClick={handleCheck}
-                    disabled={story.generating || storyboard.generating || cover.generating || !(hasStoryResult || hasStoryboardResult || hasCoverResult)}
+                    disabled={story.generating || storyboard.generating || cover.generating || checkingReport || !(hasStoryResult || hasStoryboardResult || hasCoverResult)}
                     variant="outline"
                     className="font-body"
                   >
-                    检查
+                    {checkingReport ? '评分中…' : '检查'}
                   </Button>
                   <Button
                     onClick={handleRepair}
