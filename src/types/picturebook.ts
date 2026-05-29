@@ -1,21 +1,14 @@
 // ─── Enums (PRD §6) ──────────────────────────────────────────────────────────
-export type TargetAge = '0-3' | '3-6' | '6-9' | '9-12';
-export type PageCount = 8 | 12 | 16 | 24 | 32;
+export type TargetAge = 'auto' | `${number}-${number}`;
+export type PageCount = 'auto' | number;
 export type AspectRatio = '3:4' | '9:16' | '16:9' | '1:1';
-export type ArtStyle =
-  | '水彩温暖风'
-  | '蜡笔童趣风'
-  | '剪纸拼贴风'
-  | '日系清新风'
-  | '素描淡彩风'
-  | '波普大胆风'
-  | '水墨东方风'
-  | '极简线条风';
+export type ArtStyle = 'auto' | string;
 
-export const TARGET_AGES: TargetAge[] = ['0-3', '3-6', '6-9', '9-12'];
-export const PAGE_COUNTS: PageCount[] = [8, 12, 16, 24, 32];
+export const TARGET_AGES: TargetAge[] = ['auto', '1-3', '3-5', '5-7', '7-9'];
+export const PAGE_COUNTS: PageCount[] = ['auto', 8, 12, 16, 24, 32];
 export const ASPECT_RATIOS: AspectRatio[] = ['3:4', '9:16', '16:9', '1:1'];
 export const ART_STYLES: ArtStyle[] = [
+  'auto',
   '水彩温暖风',
   '蜡笔童趣风',
   '剪纸拼贴风',
@@ -52,16 +45,15 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 // ─── Stage Status ────────────────────────────────────────────────────────────
 export type StageStatus = 'idle' | 'in-progress' | 'done' | 'invalid' | 'review';
 
-// ─── Stage Number (PRD §4.1: 6 stages) ───────────────────────────────────────
-export type StageNumber = 1 | 2 | 3 | 4 | 5 | 6;
+// ─── Stage Number (PRD §4.1: 5 stages) ───────────────────────────────────────
+export type StageNumber = 1 | 2 | 3 | 4 | 5;
 
 export const STAGE_LABELS: Record<StageNumber, string> = {
   1: '项目初始化',
-  2: '故事架构',
-  3: '分镜拆页',
-  4: '素材设定',
-  5: '逐页生成',
-  6: '编辑定稿与导出',
+  2: '故事架构与分镜拆页',
+  3: '素材设定',
+  4: '逐页生成',
+  5: '编辑定稿与导出',
 };
 
 // ─── Page Status (PRD §7.2) ──────────────────────────────────────────────────
@@ -78,7 +70,22 @@ export const PAGE_STATUS_LABELS: Record<PageStatus, string> = {
 
 // ─── Asset Status (PRD §7.3) ─────────────────────────────────────────────────
 export type AssetStatus = 'not_generated' | 'candidates_generated' | 'official_confirmed' | 'pending_update' | 'review';
-export type AssetGenerationPhase = 'character_base' | 'scene_candidates' | null;
+export type AssetGenerationPhase = 'character_prompt' | 'character_base' | 'scene_prompt' | 'scene_candidates' | null;
+
+export interface AssetPromptResult {
+  id: string;
+  prompt: string;
+}
+
+export interface AssetImageResult {
+  id: string;
+  imageUrl: string;
+}
+
+export interface BatchAssetImageResult {
+  images: AssetImageResult[];
+  failedIds: string[];
+}
 
 export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   not_generated: '未生成',
@@ -120,86 +127,28 @@ export interface StoryEntry {
   userModified: boolean;
 }
 
-export interface EmotionCurvePoint {
-  label: string;
-  emotion: string;
-  intensity: number;
-  isTurningPoint: boolean;
-}
-
-export const EMOTION_INTENSITY_MAP: Record<string, number> = {
-  '温馨': 2,
-  '平静': 1,
-  '好奇': 3,
-  '期待': 3,
-  '紧张': -2,
-  '担忧': -3,
-  '害怕': -4,
-  '震撼': -4,
-  '悲伤': -5,
-  '绝望': -6,
-  '惊喜': 4,
-  '搞笑': 3,
-  '释然': 2,
-  '温暖': 2,
-  '希望': 3,
-  '感动': 2,
-  '兴奋': 4,
-  '愤怒': -4,
-  '恐惧': -5,
-  '满足': 2,
-  '困惑': -1,
-  '失落': -2,
-  '坚定': 1,
-  '成长': 3,
-  '勇气': 3,
-  '快乐': 4,
-};
-
 export interface StoryData {
-  oneLineStory: string;
   characters: StoryEntry[];
   storyOutline: string;
-  emotionCurve: EmotionCurvePoint[];
   scenes: StoryEntry[];
   generating: boolean;
 }
 
-// ─── Storyboard (PRD §8.3) ──────────────────────────────────────────────────
-export type PageTurnMotivation = 'suspense' | 'emotion' | 'discovery' | 'none';
-
-export const PAGE_TURN_MOTIVATION_LABELS: Record<PageTurnMotivation, string> = {
-  suspense: '悬念翻页',
-  emotion: '情绪翻页',
-  discovery: '发现翻页',
-  none: '无',
-};
-
-export const PAGE_TURN_MOTIVATIONS: PageTurnMotivation[] = ['suspense', 'emotion', 'discovery', 'none'];
-
-export type SpreadType = 'full' | 'split' | 'bleed';
-
-export interface SpreadItem {
-  spreadIndex: number;
-  type: SpreadType;
-  functionLabel: string;
-  emotionWord: string;
-  pageTurnMotivation: PageTurnMotivation;
-  pageIndices: number[];
+export interface ProjectConfigRecommendation {
+  recommendedTargetAge?: Exclude<TargetAge, "auto">;
+  recommendedArtStyle?: Exclude<ArtStyle, "auto">;
+  recommendedPageCount?: Exclude<PageCount, "auto">;
 }
 
+// ─── Storyboard (PRD §8.3) ──────────────────────────────────────────────────
 export interface StoryboardPageData {
   pageIndex: number;
   text: string;
   visualGoal: string;
-  pageTurnMotivation: PageTurnMotivation;
-  characterRefs: string[];
-  sceneRefs: string[];
   userModified: boolean;
 }
 
 export interface StoryboardData {
-  spreads: SpreadItem[];
   pages: StoryboardPageData[];
   generating: boolean;
 }
@@ -228,10 +177,45 @@ export interface AssetsData {
   scenes: AssetItem[];
 }
 
+// ─── Image Refs (Stage 5) ────────────────────────────────────────────────────
+export interface ImageRef {
+  assetId: string;
+  assetName: string;
+  assetType: 'character' | 'scene';
+  imageUrl: string;
+  refLabel?: string;
+  refToken?: string;
+}
+
+export interface PagePromptBatchResult {
+  index: number;
+  prompt: string;
+  imageRefs: ImageRef[];
+}
+
+export type GenerateTargetKind = 'page' | 'cover';
+
+// ─── Cover (Stage 3 / Stage 5) ──────────────────────────────────────────────
+export interface CoverData {
+  title: string;
+  visualGoal: string;
+  userModified: boolean;
+  prompt: string;
+  promptUserEdited: boolean;
+  imageUrl: string | null;
+  status: PageStatus;
+  generating: boolean;
+  imageRefs: ImageRef[];
+  aspectRatio?: AspectRatio;
+}
+
 // ─── Pages (PRD §8.5) ───────────────────────────────────────────────────────
 export interface PageItem {
   index: number;
   storyText: string;
+  pageText: string;
+  visualGoal: string;
+  storyboardEdited: boolean;
   characterRefs: string[];
   sceneRefs: string[];
   prompt: string;
@@ -239,6 +223,8 @@ export interface PageItem {
   imageUrl: string | null;
   pageStatus: PageStatus;
   generating: boolean;
+  imageRefs: ImageRef[];
+  aspectRatio?: AspectRatio;
 }
 
 // ─── Editor (PRD §8.6) ──────────────────────────────────────────────────────
@@ -273,6 +259,7 @@ export interface PictureBookState {
   stageStatuses: Record<StageNumber, StageStatus>;
   story: StoryData;
   storyboard: StoryboardData;
+  cover: CoverData;
   assets: AssetsData;
   pages: PageItem[];
   editorStates: EditorPageState[];

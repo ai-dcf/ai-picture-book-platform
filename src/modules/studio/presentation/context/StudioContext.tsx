@@ -1,16 +1,16 @@
 "use client";
-import React, { createContext, useReducer, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import {
   PictureBookState,
   ProjectInfo,
   StoryData,
   StoryEntry,
-  EmotionCurvePoint,
+  CoverData,
   StoryboardData,
   StoryboardPageData,
-  SpreadItem,
   AssetItem,
   AssetsData,
+  AspectRatio,
   PageItem,
   EditorPageState,
   TextBoxStyle,
@@ -27,13 +27,17 @@ import {
   BaseImageHistoryEntry,
   CandidateHistoryEntry,
 } from '@/types/picturebook';
-import { buildAssetPrompt, buildAssetPromptFromEntry, buildPagePrompt } from '@/modules/studio/domain/services/prompt';
+import { buildUserFriendlyAssetPrompt, buildUserFriendlyAssetPromptFromEntry } from '@/prompts';
+import { parseRefTags } from '@/lib/prompt-ref-parser';
 import type { ProjectHistoryEntry } from '@/modules/project-history/types';
 
 function buildInitialPages(count: number): PageItem[] {
   return Array.from({ length: count }, (_, i) => ({
     index: i,
     storyText: '',
+    pageText: '',
+    visualGoal: '',
+    storyboardEdited: false,
     characterRefs: [],
     sceneRefs: [],
     prompt: '',
@@ -41,6 +45,8 @@ function buildInitialPages(count: number): PageItem[] {
     imageUrl: null,
     pageStatus: 'idle' as PageStatus,
     generating: false,
+    imageRefs: [],
+    aspectRatio: undefined,
   }));
 }
 
@@ -55,17 +61,28 @@ function buildInitialEditorStates(count: number): EditorPageState[] {
 
 function buildInitialStoryboard(count: number): StoryboardData {
   return {
-    spreads: [],
     pages: Array.from({ length: count }, (_, i) => ({
       pageIndex: i,
       text: '',
       visualGoal: '',
-      pageTurnMotivation: 'none' as const,
-      characterRefs: [],
-      sceneRefs: [],
       userModified: false,
     })),
     generating: false,
+  };
+}
+
+function buildInitialCover(projectInfo: ProjectInfo): CoverData {
+  return {
+    title: projectInfo.title || '',
+    visualGoal: '',
+    userModified: false,
+    prompt: '',
+    promptUserEdited: false,
+    imageUrl: null,
+    status: 'idle' as PageStatus,
+    generating: false,
+    imageRefs: [],
+    aspectRatio: projectInfo.aspectRatio,
   };
 }
 
@@ -79,16 +96,15 @@ const initialStageStatuses: Record<StageNumber, StageStatus> = {
   3: 'idle',
   4: 'idle',
   5: 'idle',
-  6: 'idle',
 };
 
 const initialState: PictureBookState = {
   projectInfo: {
     projectId: '',
     title: '',
-    targetAge: '3-6',
-    pageCount: 24,
-    artStyle: '水彩温暖风',
+    targetAge: 'auto',
+    pageCount: 'auto',
+    artStyle: 'auto',
     aspectRatio: '3:4',
     saveStatus: 'saved',
     projectStatus: 'draft',
@@ -96,23 +112,38 @@ const initialState: PictureBookState = {
   currentStage: 1,
   stageStatuses: { ...initialStageStatuses },
   story: {
-    oneLineStory: '',
     characters: [],
     storyOutline: '',
-    emotionCurve: [],
     scenes: [],
     generating: false,
   },
   storyboard: buildInitialStoryboard(24),
+  cover: buildInitialCover({
+    projectId: '',
+    title: '',
+    targetAge: 'auto',
+    pageCount: 'auto',
+    artStyle: 'auto',
+    aspectRatio: '3:4',
+    saveStatus: 'saved',
+    projectStatus: 'draft',
+  }),
   assets: { characters: [], scenes: [] },
   pages: buildInitialPages(24),
   editorStates: buildInitialEditorStates(24),
 };
 
+function markCoverReview(cover: CoverData): CoverData {
+  if (cover.status === 'generated' || cover.status === 'finalized') {
+    return { ...cover, status: 'review' as PageStatus };
+  }
+  return cover;
+}
+
 function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
   if (stageStatuses[2] === 'done') stageStatuses[2] = 'invalid';
-  if (stageStatuses[3] === 'done') stageStatuses[3] = 'invalid';
+  if (stageStatuses[3] === 'done') stageStatuses[3] = 'review';
   if (stageStatuses[4] === 'done') stageStatuses[4] = 'review';
   if (stageStatuses[5] !== 'idle') stageStatuses[5] = 'review';
 
@@ -127,13 +158,15 @@ function applyCascadeForCoreParams(state: PictureBookState): PictureBookState {
     ...state,
     stageStatuses,
     pages,
+    cover: markCoverReview(state.cover),
     projectInfo: { ...state.projectInfo, projectStatus: 'review' as ProjectStatus },
   };
 }
 
 function applyCascadeForStyleParams(state: PictureBookState): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
-  if (stageStatuses[4] === 'done') stageStatuses[4] = 'review';
+  if (stageStatuses[3] === 'done') stageStatuses[3] = 'review';
+  if (stageStatuses[4] !== 'idle') stageStatuses[4] = 'review';
   if (stageStatuses[5] !== 'idle') stageStatuses[5] = 'review';
 
   const pages = state.pages.map(p => {
@@ -147,13 +180,14 @@ function applyCascadeForStyleParams(state: PictureBookState): PictureBookState {
     ...state,
     stageStatuses,
     pages,
+    cover: markCoverReview(state.cover),
     projectInfo: { ...state.projectInfo, projectStatus: 'review' as ProjectStatus },
   };
 }
 
 function markDownstreamReview(state: PictureBookState, fromStage: StageNumber): PictureBookState {
   const stageStatuses = { ...state.stageStatuses };
-  for (let s = fromStage + 1; s <= 6; s++) {
+  for (let s = fromStage + 1; s <= 5; s++) {
     const sn = s as StageNumber;
     if (stageStatuses[sn] === 'done') {
       stageStatuses[sn] = 'review';
@@ -167,7 +201,7 @@ function markDownstreamReview(state: PictureBookState, fromStage: StageNumber): 
     return p;
   });
 
-  return { ...state, stageStatuses, pages };
+  return { ...state, stageStatuses, pages, cover: markCoverReview(state.cover) };
 }
 
 function rebuildPagesForCount(state: PictureBookState, count: number): PictureBookState {
@@ -176,36 +210,33 @@ function rebuildPagesForCount(state: PictureBookState, count: number): PictureBo
     pages: buildInitialPages(count),
     editorStates: buildInitialEditorStates(count),
     storyboard: buildInitialStoryboard(count),
+    cover: buildInitialCover(state.projectInfo),
   };
 }
 
 function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
   return state.pages.map(page => {
     const storyboardPage = state.storyboard.pages[page.index];
-    const nextStoryText =
-      page.pageStatus === 'idle' && !page.storyText.trim()
-        ? (storyboardPage?.text || '')
-        : page.storyText;
-    const nextCharacterRefs = storyboardPage?.characterRefs || page.characterRefs;
-    const nextSceneRefs = storyboardPage?.sceneRefs || page.sceneRefs;
-    const nextPrompt = page.promptUserEdited
-      ? page.prompt
-      : buildPagePrompt({
-          pageIndex: page.index,
-          page: {
-            storyText: nextStoryText,
-            characterRefs: nextCharacterRefs,
-            sceneRefs: nextSceneRefs,
-          },
-          storyboardPage,
-          assets: state.assets,
-          projectInfo: state.projectInfo,
-        });
+    const syncedPageText = storyboardPage?.text || '';
+    const syncedVisualGoal = storyboardPage?.visualGoal || '';
+    const nextPageText = page.storyboardEdited
+      ? (page.pageText || page.storyText || syncedPageText)
+      : syncedPageText;
+    const nextVisualGoal = page.storyboardEdited
+      ? (page.visualGoal || syncedVisualGoal)
+      : syncedVisualGoal;
+    const nextStoryText = nextPageText;
 
     let nextPageStatus = page.pageStatus;
     if (
       nextPageStatus === 'idle' &&
-      (nextCharacterRefs.length > 0 || nextSceneRefs.length > 0 || nextPrompt.trim().length > 0)
+      (
+        page.characterRefs.length > 0 ||
+        page.sceneRefs.length > 0 ||
+        nextPageText.trim().length > 0 ||
+        nextVisualGoal.trim().length > 0 ||
+        page.prompt.trim().length > 0
+      )
     ) {
       nextPageStatus = 'pending';
     }
@@ -213,9 +244,8 @@ function syncPagesFromStoryboardState(state: PictureBookState): PageItem[] {
     return {
       ...page,
       storyText: nextStoryText,
-      characterRefs: nextCharacterRefs,
-      sceneRefs: nextSceneRefs,
-      prompt: nextPrompt,
+      pageText: nextPageText,
+      visualGoal: nextVisualGoal,
       pageStatus: nextPageStatus,
     };
   });
@@ -231,6 +261,14 @@ function markReferencedPagesReview(pages: PageItem[], assetName?: string) {
   });
 }
 
+function markReferencedCoverReview(cover: CoverData, assetName?: string) {
+  if (!assetName) return cover;
+  const uses = (cover.imageRefs || []).some(
+    ref => ref.assetName === assetName || ref.refLabel === assetName
+  );
+  return uses ? markCoverReview(cover) : cover;
+}
+
 function nextAssetDraftStatus(asset: AssetItem): AssetStatus {
   if (asset.status === 'pending_update') return 'pending_update';
   if (asset.officialImageUrl) return 'official_confirmed';
@@ -241,6 +279,19 @@ function nextAssetEditedStatus(asset: AssetItem): AssetStatus {
   if (asset.status === 'review') return 'review';
   if (asset.officialImageUrl) return 'pending_update';
   return asset.status;
+}
+
+function clearSystemCharacterPrompts(characters: AssetItem[]): AssetItem[] {
+  return characters.map(asset =>
+    asset.promptUserEdited
+      ? asset
+      : {
+          ...asset,
+          prompt: '',
+          generating: false,
+          generatingPhase: null,
+        }
+  );
 }
 
 type Action =
@@ -256,6 +307,12 @@ type Action =
   | { type: 'SET_STORYBOARD_GENERATING'; payload: boolean }
   | { type: 'SET_STORYBOARD'; payload: Partial<StoryboardData> }
   | { type: 'UPDATE_STORYBOARD_PAGE'; payload: { pageIndex: number; data: Partial<StoryboardPageData> } }
+  | { type: 'SET_COVER'; payload: Partial<CoverData> }
+  | { type: 'UPDATE_COVER_STORYBOARD_FIELDS'; payload: { title?: string; visualGoal?: string; userModified?: boolean } }
+  | { type: 'UPDATE_COVER_CONFIG'; payload: Partial<CoverData> }
+  | { type: 'SET_COVER_GENERATING'; payload: boolean }
+  | { type: 'SET_COVER_IMAGE'; payload: { imageUrl: string } }
+  | { type: 'SET_COVER_STATUS'; payload: PageStatus }
   | { type: 'INIT_ASSETS' }
   | { type: 'SET_ASSET_GENERATING'; payload: { type: 'characters' | 'scenes'; id: string; generating: boolean; phase: AssetItem['generatingPhase'] } }
   | { type: 'SET_CHARACTER_BASE_IMAGE'; payload: { id: string; imageUrl: string } }
@@ -268,20 +325,59 @@ type Action =
   | { type: 'SET_PAGE_GENERATING'; payload: { index: number; generating: boolean } }
   | { type: 'SET_PAGE_IMAGE'; payload: { index: number; imageUrl: string } }
   | { type: 'SET_PAGE_STATUS'; payload: { index: number; status: PageStatus } }
+  | { type: 'UPDATE_PAGE_STORYBOARD_FIELDS'; payload: { index: number; pageText?: string; visualGoal?: string } }
   | { type: 'UPDATE_PAGE_CONFIG'; payload: Partial<PageItem> & { index: number } }
   | { type: 'SYNC_PAGES_FROM_STORYBOARD' }
+  | { type: 'SCAN_IMAGE_REFS'; payload: { index: number } }
   | { type: 'CONFIRM_ALL_FINALIZED' }
   | { type: 'UPDATE_EDITOR_STATE'; payload: { pageIndex: number; state: Partial<EditorPageState> } }
   | { type: 'UPDATE_EDITOR_STYLE'; payload: { pageIndex: number; style: Partial<TextBoxStyle> } }
   | { type: 'UPDATE_EDITOR_LAYOUT'; payload: { pageIndex: number; layout: Partial<TextBoxLayout> } }
   | { type: 'CONFIRM_EDITOR_PAGE'; payload: number }
   | { type: 'SELECT_BASE_IMAGE_FROM_HISTORY'; payload: { type: 'characters' | 'scenes'; id: string; historyIndex: number } }
-  | { type: 'SELECT_CANDIDATE_FROM_HISTORY'; payload: { id: string; historyIndex: number } };
+  | { type: 'SELECT_CANDIDATE_FROM_HISTORY'; payload: { id: string; historyIndex: number } }
+  | { type: 'LOAD_STATE'; payload: PictureBookState };
 
 export type { Action };
 
 function reducer(state: PictureBookState, action: Action): PictureBookState {
   switch (action.type) {
+    case 'LOAD_STATE': {
+      const loaded = action.payload;
+      const pages = loaded.pages.map(p => ({
+        ...p,
+        imageRefs: p.imageRefs || [],
+        generating: false,
+        pageStatus: p.pageStatus === 'generating' ? 'pending' as PageStatus : p.pageStatus,
+      }));
+      const cover = {
+        ...loaded.cover,
+        imageRefs: loaded.cover.imageRefs || [],
+        generating: false,
+        status: loaded.cover.status === 'generating' ? 'pending' as PageStatus : loaded.cover.status,
+      };
+      const assets: AssetsData = {
+        characters: (loaded.assets?.characters || []).map(a => ({
+          ...a,
+          generating: false,
+          generatingPhase: null,
+        })),
+        scenes: (loaded.assets?.scenes || []).map(a => ({
+          ...a,
+          generating: false,
+          generatingPhase: null,
+        })),
+      };
+      return {
+        ...loaded,
+        pages,
+        cover,
+        assets,
+        story: { ...loaded.story, generating: false },
+        storyboard: { ...loaded.storyboard, generating: false },
+      };
+    }
+
     case 'SET_SAVE_STATUS':
       return { ...state, projectInfo: { ...state.projectInfo, saveStatus: action.payload } };
 
@@ -292,10 +388,33 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         || action.payload.pageCount !== undefined;
       const styleChanged = action.payload.artStyle !== undefined
         || action.payload.aspectRatio !== undefined;
+      const artStyleChanged = action.payload.artStyle !== undefined
+        && action.payload.artStyle !== state.projectInfo.artStyle;
 
-      let result: PictureBookState = { ...state, projectInfo: newInfo };
+      const nextCoverTitle = action.payload.title !== undefined && !state.cover.userModified
+        ? action.payload.title
+        : state.cover.title;
+      const nextCoverAspectRatio = action.payload.aspectRatio !== undefined && (
+        !state.cover.aspectRatio || state.cover.aspectRatio === state.projectInfo.aspectRatio
+      )
+        ? action.payload.aspectRatio
+        : state.cover.aspectRatio;
 
-      if (action.payload.pageCount && action.payload.pageCount !== state.projectInfo.pageCount) {
+      let result: PictureBookState = {
+        ...state,
+        projectInfo: newInfo,
+        cover: {
+          ...state.cover,
+          title: nextCoverTitle,
+          aspectRatio: nextCoverAspectRatio,
+        },
+      };
+
+      if (
+        action.payload.pageCount &&
+        action.payload.pageCount !== "auto" &&
+        action.payload.pageCount !== state.projectInfo.pageCount
+      ) {
         result = rebuildPagesForCount(result, action.payload.pageCount);
       }
 
@@ -303,6 +422,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         result = applyCascadeForCoreParams(result);
       } else if (styleChanged) {
         result = applyCascadeForStyleParams(result);
+      }
+
+      if (artStyleChanged) {
+        result = {
+          ...result,
+          assets: {
+            ...result.assets,
+            characters: clearSystemCharacterPrompts(result.assets.characters),
+          },
+        };
       }
 
       return result;
@@ -317,6 +446,9 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           projectId,
           saveStatus: 'saved',
         },
+        cover: {
+          ...state.cover,
+        },
       };
     }
 
@@ -325,17 +457,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
 
     case 'COMPLETE_STAGE': {
       const completed = action.payload;
-      const next = Math.min(completed + 1, 6) as StageNumber;
+      const next = Math.min(completed + 1, 5) as StageNumber;
       const stageStatuses = { ...state.stageStatuses };
       stageStatuses[completed] = 'done';
       if (stageStatuses[next] === 'idle') stageStatuses[next] = 'in-progress';
 
       let projectStatus: ProjectStatus = state.projectInfo.projectStatus;
       if (completed === 1) projectStatus = 'draft';
-      if (completed === 2) projectStatus = 'story_confirmed';
-      if (completed === 3) projectStatus = 'storyboard_confirmed';
-      if (completed === 4) projectStatus = 'assets_confirmed';
-      if (completed === 5) projectStatus = 'creating';
+      if (completed === 2) projectStatus = 'storyboard_confirmed';
+      if (completed === 3) projectStatus = 'assets_confirmed';
+      if (completed === 4) projectStatus = 'creating';
 
       return {
         ...state,
@@ -358,7 +489,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           : c
       );
       let result: PictureBookState = { ...state, story: { ...state.story, characters } };
-      if (state.stageStatuses[3] !== 'idle') {
+      if (
+        state.stageStatuses[3] !== 'idle' ||
+        state.stageStatuses[4] !== 'idle' ||
+        state.stageStatuses[5] !== 'idle'
+      ) {
         result = markDownstreamReview(result, 2);
       }
       return result;
@@ -371,7 +506,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           : s
       );
       let result: PictureBookState = { ...state, story: { ...state.story, scenes } };
-      if (state.stageStatuses[3] !== 'idle') {
+      if (
+        state.stageStatuses[3] !== 'idle' ||
+        state.stageStatuses[4] !== 'idle' ||
+        state.stageStatuses[5] !== 'idle'
+      ) {
         result = markDownstreamReview(result, 2);
       }
       return result;
@@ -392,15 +531,89 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return { ...state, storyboard: { ...state.storyboard, pages } };
     }
 
+    case 'SET_COVER':
+      return { ...state, cover: { ...state.cover, ...action.payload } };
+
+    case 'UPDATE_COVER_STORYBOARD_FIELDS': {
+      const updated = {
+        ...state.cover,
+        title: action.payload.title ?? state.cover.title,
+        visualGoal: action.payload.visualGoal ?? state.cover.visualGoal,
+        userModified: action.payload.userModified ?? true,
+      };
+      if (state.cover.status === 'generated' || state.cover.status === 'finalized') {
+        updated.status = 'review';
+      } else if (
+        state.cover.status === 'idle' &&
+        (
+          updated.title.trim().length > 0 ||
+          updated.visualGoal.trim().length > 0 ||
+          updated.prompt.trim().length > 0
+        )
+      ) {
+        updated.status = 'pending';
+      }
+      return { ...state, cover: updated };
+    }
+
+    case 'UPDATE_COVER_CONFIG': {
+      const nextPromptUserEdited =
+        action.payload.prompt !== undefined
+          ? (action.payload.promptUserEdited ?? true)
+          : state.cover.promptUserEdited;
+      const updated = {
+        ...state.cover,
+        ...action.payload,
+        promptUserEdited: nextPromptUserEdited,
+      };
+      if (state.cover.status === 'generated' || state.cover.status === 'finalized') {
+        updated.status = 'review';
+      } else if (
+        state.cover.status === 'idle' &&
+        (
+          updated.title.trim().length > 0 ||
+          updated.visualGoal.trim().length > 0 ||
+          updated.prompt.trim().length > 0
+        )
+      ) {
+        updated.status = 'pending';
+      }
+      return { ...state, cover: updated };
+    }
+
+    case 'SET_COVER_GENERATING':
+      return {
+        ...state,
+        cover: {
+          ...state.cover,
+          generating: action.payload,
+          status: action.payload ? 'generating' as PageStatus : state.cover.status,
+        },
+      };
+
+    case 'SET_COVER_IMAGE':
+      return {
+        ...state,
+        cover: {
+          ...state.cover,
+          imageUrl: action.payload.imageUrl,
+          status: 'generated' as PageStatus,
+          generating: false,
+        },
+      };
+
+    case 'SET_COVER_STATUS':
+      return { ...state, cover: { ...state.cover, status: action.payload } };
+
     case 'INIT_ASSETS': {
       const toCharacterAsset = (entry: StoryEntry, idx: number): AssetItem => ({
         id: `${entry.name}-${idx}`,
         name: entry.name,
         description: entry.description,
-        prompt: buildAssetPromptFromEntry('character', entry, state.projectInfo),
+        prompt: '',
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
-        aspectRatio: state.projectInfo.aspectRatio,
+        aspectRatio: '9:16' as AspectRatio,
         baseImageUrl: null,
         candidates: [],
         officialImageUrl: null,
@@ -414,7 +627,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         id: `${entry.name}-${idx}`,
         name: entry.name,
         description: entry.description,
-        prompt: buildAssetPromptFromEntry('scene', entry, state.projectInfo),
+        prompt: buildUserFriendlyAssetPromptFromEntry('scene', entry, state.projectInfo),
         promptUserEdited: false,
         status: 'not_generated' as AssetStatus,
         aspectRatio: state.projectInfo.aspectRatio,
@@ -527,6 +740,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         ...state,
         assets: { ...state.assets, characters },
         pages: replacedOfficial ? markReferencedPagesReview(state.pages, target.name) : state.pages,
+        cover: replacedOfficial ? markReferencedCoverReview(state.cover, target.name) : state.cover,
       };
     }
 
@@ -551,6 +765,7 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         ...state,
         assets: { ...state.assets, scenes },
         pages: replacedOfficial ? markReferencedPagesReview(state.pages, target.name) : state.pages,
+        cover: replacedOfficial ? markReferencedCoverReview(state.cover, target.name) : state.cover,
       };
     }
 
@@ -587,14 +802,16 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
                   ...a,
                   description: action.payload.description,
                   status: nextAssetEditedStatus(a),
-                  prompt: a.promptUserEdited
+                  prompt: key === 'characters'
                     ? a.prompt
-                    : buildAssetPrompt({
-                        kind: key === 'characters' ? 'character' : 'scene',
-                        name: a.name,
-                        description: action.payload.description,
-                        projectInfo: { ...state.projectInfo, aspectRatio: a.aspectRatio },
-                      }),
+                    : a.promptUserEdited
+                      ? a.prompt
+                      : buildUserFriendlyAssetPrompt({
+                          kind: 'scene',
+                          name: a.name,
+                          description: action.payload.description,
+                          projectInfo: { ...state.projectInfo, aspectRatio: a.aspectRatio },
+                        }),
                 }
               : a
           ),
@@ -641,7 +858,11 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const sbPage = state.storyboard.pages[action.payload.index];
       editorStates[action.payload.index] = {
         ...editorStates[action.payload.index],
-        textContent: sbPage?.text || state.pages[action.payload.index].storyText || '',
+        textContent:
+          state.pages[action.payload.index].pageText ||
+          state.pages[action.payload.index].storyText ||
+          sbPage?.text ||
+          '',
       };
       return { ...state, pages, editorStates };
     }
@@ -653,18 +874,59 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return { ...state, pages };
     }
 
-    case 'UPDATE_PAGE_CONFIG': {
-      const { index, ...rest } = action.payload;
+    case 'UPDATE_PAGE_STORYBOARD_FIELDS': {
+      const { index, pageText, visualGoal } = action.payload;
       const pages = state.pages.map(p => {
         if (p.index !== index) return p;
         const updated = {
           ...p,
-          ...rest,
-          promptUserEdited: rest.prompt !== undefined ? true : p.promptUserEdited,
+          pageText: pageText ?? p.pageText,
+          storyText: pageText ?? p.storyText,
+          visualGoal: visualGoal ?? p.visualGoal,
+          storyboardEdited: true,
         };
         if (p.pageStatus === 'generated' || p.pageStatus === 'finalized') {
           updated.pageStatus = 'review';
-        } else if (p.pageStatus === 'idle' && (rest.characterRefs || rest.sceneRefs || rest.prompt)) {
+        } else if (
+          p.pageStatus === 'idle' &&
+          (
+            updated.characterRefs.length > 0 ||
+            updated.sceneRefs.length > 0 ||
+            updated.pageText.trim().length > 0 ||
+            updated.visualGoal.trim().length > 0 ||
+            updated.prompt.trim().length > 0
+          )
+        ) {
+          updated.pageStatus = 'pending';
+        }
+        return updated;
+      });
+      return { ...state, pages };
+    }
+
+    case 'UPDATE_PAGE_CONFIG': {
+      const { index, ...rest } = action.payload;
+      const pages = state.pages.map(p => {
+        if (p.index !== index) return p;
+        const nextPromptUserEdited =
+          rest.prompt !== undefined ? (rest.promptUserEdited ?? true) : p.promptUserEdited;
+        const updated = {
+          ...p,
+          ...rest,
+          promptUserEdited: nextPromptUserEdited,
+        };
+        if (p.pageStatus === 'generated' || p.pageStatus === 'finalized') {
+          updated.pageStatus = 'review';
+        } else if (
+          p.pageStatus === 'idle' &&
+          (
+            updated.characterRefs.length > 0 ||
+            updated.sceneRefs.length > 0 ||
+            updated.pageText.trim().length > 0 ||
+            updated.visualGoal.trim().length > 0 ||
+            updated.prompt.trim().length > 0
+          )
+        ) {
           updated.pageStatus = 'pending';
         }
         return updated;
@@ -676,13 +938,24 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       return { ...state, pages: syncPagesFromStoryboardState(state) };
     }
 
+    case 'SCAN_IMAGE_REFS': {
+      const pageIndex = action.payload.index;
+      const page = state.pages[pageIndex];
+      if (!page) return state;
+      const { imageRefs } = parseRefTags(page.prompt, state.assets.characters, state.assets.scenes, page.imageRefs);
+      const pages = state.pages.map(p =>
+        p.index === pageIndex ? { ...p, imageRefs } : p
+      );
+      return { ...state, pages };
+    }
+
     case 'CONFIRM_ALL_FINALIZED': {
       const allFinalized = state.pages.every(p => p.pageStatus === 'finalized');
       if (!allFinalized) return state;
       return {
         ...state,
         projectInfo: { ...state.projectInfo, projectStatus: 'exportable' as ProjectStatus },
-        stageStatuses: { ...state.stageStatuses, 6: 'done' as StageStatus },
+        stageStatuses: { ...state.stageStatuses, 5: 'done' as StageStatus },
       };
     }
 
@@ -811,72 +1084,62 @@ interface StudioContextValue {
 const StudioContext = createContext<StudioContextValue | null>(null);
 export { StudioContext };
 
-const PROJECT_STORAGE_KEY = 'ai_picturebook_project_';
+async function triggerSaveToServer(state: PictureBookState): Promise<boolean> {
+  if (!state.projectInfo.projectId) return false;
 
-function saveProjectToStorage(state: PictureBookState) {
-  if (!state.projectInfo.projectId) return;
-
-  // Save full project state
   try {
-    localStorage.setItem(`${PROJECT_STORAGE_KEY}${state.projectInfo.projectId}`, JSON.stringify(state));
+    const response = await fetch(`/api/projects/${state.projectInfo.projectId}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    });
 
-    // Save to project history
-    const historyEntry: ProjectHistoryEntry = {
-      ...state.projectInfo,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      // Try to get a thumbnail from the first page
-      thumbnailUrl: state.pages.find(p => p.imageUrl)?.imageUrl,
-    };
-
-    const existingHistoryStr = localStorage.getItem('ai-picturebook-projects');
-    let history: ProjectHistoryEntry[] = [];
-    if (existingHistoryStr) {
-      try {
-        history = JSON.parse(existingHistoryStr);
-      } catch {
-        history = [];
-      }
+    if (!response.ok) {
+      console.warn('Server save failed:', response.statusText);
+      return false;
     }
 
-    const existingIndex = history.findIndex(p => p.projectId === state.projectInfo.projectId);
-    if (existingIndex >= 0) {
-      history[existingIndex] = {
-        ...historyEntry,
-        createdAt: history[existingIndex].createdAt,
-      };
-    } else {
-      history.unshift(historyEntry);
-    }
-
-    localStorage.setItem('ai-picturebook-projects', JSON.stringify(history));
+    return true;
   } catch (error) {
-    console.error('Failed to save project:', error);
+    console.warn('Server save unavailable:', error);
+    return false;
   }
-}
-
-function loadProjectFromStorage(projectId: string): PictureBookState | null {
-  try {
-    const data = localStorage.getItem(`${PROJECT_STORAGE_KEY}${projectId}`);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('Failed to load project:', error);
-  }
-  return null;
 }
 
 export function StudioProvider({ children, projectId }: { children: React.ReactNode; projectId?: string }) {
-  const [state, dispatch] = useReducer(reducer, initialState, (initial) => {
-    if (projectId) {
-      const loaded = loadProjectFromStorage(projectId);
-      if (loaded) return loaded;
-    }
-    return initial;
-  });
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [isLoading, setIsLoading] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedStateRef = useRef<PictureBookState | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // Load project from database on mount
+  useEffect(() => {
+    async function loadProject() {
+      if (!projectId) {
+        setIsLoading(false);
+        setInitialLoadComplete(true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            dispatch({ type: 'LOAD_STATE', payload: result.data });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load project from server:', error);
+      } finally {
+        setIsLoading(false);
+        setInitialLoadComplete(true);
+      }
+    }
+
+    loadProject();
+  }, [projectId]);
 
   const triggerSave = useCallback(() => {
     dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
@@ -886,20 +1149,24 @@ export function StudioProvider({ children, projectId }: { children: React.ReactN
     }, 800);
   }, []);
 
-  // Save project whenever state changes
   useEffect(() => {
-    if (state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
-      saveProjectToStorage(state);
+    // 仅当项目已经被正式创建（有projectId）时才自动保存
+    if (initialLoadComplete && state.projectInfo.projectId && JSON.stringify(state) !== JSON.stringify(lastSavedStateRef.current)) {
+      triggerSaveToServer(state);
       lastSavedStateRef.current = state;
     }
-  }, [state]);
+  }, [state, initialLoadComplete]);
 
   // Initialize project if no projectId and no existing project
-  useEffect(() => {
-    if (!projectId && !state.projectInfo.projectId) {
-      dispatch({ type: 'CREATE_DRAFT' });
-    }
-  }, [projectId, state.projectInfo.projectId]);
+  // 移除自动创建草稿逻辑，仅当用户点击"创建项目并继续"按钮时才创建项目
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-muted-foreground">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <StudioContext.Provider value={{ state, dispatch, triggerSave }}>

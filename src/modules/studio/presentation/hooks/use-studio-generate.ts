@@ -3,13 +3,21 @@
 import { useCallback, useState } from "react";
 import type {
   ProjectInfo,
+  ProjectConfigRecommendation,
   StoryData,
   StoryboardData,
   AssetItem,
+  AssetPromptResult,
+  BatchAssetImageResult,
   AssetsData,
+  CoverData,
+  GenerateTargetKind,
   PageItem,
+  PagePromptBatchResult,
   StoryboardPageData,
 } from "@/types/picturebook";
+import type { GeneratePagePromptResult } from "@/prompts";
+import type { StoryPackData, StoryPackCheckReport } from "@/prompts/builders/story-pack";
 
 export type GenerateError = {
   code: string;
@@ -49,6 +57,27 @@ export function useStudioGenerate() {
   const [error, setError] = useState<GenerateError | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
+
+  const recommendProjectConfig = useCallback(
+    async (projectInfo: ProjectInfo): Promise<ProjectConfigRecommendation | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<ProjectConfigRecommendation>("/api/studio/recommend-project-config", { projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "参数推荐失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const generateStory = useCallback(
     async (projectInfo: ProjectInfo): Promise<StoryData | null> => {
@@ -92,6 +121,90 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateCover = useCallback(
+    async (story: StoryData, projectInfo: ProjectInfo): Promise<Pick<CoverData, "title" | "visualGoal"> | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<Pick<CoverData, "title" | "visualGoal">>("/api/studio/generate-cover", { story, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "封面内容生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateStoryPack = useCallback(
+    async (projectInfo: ProjectInfo, userIdea: string): Promise<StoryPackData | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackData>("/api/studio/generate-story-pack", { projectInfo, userIdea });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本内容生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const checkStoryPack = useCallback(
+    async (userIdea: string, generatedJson: string): Promise<StoryPackCheckReport | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackCheckReport>("/api/studio/check-story-pack", { userIdea, generatedJson });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本检查失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const repairStoryPack = useCallback(
+    async (userIdea: string, originalJson: string, checkReport: StoryPackCheckReport): Promise<StoryPackData | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<StoryPackData>("/api/studio/repair-story-pack", { userIdea, originalJson, checkReport });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "绘本修复失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const generateAssetImage = useCallback(
     async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
       setLoading(true);
@@ -113,12 +226,121 @@ export function useStudioGenerate() {
     []
   );
 
+  const generateBatchCharacterBaseImages = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<BatchAssetImageResult | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<BatchAssetImageResult>("/api/studio/generate-batch-character-base-images", {
+          assets,
+          projectInfo,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量角色参考图生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateCharacterPrompt = useCallback(
+    async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<string>("/api/studio/generate-character-prompt", { asset, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "角色提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateBatchCharacterPrompts = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<AssetPromptResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<AssetPromptResult[]>("/api/studio/generate-batch-character-prompts", { assets, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量角色提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateScenePrompt = useCallback(
+    async (asset: AssetItem, projectInfo: ProjectInfo): Promise<string | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<string>("/api/studio/generate-scene-prompt", { asset, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "场景提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateBatchScenePrompts = useCallback(
+    async (assets: AssetItem[], projectInfo: ProjectInfo): Promise<AssetPromptResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<AssetPromptResult[]>("/api/studio/generate-batch-scene-prompts", { assets, projectInfo });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量场景提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const generatePageImage = useCallback(
     async (
-      page: PageItem,
+      page: PageItem | CoverData,
       assets: AssetsData,
       projectInfo: ProjectInfo,
-      storyboardPage?: StoryboardPageData
+      storyboardPage?: StoryboardPageData,
+      kind: GenerateTargetKind = "page"
     ): Promise<string | null> => {
       setLoading(true);
       setError(null);
@@ -128,6 +350,7 @@ export function useStudioGenerate() {
           assets,
           projectInfo,
           storyboardPage,
+          kind,
         });
         if (!result.success || !result.data) {
           setError(result.error || { code: "GENERATION_FAILED", message: "页面图片生成失败" });
@@ -144,10 +367,86 @@ export function useStudioGenerate() {
     []
   );
 
+  const generatePagePrompt = useCallback(
+    async (
+      page: PageItem | CoverData,
+      assets: AssetsData,
+      projectInfo: ProjectInfo,
+      storyboardPage?: StoryboardPageData,
+      kind: GenerateTargetKind = "page"
+    ): Promise<GeneratePagePromptResult | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<GeneratePagePromptResult>("/api/studio/generate-page-prompt", {
+          page,
+          assets,
+          projectInfo,
+          storyboardPage,
+          kind,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "页面提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const generateBatchPagePrompts = useCallback(
+    async (
+      pages: Array<Pick<PageItem, "index" | "storyText" | "pageText" | "visualGoal" | "aspectRatio">>,
+      assets: AssetsData,
+      projectInfo: ProjectInfo,
+      storyboardPages?: StoryboardPageData[]
+    ): Promise<PagePromptBatchResult[] | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await callApi<PagePromptBatchResult[]>("/api/studio/generate-batch-page-prompts", {
+          pages,
+          storyboardPages,
+          assets,
+          projectInfo,
+        });
+        if (!result.success || !result.data) {
+          setError(result.error || { code: "GENERATION_FAILED", message: "批量页面提示词生成失败" });
+          return null;
+        }
+        return result.data;
+      } catch (err) {
+        setError({ code: "GENERATION_FAILED", message: err instanceof Error ? err.message : "网络异常" });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
+    recommendProjectConfig,
     generateStory,
     generateStoryboard,
+    generateCover,
+    generateStoryPack,
+    checkStoryPack,
+    repairStoryPack,
+    generateCharacterPrompt,
+    generateBatchCharacterPrompts,
+    generateScenePrompt,
+    generateBatchScenePrompts,
     generateAssetImage,
+    generateBatchCharacterBaseImages,
+    generatePagePrompt,
+    generateBatchPagePrompts,
     generatePageImage,
     loading,
     error,

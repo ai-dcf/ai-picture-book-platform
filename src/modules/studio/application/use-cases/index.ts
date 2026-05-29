@@ -1,4 +1,13 @@
 export { generateStory } from "./generate-story";
+export { recommendProjectConfig } from "./recommend-project-config";
 export { generateStoryboard } from "./generate-storyboard";
+export { generateCover } from "./generate-cover";
+export { generateStoryPack } from "./generate-story-pack";
+export { checkStoryPack } from "./check-story-pack";
+export { repairStoryPack } from "./repair-story-pack";
 export { generateAssetImage } from "./generate-asset-image";
+export { generateBatchCharacterPrompts } from "./generate-batch-character-prompts";
+export { generateBatchScenePrompts } from "./generate-batch-scene-prompts";
+export { generateScenePrompt } from "./generate-scene-prompt";
+export { generatePagePrompt } from "./generate-page-prompt";
 export { generatePageImage } from "./generate-page-image";

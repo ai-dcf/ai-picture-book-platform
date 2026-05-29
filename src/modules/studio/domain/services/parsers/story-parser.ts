@@ -1,4 +1,7 @@
-import type { StoryData, StoryEntry, EmotionCurvePoint } from "@/types/picturebook";
+import type {
+  StoryData,
+  StoryEntry,
+} from "@/types/picturebook";
 
 export function extractJSON(text: string): string {
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -33,21 +36,12 @@ export function parseStoryResponse(raw: string): StoryData {
     })
   );
 
-  const emotionCurve: EmotionCurvePoint[] = (parsed.emotionCurve || []).map(
-    (e: Record<string, unknown>) => ({
-      label: String(e.label || ""),
-      emotion: String(e.emotion || "平静"),
-      intensity: Number(e.intensity) || 0,
-      isTurningPoint: Boolean(e.isTurningPoint),
-    })
-  );
-
-  return {
-    oneLineStory: parsed.oneLineStory || "",
+  const result: StoryData = {
     characters,
     storyOutline: parsed.storyOutline || "",
-    emotionCurve,
     scenes,
     generating: false,
   };
+
+  return result;
 }

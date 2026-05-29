@@ -129,24 +129,25 @@ export default function EditorPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <header className="h-12 flex items-center px-4 gap-3 bg-card border-b border-border shadow-card flex-shrink-0">
-        <Button variant="ghost" size="sm" onClick={handleReturnStudio} className="gap-1.5 font-body text-xs text-muted-foreground">
-          <ArrowLeft className="w-3.5 h-3.5" /> 返回创作台
+      <header className="h-12 flex items-center px-2 sm:px-4 gap-2 sm:gap-3 bg-card border-b border-border shadow-card flex-shrink-0 overflow-hidden">
+        <Button variant="ghost" size="sm" onClick={handleReturnStudio} className="gap-1 font-body text-xs text-muted-foreground px-2">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">返回创作台</span>
         </Button>
-        <div className="w-px h-5 bg-border mx-1" />
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded gradient-hero flex items-center justify-center">
+        <div className="w-px h-5 bg-border mx-0.5 hidden sm:block" />
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded gradient-hero flex items-center justify-center flex-shrink-0">
             <BookOpen className="w-3.5 h-3.5 text-primary-foreground" />
           </div>
-          <span className="font-display text-base text-foreground truncate max-w-[120px] hidden sm:block">
+          <span className="font-display text-sm sm:text-base text-foreground truncate max-w-[80px] sm:max-w-[120px]">
             {projectInfo.title || "编辑页"}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <Button variant="outline" size="icon" className="w-7 h-7" disabled={currentPage === 0} onClick={() => goTo(currentPage - 1)}>
-            <ChevronLeft className="w-4 h-4" />
+        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+          <Button variant="outline" size="icon" className="w-6 h-6 sm:w-7 sm:h-7" disabled={currentPage === 0} onClick={() => goTo(currentPage - 1)}>
+            <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
-          <div className="flex items-center gap-1 overflow-hidden max-w-[240px]">
+          <div className="flex items-center gap-1 overflow-hidden max-w-[120px] sm:max-w-[240px]">
             {pages.map((_, i) => {
               const confirmed = editorStates[i]?.confirmed;
               return (
@@ -155,28 +156,28 @@ export default function EditorPage() {
                   onClick={() => goTo(i)}
                   className={`flex-shrink-0 transition-smooth rounded-sm ${
                     i === currentPage
-                      ? "w-6 h-2 bg-primary"
+                      ? "w-4 h-1.5 sm:w-6 sm:h-2 bg-primary"
                       : confirmed
-                      ? "w-2 h-2 rounded-full bg-green-500"
-                      : "w-2 h-2 rounded-full bg-muted-foreground/30 hover:bg-primary/50"
+                      ? "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500"
+                      : "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-muted-foreground/30 hover:bg-primary/50"
                   }`}
                 />
               );
             })}
           </div>
-          <Button variant="outline" size="icon" className="w-7 h-7" disabled={currentPage === pages.length - 1} onClick={() => goTo(currentPage + 1)}>
-            <ChevronRight className="w-4 h-4" />
+          <Button variant="outline" size="icon" className="w-6 h-6 sm:w-7 sm:h-7" disabled={currentPage === pages.length - 1} onClick={() => goTo(currentPage + 1)}>
+            <ChevronRight className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-xs font-body text-muted-foreground ml-1">
+          <span className="text-xs font-body text-muted-foreground ml-0.5 sm:ml-1">
             {currentPage + 1} / {pages.length}
           </span>
         </div>
-        <span className={cn("text-xs font-body ml-2", page?.pageStatus === "finalized" ? "text-green-600" : "text-muted-foreground")}>
+        <span className={cn("text-xs font-body ml-1 sm:ml-2 hidden md:inline", page?.pageStatus === "finalized" ? "text-green-600" : "text-muted-foreground")}>
           {page ? PAGE_STATUS_LABELS[page.pageStatus] : ""}
         </span>
       </header>
-      <div className="flex flex-1 min-h-0 gap-0">
-        <div className="flex-1 flex items-center justify-center p-6 bg-muted/30 overflow-auto">
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-0">
+        <div className="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-muted/30 overflow-auto">
           <div className="w-full max-w-lg">
             <EditorCanvas pageIndex={currentPage} />
             {page?.imageUrl && (
@@ -186,26 +187,31 @@ export default function EditorPage() {
             )}
           </div>
         </div>
-        <div className="w-72 flex-shrink-0 border-l border-border bg-card flex flex-col">
-          <div className="px-4 py-3 border-b border-border">
-            <h3 className="font-display text-base text-foreground">第 {currentPage + 1} 页编辑</h3>
+        <div className="w-full lg:w-72 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col max-h-[50vh] lg:max-h-none overflow-y-auto">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-border">
+            <h3 className="font-display text-sm sm:text-base text-foreground">第 {currentPage + 1} 页编辑</h3>
             {editor?.confirmed && (
               <span className="text-xs font-body text-green-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> 已确认定稿
               </span>
             )}
             {page?.pageStatus === "review" && (
-              <span className="text-xs font-body text-amber-600">此页待复查，引用素材可能已变更</span>
+              <span className="text-xs font-body text-amber-600">此页待复查</span>
             )}
           </div>
           <EditorControlPanel pageIndex={currentPage} />
         </div>
       </div>
-      <div className="h-14 flex items-center justify-between px-4 bg-card border-t border-border flex-shrink-0">
-        <Button variant="outline" size="sm" onClick={() => goTo(currentPage - 1)} disabled={currentPage === 0} className="gap-1.5 font-body text-xs">
-          <ChevronLeft className="w-3.5 h-3.5" /> 上一页
-        </Button>
-        <div className="flex items-center gap-2">
+      <div className="h-auto sm:h-14 flex flex-col sm:flex-row items-center justify-between px-2 sm:px-4 py-2 sm:py-0 bg-card border-t border-border flex-shrink-0 gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <Button variant="outline" size="sm" onClick={() => goTo(currentPage - 1)} disabled={currentPage === 0} className="gap-1 font-body text-xs">
+            <ChevronLeft className="w-3.5 h-3.5" /> 上一页
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => router.push("/")} className="gap-1 font-body text-xs sm:hidden">
+            <ArrowLeft className="w-3.5 h-3.5" /> 首页
+          </Button>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating || !page?.imageUrl} className="gap-1.5 font-body text-xs">
             <RefreshCw className="w-3.5 h-3.5" /> 重新生成插画
           </Button>
@@ -216,7 +222,7 @@ export default function EditorPage() {
             <CheckCircle2 className="w-3.5 h-3.5" /> 确认本页定稿
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push("/")} className="gap-1.5 font-body text-xs">
             返回首页
           </Button>
@@ -226,6 +232,29 @@ export default function EditorPage() {
                 <Button variant="outline" size="sm" className="gap-1.5 font-body text-xs" disabled={exporting}>
                   <Download className="w-3.5 h-3.5" />
                   {exportingAll ? "批量导出中..." : exportingCurrent ? "导出中..." : "导出"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCurrentPage} disabled={exporting || !page?.imageUrl}>
+                  导出当前页 PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportAllPages} disabled={exporting}>
+                  导出全部页面 ZIP
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        <div className="flex sm:hidden items-center gap-1.5 w-full justify-center">
+          <Button size="sm" onClick={handleConfirmPage} disabled={editor?.confirmed || !page?.imageUrl} className="gap-1 font-body text-xs gradient-hero text-primary-foreground border-0 flex-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> 确认定稿
+          </Button>
+          {projectInfo.projectStatus === "exportable" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1 font-body text-xs" disabled={exporting}>
+                  <Download className="w-3.5 h-3.5" />
+                  {exporting ? "..." : "导出"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

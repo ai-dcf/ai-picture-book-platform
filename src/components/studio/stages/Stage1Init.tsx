@@ -1,8 +1,9 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStudio } from '@/modules/studio/presentation/hooks/use-studio';
+import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studio-generate';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -10,20 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import {
   TARGET_AGES,
   PAGE_COUNTS,
-  ASPECT_RATIOS,
   ART_STYLES,
   TargetAge,
   PageCount,
-  AspectRatio,
   ArtStyle,
 } from '@/types/picturebook';
 
 export default function Stage1Init() {
   const { state, dispatch, triggerSave } = useStudio();
+  const { generateStoryPack } = useStudioGenerate();
   const { projectInfo, stageStatuses } = state;
   const hasDownstream = Object.values(stageStatuses).some(
     (s, i) => i > 0 && s !== 'idle'
@@ -31,35 +31,79 @@ export default function Stage1Init() {
 
   const [form, setForm] = useState({
     title: projectInfo.title,
-    targetAge: projectInfo.targetAge,
-    pageCount: projectInfo.pageCount,
-    artStyle: projectInfo.artStyle,
-    aspectRatio: projectInfo.aspectRatio,
+    targetAge: projectInfo.targetAge || 'auto',
+    pageCount: projectInfo.pageCount || 'auto',
+    artStyle: projectInfo.artStyle || 'auto',
   });
 
   const [showImpact, setShowImpact] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自动调整文本框高度
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [form.title]);
 
   function handleChange<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm(f => ({ ...f, [key]: value }));
-    if (hasDownstream) setShowImpact(true);
+    setForm(prev => ({ ...prev, [key]: value }));
+    if (hasDownstream) {
+      setShowImpact(true);
+    }
   }
 
-  function handleCreate() {
-    dispatch({
-      type: 'SET_PROJECT_INFO',
-      payload: {
-        title: form.title,
-        targetAge: form.targetAge as TargetAge,
-        pageCount: form.pageCount as PageCount,
-        artStyle: form.artStyle as ArtStyle,
-        aspectRatio: form.aspectRatio as AspectRatio,
-      },
-    });
-    if (!projectInfo.projectId) {
-      dispatch({ type: 'CREATE_DRAFT' });
+  // 一键优化故事概要
+  async function handleOptimize() {
+    if (!form.title.trim() || isOptimizing) return;
+    
+    setIsOptimizing(true);
+    try {
+      const pack = await generateStoryPack(projectInfo, form.title);
+      if (pack?.story?.storyOutline) {
+        handleChange('title', pack.story.storyOutline);
+      }
+    } catch (err) {
+      console.error('优化失败', err);
+    } finally {
+      setIsOptimizing(false);
     }
-    dispatch({ type: 'COMPLETE_STAGE', payload: 1 });
-    triggerSave();
+  }
+
+  async function handleCreate() {
+    if (!form.title.trim()) return;
+    
+    setIsAnalyzing(true);
+    setCreateError(null);
+    try {
+      const finalProjectInfo = {
+        title: form.title.trim(),
+        targetAge: 'auto' as TargetAge,
+        pageCount: 'auto' as PageCount,
+        artStyle: 'auto' as ArtStyle,
+      };
+      
+      // 更新项目信息
+      dispatch({
+        type: 'SET_PROJECT_INFO',
+        payload: finalProjectInfo,
+      });
+      
+      if (!projectInfo.projectId) {
+        dispatch({ type: 'CREATE_DRAFT' });
+      }
+      triggerSave();
+      dispatch({ type: 'SET_STAGE', payload: 2 });
+    } catch (err) {
+      console.error('项目创建失败', err);
+      setCreateError(err instanceof Error ? err.message : '项目参数推荐失败，请重试');
+    } finally {
+      setIsAnalyzing(false);
+    }
   }
 
   const canCreate = form.title.trim().length > 0;
@@ -82,18 +126,40 @@ export default function Stage1Init() {
       </div>
 
       <div className="flex-1 space-y-6 max-w-lg">
+        {createError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span className="flex-1 font-body">{createError}</span>
+          </div>
+        )}
         <div className="space-y-2">
           <label className="text-sm font-body font-medium text-foreground">
-            绘本主题
+            绘本主题/故事概要
             <span className="text-destructive ml-0.5">*</span>
           </label>
-          <Input
-            value={form.title}
-            onChange={e => handleChange('title', e.target.value)}
-            placeholder="例如：小兔子学会分享的故事"
-            className="font-body h-11 text-base"
-          />
-          <p className="text-xs font-body text-muted-foreground">描述你的绘本想讲述什么故事或主题</p>
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={form.title}
+              onChange={e => handleChange('title', e.target.value)}
+              placeholder="输入绘本主题、故事情节或者完整的故事概要，例如：小兔子学会分享的故事..."
+              className="font-body pr-24 resize-none min-h-[80px] max-h-[240px] overflow-y-auto"
+              rows={3}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute right-2 bottom-2 h-7 text-xs gap-1"
+              onClick={handleOptimize}
+              disabled={isOptimizing || !form.title.trim()}
+            >
+              {isOptimizing ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> 优化中</>
+              ) : (
+                <><Sparkles className="w-3 h-3" /> 一键优化</>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -107,7 +173,7 @@ export default function Stage1Init() {
             </SelectTrigger>
             <SelectContent>
               {TARGET_AGES.map(a => (
-                <SelectItem key={a} value={a} className="font-body">{a}</SelectItem>
+                <SelectItem key={a} value={a} className="font-body">{a === 'auto' ? '自动' : a}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -126,7 +192,7 @@ export default function Stage1Init() {
                     : 'bg-card border-border text-foreground hover:border-primary/50'
                 }`}
               >
-                {p} 页
+                {p === 'auto' ? '自动' : `${p} 页`}
               </button>
             ))}
           </div>
@@ -143,30 +209,13 @@ export default function Stage1Init() {
             </SelectTrigger>
             <SelectContent>
               {ART_STYLES.map(s => (
-                <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
+                <SelectItem key={s} value={s} className="font-body">{s === 'auto' ? '自动' : s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">画面比例</label>
-          <div className="flex gap-2 flex-wrap">
-            {ASPECT_RATIOS.map(r => (
-              <button
-                key={r}
-                onClick={() => handleChange('aspectRatio', r as AspectRatio)}
-                className={`px-4 py-2 rounded-lg text-sm font-body border transition-smooth ${
-                  form.aspectRatio === r
-                    ? 'bg-primary text-primary-foreground border-primary shadow-glow'
-                    : 'bg-card border-border text-foreground hover:border-primary/50'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {showImpact && hasDownstream && (
           <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex gap-2">
@@ -189,12 +238,15 @@ export default function Stage1Init() {
       <div className="pt-6 mt-auto border-t border-border">
         <Button
           onClick={handleCreate}
-          disabled={!canCreate}
+          disabled={!canCreate || isAnalyzing || isOptimizing}
           size="lg"
           className="gap-2 font-body text-base gradient-hero text-primary-foreground border-0 shadow-elevated hover:shadow-glow transition-smooth"
         >
-          创建草稿并继续
-          <ArrowRight className="w-4 h-4" />
+          {isAnalyzing ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> 分析中...</>
+          ) : (
+            <>创建项目并继续 <ArrowRight className="w-4 h-4" /></>
+          )}
         </Button>
       </div>
     </div>

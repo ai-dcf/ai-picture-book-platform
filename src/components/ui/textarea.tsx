@@ -1,19 +1,49 @@
-﻿"use client";
+"use client";
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+const AUTO_RESIZE_MAX_HEIGHT = 320;
+
 export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, value, defaultValue, onChange, ...props }, forwardedRef) => {
+    const internalRef = React.useRef<HTMLTextAreaElement>(null);
+
+    React.useImperativeHandle(forwardedRef, () => internalRef.current!);
+
+    const resize = React.useCallback(() => {
+      const el = internalRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      const next = Math.min(el.scrollHeight, AUTO_RESIZE_MAX_HEIGHT);
+      el.style.height = `${next}px`;
+      el.style.overflowY = el.scrollHeight > AUTO_RESIZE_MAX_HEIGHT ? "auto" : "hidden";
+    }, []);
+
+    React.useEffect(() => {
+      resize();
+    }, [value, defaultValue, resize]);
+
+    const handleChange = React.useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange?.(e);
+        resize();
+      },
+      [onChange, resize],
+    );
+
     return (
       <textarea
         className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "ink-input ink-textarea",
           className
         )}
-        ref={ref}
+        ref={internalRef}
+        value={value}
+        defaultValue={defaultValue}
+        onChange={handleChange}
         {...props}
       />
     )

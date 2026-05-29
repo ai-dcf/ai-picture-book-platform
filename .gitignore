@@ -33,14 +33,13 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .env
 .env.*
 !.env.example
+!.env.local.example
 
-# IDEs and editors
-.idea/
-.vscode/
-*.swp
-
-# system files
-.DS_Store
+# SQLite database
+*.db
+*.db-wal
+*.db-shm
 
 # TypeScript cache
 *.tsbuildinfo
+data/

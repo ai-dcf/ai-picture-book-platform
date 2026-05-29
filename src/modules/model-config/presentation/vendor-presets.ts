@@ -5,6 +5,7 @@ export const textVendorPresets = {
     models: [
       'qwen3.6-plus',
       'qwen3.6-flash',
+      'qwen3.5-flash',
       'deepseek-v4-pro',
       'deepseek-v4-flash',
       'glm-5.1',
