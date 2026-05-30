@@ -722,7 +722,7 @@ export default function Stage2Story() {
 
       {!story.generating && !hasStoryResult && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-3 max-w-xs">
+          <div className="text-center space-y-3 max-w-sm">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
               <BookOpen className="w-8 h-8 text-muted-foreground" />
             </div>

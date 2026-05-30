@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, BookOpen, Calendar, Trash2, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, Calendar, Trash2, ArrowRight, MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useProjectHistory } from "@/modules/project-history/use-project-history";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -132,17 +132,34 @@ function ProjectCard({ project, onOpen, onDelete }: {
               {PROJECT_STATUS_LABELS[project.projectStatus as ProjectStatus]} · {ART_STYLES.find((s) => s === project.artStyle) || project.artStyle}
             </CardDescription>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                更多
+                <MoreHorizontal className="ml-1 w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 w-4 h-4" />
+                删除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
@@ -184,7 +201,7 @@ export default function HeroPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(38,40%,97%)] to-[hsl(38,30%,94%)]">
       <TopNav />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="max-w-full mx-auto px-6 lg:px-10 2xl:px-16 py-8 sm:py-12">
         <div className="text-center mb-10 sm:mb-16">
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)]">
             AI 绘本工作室
@@ -197,7 +214,7 @@ export default function HeroPage() {
 
         <div className="space-y-8 sm:space-y-12">
           <section>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
               <CreateNewProjectCard />
 
               {isLoading ? (
