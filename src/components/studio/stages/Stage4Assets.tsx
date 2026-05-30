@@ -1179,11 +1179,7 @@ export default function Stage4Assets() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <ImageIcon className="w-4 h-4 text-primary" />
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 3 · 素材设定</span>
-        </div>
+      <div className="mb-4">
         <h2 className="font-display text-2xl text-foreground">素材设定</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">
           角色基础形象为必填项，场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成

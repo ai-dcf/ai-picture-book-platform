@@ -3,7 +3,7 @@
 import { useStudio } from "@/modules/studio/presentation/hooks/use-studio";
 import { useModelConfig } from "@/modules/model-config/presentation/hooks/use-model-config";
 import TopBar from "@/components/studio/TopBar";
-import LeftSidebar from "@/components/studio/LeftSidebar";
+import ProjectProgress from "@/components/studio/ProjectProgress";
 import { ModelConfigBanner } from "@/components/studio/ModelConfigBanner";
 import Stage1Init from "@/components/studio/stages/Stage1Init";
 import Stage2Story from "@/components/studio/stages/Stage2Story";
@@ -38,13 +38,13 @@ export default function StudioPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <TopBar />
+      {state.currentStage > 1 && <ProjectProgress />}
       {needsBanner && state.currentStage > 1 && (
         <div className="px-2 sm:px-4 pt-2">
           <ModelConfigBanner missingText={!hasTextModel} missingImage={!hasImageModel} />
         </div>
       )}
       <div className="flex flex-1 min-h-0">
-        <LeftSidebar />
         {isFullWidth ? (
           <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <StageContent />

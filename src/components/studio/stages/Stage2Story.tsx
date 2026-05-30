@@ -329,10 +329,6 @@ export default function Stage2Story() {
   return (
     <div className="flex flex-col h-full">
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <BookOpen className="w-4 h-4 text-primary" />
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 2 · 故事架构与分镜拆页</span>
-        </div>
         <h2 className="font-display text-2xl text-foreground">故事架构与分镜拆页</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程</p>
       </div>

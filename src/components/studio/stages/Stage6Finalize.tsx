@@ -215,11 +215,7 @@ export default function Stage6Finalize() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-6 py-5 border-b border-border bg-card">
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle2 className="w-4 h-4 text-primary" />
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">阶段 5 · 编辑定稿与导出</span>
-        </div>
+      <div className="px-6 py-4 border-b border-border bg-card">
         <h2 className="font-display text-2xl text-foreground">编辑定稿与导出</h2>
         <p className="text-sm font-body text-muted-foreground mt-1">
           所有页面生成后可逐页编辑定稿；同时也支持随时导出已生成页面。
