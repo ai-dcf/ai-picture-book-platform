@@ -129,15 +129,20 @@ function TopNav() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#120f1d]/80 backdrop-blur-xl">
+    <motion.header 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="sticky top-0 z-50 border-b border-white/5 bg-[#120f1d]/60 backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,0.05)]"
+    >
       <div className="mx-auto flex h-16 max-w-[1600px] items-center px-4 sm:px-6 lg:px-10">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)] shadow-[0_10px_30px_rgba(242,138,56,0.35)]">
+        <Link href="/" className="group flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)] shadow-[0_10px_30px_rgba(242,138,56,0.2)] transition-all duration-500 group-hover:scale-105 group-hover:shadow-[0_15px_40px_rgba(242,138,56,0.35)]">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           <div>
-            <div className="font-display text-lg font-bold text-white">AI 绘本工作室</div>
-            <div className="text-xs text-white/50">Immersive Creative Desk</div>
+            <div className="font-display text-lg font-bold text-white/90 transition-colors duration-300 group-hover:text-white">AI 绘本工作室</div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">Immersive Creative Desk</div>
           </div>
         </Link>
 
@@ -145,58 +150,58 @@ function TopNav() {
           {session?.user ? (
             <>
               <Link href="/settings/models">
-                <Button variant="ghost" className="h-10 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-white hover:bg-white/10 hover:text-white">
+                <Button variant="ghost" className="h-10 rounded-full border border-white/5 bg-white/5 px-4 text-sm font-medium text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                   <Cpu className="mr-2 h-4 w-4" />
                   <span>大模型配置</span>
                 </Button>
               </Link>
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-10 rounded-full border border-white/10 bg-white/5 px-2 text-white hover:bg-white/10 hover:text-white">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="h-10 rounded-full border border-white/5 bg-white/5 px-2 text-white transition-all duration-300 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                  <Avatar className="h-8 w-8 ring-2 ring-transparent transition-all duration-300 hover:ring-white/20">
                     <AvatarImage src={(session.user as { avatarUrl?: string }).avatarUrl} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-white/10 text-white/80">
                       {((session.user as { nickname?: string }).nickname || session.user.email || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-48 border-white/5 bg-[#1a1625]/95 p-2 text-white/80 backdrop-blur-xl">
+                <DropdownMenuLabel className="font-medium text-white/90">
                   {((session.user as { nickname?: string }).nickname || session.user.email)}
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile" className="flex cursor-pointer items-center">
-                    <User className="mr-2 h-4 w-4" />
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem asChild className="focus:bg-white/5 focus:text-white rounded-xl transition-colors cursor-pointer">
+                  <Link href="/profile" className="flex items-center py-2.5">
+                    <User className="mr-3 h-4 w-4" />
                     <span>个人资料</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex cursor-pointer items-center">
-                    <Settings className="mr-2 h-4 w-4" />
+                <DropdownMenuItem asChild className="focus:bg-white/5 focus:text-white rounded-xl transition-colors cursor-pointer">
+                  <Link href="/settings" className="flex items-center py-2.5">
+                    <Settings className="mr-3 h-4 w-4" />
                     <span>设置</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-white/10" />
                 <DropdownMenuItem
                   onClick={() => signOut()}
-                  className="flex cursor-pointer items-center text-red-600"
+                  className="flex cursor-pointer items-center py-2.5 text-red-400 focus:bg-red-500/10 focus:text-red-300 rounded-xl transition-colors"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-3 h-4 w-4" />
                   <span>退出登录</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             </>
           ) : (
-            <Button asChild className="btn-ink">
+            <Button asChild className="h-10 rounded-full bg-white/10 px-6 text-sm font-medium text-white transition-all duration-300 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
               <Link href="/login">登录</Link>
             </Button>
           )}
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }
 
@@ -204,48 +209,55 @@ function ProjectRailItem({
   project,
   onOpen,
   onDelete,
+  index,
 }: {
   project: ProjectHistoryEntry;
   onOpen: () => void;
   onDelete: () => void;
+  index: number;
 }) {
   return (
-    <div className="group rounded-3xl border border-white/10 bg-white/[0.04] p-3 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.07]">
-      <div className="flex items-start gap-3">
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+      className="group relative rounded-3xl border border-white/5 bg-white/[0.02] p-3 transition-all duration-500 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)]"
+    >
+      <div className="flex items-start gap-2">
         <button
           type="button"
           onClick={onOpen}
-          className="flex flex-1 items-start gap-3 text-left"
+          className="flex min-w-0 flex-1 items-start gap-4 text-left"
         >
-          <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 transition-transform duration-500 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
             {project.thumbnailUrl ? (
               <img
                 src={project.thumbnailUrl}
                 alt={project.title}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <BookOpen className="h-6 w-6 text-white/45" />
+                <BookOpen className="h-6 w-6 text-white/30 transition-colors duration-300 group-hover:text-white/60" />
               </div>
             )}
           </div>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium text-white">{project.title}</p>
-              <Badge variant="outline" className="hidden border-white/10 bg-white/[0.06] text-[10px] text-white/65 sm:inline-flex">
+          <div className="min-w-0 flex-1 space-y-2 py-1">
+            <p className="truncate text-sm font-medium text-white/90 transition-colors duration-300 group-hover:text-white" title={project.title}>{project.title}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-white/40 transition-colors duration-300 group-hover:text-white/60">
+                <Clock3 className="h-3.5 w-3.5" />
+                <span>
+                  {formatDistanceToNow(new Date(project.updatedAt), {
+                    addSuffix: true,
+                    locale: zhCN,
+                  })}
+                </span>
+              </div>
+              <Badge variant="outline" className="shrink-0 border-white/10 bg-white/[0.04] text-[10px] text-white/50 transition-colors duration-300 group-hover:border-white/20 group-hover:text-white/80">
                 {PROJECT_STATUS_LABELS[project.projectStatus as ProjectStatus]}
               </Badge>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-white/45">
-              <Clock3 className="h-3.5 w-3.5" />
-              <span>
-                {formatDistanceToNow(new Date(project.updatedAt), {
-                  addSuffix: true,
-                  locale: zhCN,
-                })}
-              </span>
             </div>
           </div>
         </button>
@@ -255,15 +267,15 @@ function ProjectRailItem({
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 w-9 rounded-full text-white/55 hover:bg-white/10 hover:text-white"
+              className="h-9 w-9 shrink-0 rounded-full text-white/30 opacity-0 transition-all duration-300 hover:bg-white/10 hover:text-white group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-white/10"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="border-white/10 bg-[#1a1625] text-white/80 backdrop-blur-xl">
             <DropdownMenuItem
               onClick={onDelete}
-              className="cursor-pointer text-destructive focus:text-destructive"
+              className="cursor-pointer text-red-400 focus:bg-red-500/20 focus:text-red-300"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               <span>删除项目</span>
@@ -271,7 +283,7 @@ function ProjectRailItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -307,72 +319,91 @@ function ProjectRail({
   );
 
   return (
-    <aside className="flex h-full flex-col rounded-[32px] border border-white/10 bg-[#161225]/90 p-4 shadow-[0_24px_80px_rgba(5,5,10,0.38)] backdrop-blur-xl">
-      <div className="space-y-4 border-b border-white/10 pb-4">
+    <aside className="flex h-full flex-col rounded-[36px] border border-white/5 bg-[#161225]/60 p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_24px_80px_rgba(5,5,10,0.5)] backdrop-blur-2xl transition-all duration-500 hover:border-white/10">
+      <div className="space-y-5 border-b border-white/5 pb-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm uppercase tracking-[0.32em] text-white/35">Project Rail</p>
-            <h2 className="mt-2 font-display text-2xl text-white">项目列表</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">Project Rail</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white/90">项目列表</h2>
           </div>
           <Button
             type="button"
             onClick={onResetWorkbench}
-            className="rounded-2xl bg-white/10 px-4 text-white hover:bg-white/15"
+            className="rounded-2xl bg-white/5 px-4 text-sm font-medium text-white/90 transition-all duration-300 hover:bg-white/10 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
           >
             <Plus className="mr-2 h-4 w-4" />
             新建
           </Button>
         </div>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+        <div className="relative group">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30 transition-colors duration-300 group-focus-within:text-[hsl(35,85%,58%)]" />
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="搜索项目标题"
-            className="h-12 rounded-2xl border-white/10 bg-white/[0.04] pl-11 text-white placeholder:text-white/30"
+            className="h-12 rounded-2xl border-white/5 bg-white/[0.02] pl-11 text-white placeholder:text-white/20 transition-all duration-300 focus:border-[hsl(35,85%,58%)]/50 focus:bg-white/[0.04] focus:ring-4 focus:ring-[hsl(35,85%,58%)]/10"
           />
         </div>
       </div>
 
-      <div className="mt-4 flex-1 overflow-y-auto pr-1">
+      <div className="mt-5 flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-24 rounded-3xl border border-white/10 bg-white/[0.04] animate-pulse" />
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1, duration: 0.4 }}
+                className="h-24 rounded-3xl border border-white/5 bg-white/[0.02] animate-pulse" 
+              />
             ))}
           </div>
         ) : groupedProjects.length > 0 ? (
-          <div className="space-y-6">
-            {groupedProjects.map((group) => (
-              <section key={group.label} className="space-y-3">
-                <div className="flex items-center gap-2 px-1">
-                  <span className="h-px flex-1 bg-white/10" />
-                  <span className="text-xs tracking-[0.24em] text-white/35">{group.label}</span>
+          <div className="space-y-8">
+            {groupedProjects.map((group, groupIndex) => (
+              <motion.section 
+                key={group.label} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: groupIndex * 0.1 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-3 px-2">
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">{group.label}</span>
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 </div>
                 <div className="space-y-3">
-                  {group.items.map((project) => (
+                  {group.items.map((project, index) => (
                     <ProjectRailItem
                       key={project.projectId}
                       project={project}
+                      index={index}
                       onOpen={() => onOpenProject(project.projectId)}
                       onDelete={() => onDeleteProject(project.projectId)}
                     />
                   ))}
                 </div>
-              </section>
+              </motion.section>
             ))}
           </div>
         ) : (
-          <div className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-white/[0.03] px-6 text-center">
-            <BookOpen className="mb-4 h-10 w-10 text-white/25" />
-            <p className="font-display text-lg text-white">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-white/5 bg-white/[0.01] px-6 text-center"
+          >
+            <BookOpen className="mb-4 h-10 w-10 text-white/20" />
+            <p className="font-display text-lg text-white/80">
               {search.trim() ? "没有找到匹配的项目" : "还没有项目"}
             </p>
-            <p className="mt-2 text-sm text-white/45">
+            <p className="mt-2 text-sm text-white/40">
               {search.trim() ? "试试更短的关键词，或者直接开始一个新故事。" : "右侧工作台已经准备好，随时开始第一本绘本。"}
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
     </aside>
@@ -401,52 +432,47 @@ function CreationWorkbench({
   const canCreate = form.title.trim().length > 0 && !isCreating && !isOptimizing;
 
   return (
-    <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,205,120,0.18),_transparent_34%),linear-gradient(135deg,rgba(33,27,53,0.96),rgba(16,12,28,0.94))] p-6 shadow-[0_30px_90px_rgba(6,6,12,0.42)] sm:p-8 lg:p-10">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(80,199,185,0.16),transparent_24%),radial-gradient(circle_at_20%_90%,rgba(247,139,80,0.18),transparent_28%)]" />
+    <section className="relative overflow-hidden rounded-[36px] border border-white/5 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,205,120,0.12),_transparent_40%),radial-gradient(ellipse_at_bottom_left,_rgba(80,199,185,0.1),_transparent_40%),linear-gradient(135deg,rgba(25,20,40,0.96),rgba(12,9,20,0.98))] p-6 shadow-[0_40px_100px_rgba(0,0,0,0.6)] sm:p-8 lg:p-12 transition-all duration-700 hover:border-white/10 hover:shadow-[0_40px_120px_rgba(0,0,0,0.7)]">
+      <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(80,199,185,0.08),transparent_24%),radial-gradient(circle_at_20%_90%,rgba(247,139,80,0.12),transparent_28%)]" />
 
-      <div className="relative z-10 mx-auto flex max-w-5xl flex-col gap-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm uppercase tracking-[0.38em] text-white/35">Creation Workbench</p>
-            <h1 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">
+      <div className="relative z-10 mx-auto flex max-w-5xl flex-col gap-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
+        >
+          <div>
+            <h1 className="mt-4 font-display text-4xl leading-[1.15] text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/40 sm:text-5xl lg:text-6xl">
               今天想创作什么样的绘本？
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-white/60 sm:text-base">
-              左侧管理你的项目，右侧立即开始一个新的故事。创建成功后，会直接进入故事架构与分镜拆页阶段。
-            </p>
+
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-left sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.24em] text-white/35">Step 01</div>
-              <div className="mt-2 text-sm text-white/80">输入灵感</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.24em] text-white/35">Step 02</div>
-              <div className="mt-2 text-sm text-white/80">AI 优化概要</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 col-span-2 sm:col-span-1">
-              <div className="text-xs uppercase tracking-[0.24em] text-white/35">Step 03</div>
-              <div className="mt-2 text-sm text-white/80">进入故事架构</div>
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-[32px] border border-white/10 bg-black/20 p-5 backdrop-blur-xl sm:p-6 lg:p-7">
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          className="rounded-[36px] border border-white/5 bg-black/20 p-6 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] sm:p-8 lg:p-10"
+        >
           {error ? (
-            <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-200">
               {error}
-            </div>
+            </motion.div>
           ) : null}
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white">
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                 <Wand2 className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-sm font-medium text-white">绘本主题与故事概要</div>
-                <div className="text-xs text-white/45">这是整个工作台的起点，尽量写得具体一些。</div>
+                <div className="text-sm font-medium tracking-wide text-white/90">绘本主题与故事概要</div>
+                <div className="text-xs text-white/40">这是整个工作台的起点，尽量写得具体一些。</div>
               </div>
             </div>
 
@@ -454,36 +480,39 @@ function CreationWorkbench({
               value={form.title}
               onChange={(event) => onFormChange("title", event.target.value)}
               placeholder="例如：一只怕黑的小狐狸，如何在森林停电的夜晚学会勇敢地帮助朋友。"
-              className="min-h-[220px] rounded-[28px] border-white/10 bg-white/[0.04] px-5 py-5 text-base leading-8 text-white placeholder:text-white/28"
+              className="min-h-[220px] resize-none rounded-[28px] border-white/5 bg-white/[0.02] px-6 py-6 text-base leading-relaxed text-white placeholder:text-white/20 transition-all duration-300 focus:border-[hsl(35,85%,58%)]/50 focus:bg-white/[0.04] focus:ring-4 focus:ring-[hsl(35,85%,58%)]/10"
             />
 
-            <div className="flex flex-wrap gap-2">
-              {QUICK_PROMPTS.map((prompt) => (
-                <button
+            <div className="flex flex-wrap gap-2.5">
+              {QUICK_PROMPTS.map((prompt, i) => (
+                <motion.button
                   key={prompt}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
                   type="button"
                   onClick={() => onQuickPrompt(prompt)}
-                  className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs text-white/72 transition hover:bg-white/[0.1]"
+                  className="rounded-full border border-white/5 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/60 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
                 >
                   {prompt}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-[0.28em] text-white/35">目标年龄</label>
+          <div className="mt-8 grid gap-5 lg:grid-cols-3">
+            <div className="space-y-2.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 pl-1">目标年龄</label>
               <Select
                 value={form.targetAge}
                 onValueChange={(value) => onFormChange("targetAge", value as TargetAge)}
               >
-                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/[0.04] text-white">
+                <SelectTrigger className="h-14 rounded-2xl border-white/5 bg-white/[0.02] px-5 text-white/90 transition-all duration-300 focus:border-[hsl(35,85%,58%)]/50 focus:ring-4 focus:ring-[hsl(35,85%,58%)]/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/10 bg-[#1a1625] text-white/90 backdrop-blur-xl">
                   {TARGET_AGES.map((age) => (
-                    <SelectItem key={age} value={age}>
+                    <SelectItem key={age} value={age} className="focus:bg-white/10 focus:text-white">
                       {age === "auto" ? "自动推演" : age}
                     </SelectItem>
                   ))}
@@ -491,20 +520,20 @@ function CreationWorkbench({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-[0.28em] text-white/35">绘本页数</label>
+            <div className="space-y-2.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 pl-1">绘本页数</label>
               <Select
                 value={String(form.pageCount)}
                 onValueChange={(value) =>
                   onFormChange("pageCount", value === "auto" ? "auto" : Number(value))
                 }
               >
-                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/[0.04] text-white">
+                <SelectTrigger className="h-14 rounded-2xl border-white/5 bg-white/[0.02] px-5 text-white/90 transition-all duration-300 focus:border-[hsl(35,85%,58%)]/50 focus:ring-4 focus:ring-[hsl(35,85%,58%)]/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/10 bg-[#1a1625] text-white/90 backdrop-blur-xl">
                   {PAGE_COUNTS.map((count) => (
-                    <SelectItem key={String(count)} value={String(count)}>
+                    <SelectItem key={String(count)} value={String(count)} className="focus:bg-white/10 focus:text-white">
                       {count === "auto" ? "自动推演" : `${count} 页`}
                     </SelectItem>
                   ))}
@@ -512,18 +541,18 @@ function CreationWorkbench({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-[0.28em] text-white/35">画风倾向</label>
+            <div className="space-y-2.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 pl-1">画风倾向</label>
               <Select
                 value={form.artStyle}
                 onValueChange={(value) => onFormChange("artStyle", value)}
               >
-                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-white/[0.04] text-white">
+                <SelectTrigger className="h-14 rounded-2xl border-white/5 bg-white/[0.02] px-5 text-white/90 transition-all duration-300 focus:border-[hsl(35,85%,58%)]/50 focus:ring-4 focus:ring-[hsl(35,85%,58%)]/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/10 bg-[#1a1625] text-white/90 backdrop-blur-xl">
                   {ART_STYLES.map((style) => (
-                    <SelectItem key={style} value={style}>
+                    <SelectItem key={style} value={style} className="focus:bg-white/10 focus:text-white">
                       {style === "auto" ? "自动推演" : style}
                     </SelectItem>
                   ))}
@@ -532,14 +561,14 @@ function CreationWorkbench({
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <p className="text-sm text-white/72">首页完成建项后，Studio 会直接打开故事架构与分镜拆页。</p>
-              <div className="flex flex-wrap gap-2 text-xs text-white/40">
-                <span className="rounded-full border border-white/10 px-3 py-1">故事架构与分镜拆页</span>
-                <span className="rounded-full border border-white/10 px-3 py-1">素材设定</span>
-                <span className="rounded-full border border-white/10 px-3 py-1">逐页生成</span>
-                <span className="rounded-full border border-white/10 px-3 py-1">编辑定稿与导出</span>
+          <div className="mt-10 flex flex-col gap-6 border-t border-white/5 pt-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-white/60">首页完成建项后，Studio 会直接打开故事架构与分镜拆页。</p>
+              <div className="flex flex-wrap gap-2 text-[10px] font-medium uppercase tracking-wider text-white/30">
+                <span className="rounded-full border border-white/5 bg-white/[0.02] px-3 py-1.5">1. 故事架构与分镜拆页</span>
+                <span className="rounded-full border border-white/5 bg-white/[0.02] px-3 py-1.5">2. 素材设定</span>
+                <span className="rounded-full border border-white/5 bg-white/[0.02] px-3 py-1.5">3. 逐页生成</span>
+                <span className="rounded-full border border-white/5 bg-white/[0.02] px-3 py-1.5">4. 编辑定稿与导出</span>
               </div>
             </div>
 
@@ -549,12 +578,12 @@ function CreationWorkbench({
                 variant="ghost"
                 onClick={onOptimize}
                 disabled={isOptimizing || isCreating || !form.title.trim()}
-                className="h-12 rounded-2xl border border-white/10 bg-white/[0.06] px-5 text-white hover:bg-white/[0.1] hover:text-white"
+                className="h-14 rounded-2xl border border-white/10 bg-white/[0.03] px-6 text-sm font-medium text-white transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] disabled:opacity-50"
               >
                 {isOptimizing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    优化中
+                    优化中...
                   </>
                 ) : (
                   <>
@@ -568,23 +597,23 @@ function CreationWorkbench({
                 type="button"
                 onClick={onCreate}
                 disabled={!canCreate}
-                className="btn-ink h-12 rounded-2xl px-6"
+                className="h-14 rounded-2xl bg-gradient-to-br from-[hsl(16,72%,52%)] via-[hsl(35,85%,58%)] to-[hsl(170,42%,45%)] px-8 text-sm font-bold text-white shadow-[0_10px_30px_rgba(242,138,56,0.25)] transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_40px_rgba(242,138,56,0.35)] disabled:opacity-50 disabled:hover:scale-100"
               >
                 {isCreating ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     创建项目中
                   </>
                 ) : (
                   <>
                     开始创作
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -684,32 +713,36 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0915] text-foreground">
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,197,116,0.14),transparent_30%),radial-gradient(circle_at_20%_20%,rgba(88,190,178,0.12),transparent_24%),linear-gradient(180deg,#130f1f,#09070f)]" />
+    <div className="h-screen bg-[#0c0915] text-foreground font-body flex flex-col overflow-hidden">
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,197,116,0.1),transparent_40%),radial-gradient(circle_at_20%_20%,rgba(88,190,178,0.08),transparent_30%),linear-gradient(180deg,#130f1f,#09070f)]" />
+      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
       <TopNav />
 
-      <main className="relative z-10 mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[400px_minmax(0,1fr)]">
-          <ProjectRail
-            projects={projects}
-            isLoading={isLoading}
-            search={search}
-            onSearchChange={setSearch}
-            onOpenProject={handleOpenProject}
-            onDeleteProject={handleDeleteProject}
-            onResetWorkbench={resetWorkbench}
-          />
-
-          <CreationWorkbench
-            form={form}
-            error={error}
-            isOptimizing={isOptimizing}
-            isCreating={isCreating}
-            onFormChange={handleFormChange}
-            onOptimize={handleOptimize}
-            onCreate={handleCreate}
-            onQuickPrompt={(value) => handleFormChange("title", value)}
-          />
+      <main className="relative z-10 mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8 min-h-0">
+        <div className="grid h-full gap-6 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[400px_minmax(0,1fr)]">
+          <div className="h-full min-h-0">
+            <ProjectRail
+              projects={projects}
+              isLoading={isLoading}
+              search={search}
+              onSearchChange={setSearch}
+              onOpenProject={handleOpenProject}
+              onDeleteProject={handleDeleteProject}
+              onResetWorkbench={resetWorkbench}
+            />
+          </div>
+          <div className="h-full min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-10">
+            <CreationWorkbench
+              form={form}
+              error={error}
+              isOptimizing={isOptimizing}
+              isCreating={isCreating}
+              onFormChange={handleFormChange}
+              onOptimize={handleOptimize}
+              onCreate={handleCreate}
+              onQuickPrompt={(value) => handleFormChange("title", value)}
+            />
+          </div>
         </div>
       </main>
     </div>
