@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import StageActionHeader from '@/components/studio/StageActionHeader';
+import { FixedImagePreview } from '@/components/studio/FixedImagePreview';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -191,45 +192,9 @@ function AssetPromptEditor({
   );
 }
 
-function LoadingTiles({ count = 3, aspectRatio = '1:1' }: { count?: number; aspectRatio?: AspectRatio }) {
-  return (
-    <div className={cn('grid gap-3', count === 1 ? 'grid-cols-1' : 'grid-cols-3')}>
-      {Array.from({ length: count }).map((_, index) => (
-        <div
-          key={index}
-          className={cn(
-            'rounded-[2rem] bg-muted/50 overflow-hidden relative border-2 border-dashed border-border',
-            getAspectClass(aspectRatio),
-          )}
-          style={{ animationDelay: `${index * 0.15}s` }}
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent animate-pulse" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
-function EmptyPreview({
-  label,
-  aspectRatio = '1:1',
-  className,
-}: {
-  label: string;
-  aspectRatio?: AspectRatio;
-  className?: string;
-}) {
-  return (
-    <div className={cn(
-      'rounded-[2rem] border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 bg-muted/30',
-      getAspectClass(aspectRatio),
-      className,
-    )}>
-      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
-      <span className="text-sm font-body text-muted-foreground">{label}</span>
-    </div>
-  );
-}
+
+
 
 function useLazyImage() {
   const ref = useRef<HTMLButtonElement>(null);
@@ -435,6 +400,9 @@ function BaseImageHistoryPanel({
       type: 'SELECT_BASE_IMAGE_FROM_HISTORY',
       payload: { type: assetType, id: asset.id, historyIndex: dialogState.index },
     });
+    if (assetType === 'characters') {
+      dispatch({ type: 'CONFIRM_CHARACTER_BASE', payload: { id: asset.id } });
+    }
     triggerSave();
     setDialogState({ open: false, entry: null, index: -1 });
   }
@@ -514,6 +482,7 @@ function CandidateHistoryPanel({
       type: 'SELECT_CANDIDATE_FROM_HISTORY',
       payload: { id: asset.id, historyIndex: dialogState.index },
     });
+    dispatch({ type: 'SET_SCENE_OFFICIAL', payload: { id: asset.id, index: 0 } });
     triggerSave();
     setDialogState({ open: false, entry: null, index: -1 });
   }
@@ -684,7 +653,6 @@ function CharacterWorkbenchDetail({
 }) {
   const { state, dispatch, triggerSave } = useStudio();
   const { generateAssetImage, generateCharacterPrompt } = useStudioGenerate();
-  const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
 
   async function generatePromptFromModel() {
     dispatch({
@@ -745,10 +713,6 @@ function CharacterWorkbenchDetail({
       return;
     }
     dispatch({ type: 'SET_CHARACTER_BASE_IMAGE', payload: { id: asset.id, imageUrl } });
-    triggerSave();
-  }
-
-  function handleConfirmBase() {
     dispatch({ type: 'CONFIRM_CHARACTER_BASE', payload: { id: asset.id } });
     triggerSave();
   }
@@ -798,7 +762,7 @@ function CharacterWorkbenchDetail({
         <ScrollArea className="flex-1 min-h-0 pr-3 -mr-3">
           <div className="flex flex-col gap-4 pb-2">
             <div className="min-w-0 rounded-[2rem] card-ink p-6 shadow-ink-light relative z-10 shrink-0">
-              <div className="mb-5 flex items-start justify-between gap-3">
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center rotate-3">
@@ -808,71 +772,50 @@ function CharacterWorkbenchDetail({
                       预览面板
                     </p>
                   </div>
-                  <p className="text-xs font-body text-muted-foreground">优先查看生成结果，再执行确认操作。</p>
+                  <p className="text-xs font-body text-muted-foreground">每次生成的结果将自动设为正式形象。</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
-                    <SelectTrigger className="ink-input h-8 w-[100px] text-xs py-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="font-body">
-                      {ASPECT_RATIOS.map(ratio => (
-                        <SelectItem key={ratio} value={ratio} className="text-xs">
-                          {ratio}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {baseConfirmed && (
-                    <div className="flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-body font-bold text-green-700">
-                      <Check className="h-3 w-3" />
-                      已确认
-                    </div>
-                  )}
+                  <AssetStatusBadge asset={asset} />
                 </div>
               </div>
 
-              {asset.generating && asset.generatingPhase === 'character_base' ? (
-                <div className="flex h-[380px] items-center justify-center rounded-[2rem] border-2 border-dashed border-border/50 bg-muted/20 p-4">
-                  <div className="w-full max-w-[280px]">
-                    <LoadingTiles count={1} aspectRatio={asset.aspectRatio} />
-                  </div>
-                </div>
-              ) : asset.baseImageUrl ? (
-                <button
-                  type="button"
-                  className="group flex h-[380px] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-border/50 bg-muted/20 p-4 transition-all hover:border-primary/30"
-                  onClick={() => onPreview({ imageUrl: asset.baseImageUrl!, alt: `${asset.name} 基础形象` })}
-                >
-                  <img
-                    src={asset.baseImageUrl}
-                    alt={`${asset.name} 基础形象`}
-                    className="max-h-full max-w-full rounded-[1.5rem] object-contain transition-transform group-hover:scale-[1.02] shadow-sm"
-                  />
-                </button>
-              ) : (
-                <EmptyPreview label="暂无基础形象图" aspectRatio={asset.aspectRatio} className="h-[380px]" />
-              )}
+              <FixedImagePreview
+                imageUrl={asset.baseImageUrl}
+                alt={`${asset.name} 基础形象`}
+                isGenerating={asset.generating && asset.generatingPhase === 'character_base'}
+                generatingTitle="正在生成形象"
+                generatingDescription="生成完成后会显示在这里"
+                emptyTitle="暂无基础形象图"
+                onClick={() => onPreview({ imageUrl: asset.baseImageUrl!, alt: `${asset.name} 基础形象` })}
+              />
 
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Button
-                  onClick={handleGenerateBase}
-                  disabled={asset.generating}
-                  className="gap-2 font-body btn-ink rounded-xl border-0 h-11"
-                >
-                  {asset.generating && asset.generatingPhase === 'character_base'
-                    ? <><Loader2 className="w-4 h-4 animate-spin" />生成中…</>
-                    : <><Wand2 className="w-4 h-4" />{asset.baseImageUrl ? '重新生成' : '生成基础形象'}</>}
-                </Button>
-                <Button
-                  onClick={handleConfirmBase}
-                  disabled={!asset.baseImageUrl || asset.generating}
-                  variant="outline"
-                  className="gap-2 font-body rounded-xl border-2 h-11 hover:bg-primary/5 hover:text-primary hover:border-primary/30"
-                >
-                  <Check className="w-4 h-4" />
-                  确认基础形象
-                </Button>
+              <div className="mt-4 rounded-[1.5rem] border-2 border-border/50 bg-background/80 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="min-w-0 flex-1">
+                    <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-2 border-border/70 bg-card text-sm font-body">
+                        <SelectValue placeholder="选择画面比例" />
+                      </SelectTrigger>
+                      <SelectContent className="font-body">
+                        {ASPECT_RATIOS.map(ratio => (
+                          <SelectItem key={ratio} value={ratio} className="text-xs">
+                            {ratio}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleGenerateBase}
+                    disabled={asset.generating}
+                    className="h-10 min-w-[160px] gap-2 rounded-xl border-0 font-body text-sm btn-ink"
+                  >
+                    {asset.generating && asset.generatingPhase === 'character_base'
+                      ? <><Loader2 className="w-4 h-4 animate-spin" />生成中…</>
+                      : <><Wand2 className="w-4 h-4" />{asset.baseImageUrl ? '重新生成' : '生成基础形象'}</>}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -979,6 +922,7 @@ function SceneWorkbenchDetail({
     }
 
     dispatch({ type: 'SET_SCENE_CANDIDATES', payload: { id: asset.id, candidates: images } });
+    dispatch({ type: 'SET_SCENE_OFFICIAL', payload: { id: asset.id, index: 0 } });
     triggerSave();
   }
 
@@ -1035,7 +979,7 @@ function SceneWorkbenchDetail({
         <ScrollArea className="flex-1 min-h-0 pr-3 -mr-3">
           <div className="flex flex-col gap-4 pb-2">
             <div className="min-w-0 rounded-[2rem] card-ink p-6 shadow-ink-light relative z-10 shrink-0">
-              <div className="mb-5 flex items-start justify-between gap-3">
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center rotate-3">
@@ -1045,46 +989,22 @@ function SceneWorkbenchDetail({
                       预览面板
                     </p>
                   </div>
-                  <p className="text-xs font-body text-muted-foreground">优先查看候选图，再设定当前正式版本。</p>
+                  <p className="text-xs font-body text-muted-foreground">点击缩略图直接设为正式场景版本。</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
-                    <SelectTrigger className="ink-input h-8 w-[100px] text-xs py-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="font-body">
-                      {ASPECT_RATIOS.map(ratio => (
-                        <SelectItem key={ratio} value={ratio} className="text-xs">
-                          {ratio}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <AssetStatusBadge asset={asset} />
                 </div>
               </div>
 
-              {asset.generating && asset.generatingPhase === 'scene_candidates' ? (
-                <div className="flex h-[380px] items-center justify-center rounded-[2rem] border-2 border-dashed border-border/50 bg-muted/20 p-4">
-                  <div className="w-full max-w-[280px]">
-                    <LoadingTiles count={1} aspectRatio={asset.aspectRatio} />
-                  </div>
-                </div>
-              ) : previewUrl ? (
-                <button
-                  type="button"
-                  className="group flex h-[380px] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-border/50 bg-muted/20 p-4 transition-all hover:border-primary/30"
-                  onClick={() => onPreview({ imageUrl: previewUrl, alt: `${asset.name} 场景预览` })}
-                >
-                  <img
-                    src={previewUrl}
-                    alt={`${asset.name} 场景预览`}
-                    className="max-h-full max-w-full rounded-[1.5rem] object-contain transition-transform group-hover:scale-[1.02] shadow-sm"
-                  />
-                </button>
-              ) : (
-                <EmptyPreview label="暂无场景候选图" aspectRatio={asset.aspectRatio} className="h-[380px]" />
-              )}
+              <FixedImagePreview
+                imageUrl={previewUrl}
+                alt={`${asset.name} 场景预览`}
+                isGenerating={asset.generating && asset.generatingPhase === 'scene_candidates'}
+                generatingTitle="正在生成场景"
+                generatingDescription="生成完成后会显示在这里"
+                emptyTitle="暂无场景候选图"
+                onClick={() => previewUrl && onPreview({ imageUrl: previewUrl, alt: `${asset.name} 场景预览` })}
+              />
 
               {asset.candidates.length > 0 && (
                 <div className="mt-5 grid grid-cols-3 gap-3">
@@ -1094,7 +1014,10 @@ function SceneWorkbenchDetail({
                       <button
                         key={url}
                         type="button"
-                        onClick={() => setPreviewCandidateIndex(index)}
+                        onClick={() => {
+                          setPreviewCandidateIndex(index);
+                          handleSetOfficial(index);
+                        }}
                         className={cn(
                           'overflow-hidden rounded-[1.5rem] border-2 transition-smooth p-1 bg-background/50',
                           isPreviewing ? 'border-primary shadow-sm bg-primary/5' : 'border-transparent hover:border-primary/30 hover:bg-primary/5'
@@ -1116,27 +1039,33 @@ function SceneWorkbenchDetail({
                 </p>
               )}
 
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Button
-                  onClick={handleGenerateCandidates}
-                  disabled={asset.generating}
-                  className="gap-2 font-body btn-ink rounded-xl border-0 h-11"
-                >
-                  {asset.generating
-                    ? <><Loader2 className="w-4 h-4 animate-spin" />生成中…</>
-                    : <><Wand2 className="w-4 h-4" />{asset.candidates.length > 0 ? '重新生成候选图' : '生成候选图'}</>}
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (previewCandidateIndex !== null) handleSetOfficial(previewCandidateIndex);
-                  }}
-                  disabled={previewCandidateIndex === null || asset.generating}
-                  variant="outline"
-                  className="gap-2 font-body rounded-xl border-2 h-11 hover:bg-primary/5 hover:text-primary hover:border-primary/30"
-                >
-                  <Check className="w-4 h-4" />
-                  设为正式版本
-                </Button>
+              <div className="mt-4 rounded-[1.5rem] border-2 border-border/50 bg-background/80 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="min-w-0 flex-1">
+                    <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-2 border-border/70 bg-card text-sm font-body">
+                        <SelectValue placeholder="选择画面比例" />
+                      </SelectTrigger>
+                      <SelectContent className="font-body">
+                        {ASPECT_RATIOS.map(ratio => (
+                          <SelectItem key={ratio} value={ratio} className="text-xs">
+                            {ratio}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleGenerateCandidates}
+                    disabled={asset.generating}
+                    className="h-10 min-w-[160px] gap-2 rounded-xl border-0 font-body text-sm btn-ink"
+                  >
+                    {asset.generating
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />生成中…</>
+                      : <><Wand2 className="h-3.5 w-3.5" />{asset.candidates.length > 0 ? '重新生成候选图' : '生成候选图'}</>}
+                  </Button>
+                </div>
               </div>
             </div>
 

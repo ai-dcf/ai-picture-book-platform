@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import StageActionHeader from '@/components/studio/StageActionHeader';
 import PromptEditor from '@/components/studio/PromptEditor';
+import { FixedImagePreview } from '@/components/studio/FixedImagePreview';
 import { cn } from '@/lib/utils';
 import { PageStatus, PAGE_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {
@@ -1008,60 +1009,21 @@ export default function Stage5Pages() {
                   </Badge>
                 </div>
 
-                <div className={cn('group relative w-full overflow-hidden rounded-[2rem] border-2 border-dashed border-border/80 bg-muted/50', getAspectClass(currentAspectRatio))}>
-                  <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-body text-white">
-                      {isCoverSelected ? '封面' : `第 ${currentPage + 1} 页`}
-                    </span>
-                    <span className="rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-body text-white/90">
-                      比例 {currentAspectRatio}
-                    </span>
-                  </div>
-
-                  {currentGenerating && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/85 px-4 backdrop-blur-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
-                        <Wand2 className="h-5 w-5 text-primary-foreground" />
-                      </div>
-                      <div className="space-y-1 text-center">
-                        <p className="text-sm font-body font-medium text-foreground">正在生成插画</p>
-                        <p className="text-xs font-body text-muted-foreground">可以继续微调提示词，生成完成后会显示在这里</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentImageUrl && !currentGenerating ? (
-                    <>
-                      <img
-                        src={currentImageUrl}
-                        alt={currentPreviewAlt}
-                        className="h-full w-full cursor-pointer object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                        onClick={() => setPreviewState({
-                          open: true,
-                          imageUrl: currentImageUrl,
-                          alt: currentPreviewAlt,
-                        })}
-                      />
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/15 group-hover:opacity-100">
-                        <div className="rounded-full bg-black/55 p-3">
-                          <Expand className="h-5 w-5 text-white" />
-                        </div>
-                      </div>
-                    </>
-                  ) : !currentGenerating ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background/80 shadow-sm">
-                        <ImageIcon className="h-7 w-7 text-muted-foreground/50" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-body font-medium text-foreground">还没有预览图</p>
-                        <p className="text-xs font-body leading-5 text-muted-foreground">
-                          完成内容输入和提示词确认后，可在预览框下方直接生成当前插画。
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                <FixedImagePreview
+                  imageUrl={currentImageUrl}
+                  alt={currentPreviewAlt}
+                  isGenerating={currentGenerating}
+                  generatingTitle="正在生成插画"
+                  generatingDescription="可以继续微调提示词，生成完成后会显示在这里"
+                  emptyTitle="还没有预览图"
+                  emptyDescription="完成内容输入和提示词确认后，可在预览框下方直接生成当前插画。"
+                  onClick={() => setPreviewState({
+                    open: true,
+                    imageUrl: currentImageUrl!,
+                    alt: currentPreviewAlt,
+                  })}
+                >
+                </FixedImagePreview>
 
                 <div className="mt-4 rounded-[1.5rem] border-2 border-border/50 bg-background/80 p-3">
                   <div className="flex flex-col gap-2 sm:flex-row">
