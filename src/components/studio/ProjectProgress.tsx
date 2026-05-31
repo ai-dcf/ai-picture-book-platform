@@ -50,9 +50,6 @@ export default function ProjectProgress() {
   return (
     <div className="w-full border-b border-border bg-card">
       <div className="max-w-6xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wide">创作进度</span>
-        </div>
         
         <div className="flex items-center gap-1">
           {STAGES.map((s, index) => {

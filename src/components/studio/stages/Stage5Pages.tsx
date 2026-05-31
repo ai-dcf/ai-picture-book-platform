@@ -680,8 +680,8 @@ export default function Stage5Pages() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 xl:flex-row">
-        <aside className="w-full flex-shrink-0 xl:w-64">
-          <div className="flex flex-col overflow-hidden card-ink rounded-[2rem] p-4 shadow-ink-light xl:sticky xl:top-6 xl:max-h-[calc(100vh-1.5rem)] backdrop-blur-sm">
+        <aside className="flex w-full flex-shrink-0 flex-col min-h-0 max-h-[320px] xl:max-h-none xl:w-64">
+          <div className="flex flex-col min-h-0 flex-1 overflow-hidden card-ink rounded-[2rem] p-4 shadow-ink-light backdrop-blur-sm">
             <div className="mb-4 flex items-center gap-2">
               <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
                 <span className="font-display text-white text-xs">录</span>
@@ -698,8 +698,8 @@ export default function Stage5Pages() {
               </span>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto pr-1 xl:max-h-[calc(100vh-220px)]">
-              <nav className="space-y-1.5">
+            <ScrollArea className="min-h-0 flex-1 pr-3 -mr-3">
+              <nav className="space-y-1.5 pb-2">
                 <button
                   onClick={() => setCurrentTarget('cover')}
                   className={cn(
@@ -763,11 +763,11 @@ export default function Stage5Pages() {
                   );
                 })}
               </nav>
-            </div>
+            </ScrollArea>
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden xl:h-full">
           <div className="flex h-full min-h-0 flex-col gap-5 card-ink rounded-[2.5rem] p-4 shadow-ink-medium xl:flex-row">
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[2rem] border-2 border-border/50 bg-background/80 backdrop-blur-sm">
               <div className="border-b-2 border-border/50 px-6 py-5 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent">
