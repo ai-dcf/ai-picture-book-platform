@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import StageActionHeader from '@/components/studio/StageActionHeader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +34,6 @@ import {
   CandidateHistoryEntry,
 } from '@/types/picturebook';
 import {
-  ArrowRight,
   Check,
   ChevronDown,
   History,
@@ -212,14 +212,17 @@ function LoadingTiles({ count = 3, aspectRatio = '1:1' }: { count?: number; aspe
 function EmptyPreview({
   label,
   aspectRatio = '1:1',
+  className,
 }: {
   label: string;
   aspectRatio?: AspectRatio;
+  className?: string;
 }) {
   return (
     <div className={cn(
       'rounded-lg border border-dashed border-border flex flex-col items-center justify-center gap-1 bg-muted/30',
       getAspectClass(aspectRatio),
+      className,
     )}>
       <ImageIcon className="w-6 h-6 text-muted-foreground" />
       <span className="text-xs font-body text-muted-foreground">{label}</span>
@@ -982,12 +985,535 @@ function SceneCard({
   );
 }
 
+function WorkbenchListPanel({
+  title,
+  description,
+  items,
+  selectedId,
+  onSelect,
+  actions,
+}: {
+  title: string;
+  description: string;
+  items: Array<{ id: string; name: string; status: AssetItem['status'] }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="self-start rounded-2xl border border-border bg-card shadow-card">
+      <div className="border-b border-border px-4 py-4">
+        <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          素材列表
+        </p>
+        <h3 className="mt-2 font-display text-lg text-foreground">{title}</h3>
+        <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">{description}</p>
+        {actions ? <div className="mt-4">{actions}</div> : null}
+      </div>
+
+      <ScrollArea className="max-h-[560px]">
+        <div className="space-y-2 p-3">
+          {items.map(item => {
+            const isSelected = item.id === selectedId;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item.id)}
+                className={cn(
+                  'w-full rounded-xl border px-3 py-3 text-left transition-smooth',
+                  isSelected
+                    ? 'border-primary/30 bg-primary/10 shadow-sm'
+                    : 'border-transparent bg-background hover:border-border hover:bg-muted/60'
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className={cn('text-sm font-body font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}>
+                    {item.name}
+                  </span>
+                  <span
+                    className={cn(
+                      'h-2.5 w-2.5 rounded-full',
+                      item.status === 'official_confirmed' && 'bg-green-500',
+                      item.status === 'candidates_generated' && 'bg-blue-500',
+                      item.status === 'not_generated' && 'bg-muted-foreground/30',
+                      (item.status === 'pending_update' || item.status === 'review') && 'bg-amber-500'
+                    )}
+                  />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+function WorkbenchHistoryCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-card">
+      <div className="border-b border-border px-4 py-4">
+        <h4 className="font-display text-base text-foreground">{title}</h4>
+        <p className="mt-1 text-xs font-body text-muted-foreground">{description}</p>
+      </div>
+      <div className="px-4 py-4">{children}</div>
+    </div>
+  );
+}
+
+function CharacterWorkbenchDetail({
+  asset,
+  onPreview,
+}: {
+  asset: AssetItem;
+  onPreview: (payload: PreviewPayload) => void;
+}) {
+  const { state, dispatch, triggerSave } = useStudio();
+  const { generateAssetImage, generateCharacterPrompt } = useStudioGenerate();
+  const baseConfirmed = Boolean(asset.officialImageUrl && asset.baseImageUrl && asset.officialImageUrl === asset.baseImageUrl);
+
+  async function generatePromptFromModel() {
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_prompt' },
+    });
+    const prompt = await generateCharacterPrompt(
+      asset,
+      { ...state.projectInfo, aspectRatio: asset.aspectRatio }
+    );
+    if (!prompt) {
+      dispatch({
+        type: 'SET_ASSET_GENERATING',
+        payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+      });
+      return null;
+    }
+    dispatch({
+      type: 'UPDATE_ASSET_PROMPT',
+      payload: {
+        type: 'characters',
+        id: asset.id,
+        prompt,
+        userEdited: false,
+      },
+    });
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+    });
+    triggerSave();
+    return prompt;
+  }
+
+  async function handleGenerateBase() {
+    let prompt = (asset.prompt || '').trim();
+    if (!prompt) {
+      prompt = (await generatePromptFromModel()) || '';
+      if (!prompt) return;
+    }
+
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'characters', id: asset.id, generating: true, phase: 'character_base' },
+    });
+    const imageUrl = await generateAssetImage(
+      {
+        ...asset,
+        prompt,
+      },
+      state.projectInfo
+    );
+    if (!imageUrl) {
+      dispatch({
+        type: 'SET_ASSET_GENERATING',
+        payload: { type: 'characters', id: asset.id, generating: false, phase: null },
+      });
+      return;
+    }
+    dispatch({ type: 'SET_CHARACTER_BASE_IMAGE', payload: { id: asset.id, imageUrl } });
+    triggerSave();
+  }
+
+  function handleConfirmBase() {
+    dispatch({ type: 'CONFIRM_CHARACTER_BASE', payload: { id: asset.id } });
+    triggerSave();
+  }
+
+  function handleAspectRatioChange(nextAspectRatio: string) {
+    dispatch({
+      type: 'UPDATE_ASSET_ASPECT_RATIO',
+      payload: { type: 'characters', id: asset.id, aspectRatio: nextAspectRatio as AspectRatio },
+    });
+    triggerSave();
+  }
+
+  return (
+    <>
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              编辑面板
+            </p>
+            <h3 className="mt-2 font-display text-lg text-foreground">{asset.name}</h3>
+            <p className="mt-1 text-xs font-body text-muted-foreground">编辑当前角色的描述与提示词。</p>
+          </div>
+          <AssetStatusBadge asset={asset} />
+        </div>
+
+        {asset.status === 'review' && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-body text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+            画面比例已变更，建议重新生成当前角色参考图。
+          </p>
+        )}
+
+        <AssetPromptEditor
+          asset={asset}
+          assetType="characters"
+          onGeneratePrompt={async () => { await generatePromptFromModel(); }}
+          isPromptGenerating={asset.generatingPhase === 'character_prompt'}
+        />
+      </div>
+
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              预览面板
+            </p>
+            <h3 className="mt-2 font-display text-lg text-foreground">基础形象预览</h3>
+            <p className="mt-1 text-xs font-body text-muted-foreground">优先查看当前角色的生成结果，再执行确认操作。</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+              <SelectTrigger className="h-8 w-[96px] text-xs font-body">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ASPECT_RATIOS.map(ratio => (
+                  <SelectItem key={ratio} value={ratio} className="font-body text-xs">
+                    {ratio}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {baseConfirmed && (
+              <div className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-[11px] font-body text-green-700 dark:bg-green-950/30 dark:text-green-300">
+                <Check className="h-3 w-3" />
+                已确认
+              </div>
+            )}
+          </div>
+        </div>
+
+        {asset.generating && asset.generatingPhase === 'character_base' ? (
+          <div className="flex h-[360px] items-center justify-center rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="w-full max-w-[280px]">
+              <LoadingTiles count={1} aspectRatio={asset.aspectRatio} />
+            </div>
+          </div>
+        ) : asset.baseImageUrl ? (
+          <button
+            type="button"
+            className="group flex h-[360px] w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/30 p-4"
+            onClick={() => onPreview({ imageUrl: asset.baseImageUrl!, alt: `${asset.name} 基础形象` })}
+          >
+            <img
+              src={asset.baseImageUrl}
+              alt={`${asset.name} 基础形象`}
+              className="max-h-full max-w-full rounded-xl object-contain transition-transform group-hover:scale-[1.015]"
+            />
+          </button>
+        ) : (
+          <EmptyPreview label="暂无基础形象图" aspectRatio={asset.aspectRatio} className="h-[360px]" />
+        )}
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button
+            onClick={handleGenerateBase}
+            disabled={asset.generating}
+            className="gap-2 font-body gradient-hero text-primary-foreground border-0"
+          >
+            {asset.generating && asset.generatingPhase === 'character_base'
+              ? <><Loader2 className="w-4 h-4 animate-spin" />生成中…</>
+              : <><Wand2 className="w-4 h-4" />{asset.baseImageUrl ? '重新生成' : '生成基础形象'}</>}
+          </Button>
+          <Button
+            onClick={handleConfirmBase}
+            disabled={!asset.baseImageUrl || asset.generating}
+            variant="outline"
+            className="gap-2 font-body"
+          >
+            <Check className="w-4 h-4" />
+            确认基础形象
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SceneWorkbenchDetail({
+  asset,
+  onPreview,
+}: {
+  asset: AssetItem;
+  onPreview: (payload: PreviewPayload) => void;
+}) {
+  const { state, dispatch, triggerSave } = useStudio();
+  const { generateAssetImage, generateScenePrompt } = useStudioGenerate();
+  const [previewCandidateIndex, setPreviewCandidateIndex] = useState<number | null>(asset.officialIndex ?? (asset.candidates.length > 0 ? 0 : null));
+
+  useEffect(() => {
+    setPreviewCandidateIndex(asset.officialIndex ?? (asset.candidates.length > 0 ? 0 : null));
+  }, [asset.id, asset.officialIndex, asset.candidates.length]);
+
+  async function generatePromptFromModel() {
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'scenes', id: asset.id, generating: true, phase: 'scene_prompt' },
+    });
+    const prompt = await generateScenePrompt(
+      asset,
+      { ...state.projectInfo, aspectRatio: asset.aspectRatio }
+    );
+    if (!prompt) {
+      dispatch({
+        type: 'SET_ASSET_GENERATING',
+        payload: { type: 'scenes', id: asset.id, generating: false, phase: null },
+      });
+      return null;
+    }
+    dispatch({
+      type: 'UPDATE_ASSET_PROMPT',
+      payload: {
+        type: 'scenes',
+        id: asset.id,
+        prompt,
+        userEdited: false,
+      },
+    });
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'scenes', id: asset.id, generating: false, phase: null },
+    });
+    triggerSave();
+    return prompt;
+  }
+
+  async function handleGenerateCandidates() {
+    let basePrompt = (asset.prompt || '').trim();
+    if (!basePrompt) {
+      basePrompt = (await generatePromptFromModel()) || '';
+      if (!basePrompt) return;
+    }
+
+    const candidatePrompts = [
+      `${basePrompt}\n\n候选图版本 A：在保持主体一致前提下，突出空间结构与构图层次。`,
+      `${basePrompt}\n\n候选图版本 B：在保持主体一致前提下，突出光影氛围与色彩情绪。`,
+      `${basePrompt}\n\n候选图版本 C：在保持主体一致前提下，突出镜头景别与叙事张力。`,
+    ];
+
+    dispatch({
+      type: 'SET_ASSET_GENERATING',
+      payload: { type: 'scenes', id: asset.id, generating: true, phase: 'scene_candidates' },
+    });
+
+    const images: string[] = [];
+    for (const prompt of candidatePrompts) {
+      const imageUrl = await generateAssetImage(
+        {
+          ...asset,
+          prompt,
+        },
+        state.projectInfo
+      );
+      if (!imageUrl) {
+        dispatch({
+          type: 'SET_ASSET_GENERATING',
+          payload: { type: 'scenes', id: asset.id, generating: false, phase: null },
+        });
+        return;
+      }
+      images.push(imageUrl);
+    }
+
+    dispatch({ type: 'SET_SCENE_CANDIDATES', payload: { id: asset.id, candidates: images } });
+    triggerSave();
+  }
+
+  function handleSetOfficial(index: number) {
+    dispatch({ type: 'SET_SCENE_OFFICIAL', payload: { id: asset.id, index } });
+    triggerSave();
+  }
+
+  function handleAspectRatioChange(nextAspectRatio: string) {
+    dispatch({
+      type: 'UPDATE_ASSET_ASPECT_RATIO',
+      payload: { type: 'scenes', id: asset.id, aspectRatio: nextAspectRatio as AspectRatio },
+    });
+    triggerSave();
+  }
+
+  const fallbackIndex = asset.officialIndex ?? previewCandidateIndex ?? 0;
+  const previewUrl = asset.officialImageUrl || asset.candidates[fallbackIndex] || '';
+
+  return (
+    <>
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              编辑面板
+            </p>
+            <h3 className="mt-2 font-display text-lg text-foreground">{asset.name}</h3>
+            <p className="mt-1 text-xs font-body text-muted-foreground">编辑当前场景的描述与提示词。</p>
+          </div>
+          <AssetStatusBadge asset={asset} />
+        </div>
+
+        {asset.status === 'review' && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-body text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+            画面比例已变更，建议重新生成当前场景候选图。
+          </p>
+        )}
+
+        <AssetPromptEditor
+          asset={asset}
+          assetType="scenes"
+          onGeneratePrompt={async () => { await generatePromptFromModel(); }}
+          isPromptGenerating={asset.generatingPhase === 'scene_prompt'}
+        />
+      </div>
+
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              预览面板
+            </p>
+            <h3 className="mt-2 font-display text-lg text-foreground">场景预览</h3>
+            <p className="mt-1 text-xs font-body text-muted-foreground">优先查看候选图，再设定当前正式版本。</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={asset.aspectRatio} onValueChange={handleAspectRatioChange}>
+              <SelectTrigger className="h-8 w-[96px] text-xs font-body">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ASPECT_RATIOS.map(ratio => (
+                  <SelectItem key={ratio} value={ratio} className="font-body text-xs">
+                    {ratio}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AssetStatusBadge asset={asset} />
+          </div>
+        </div>
+
+        {asset.generating && asset.generatingPhase === 'scene_candidates' ? (
+          <div className="flex h-[360px] items-center justify-center rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="w-full max-w-[280px]">
+              <LoadingTiles count={1} aspectRatio={asset.aspectRatio} />
+            </div>
+          </div>
+        ) : previewUrl ? (
+          <button
+            type="button"
+            className="group flex h-[360px] w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted/30 p-4"
+            onClick={() => onPreview({ imageUrl: previewUrl, alt: `${asset.name} 场景预览` })}
+          >
+            <img
+              src={previewUrl}
+              alt={`${asset.name} 场景预览`}
+              className="max-h-full max-w-full rounded-xl object-contain transition-transform group-hover:scale-[1.015]"
+            />
+          </button>
+        ) : (
+          <EmptyPreview label="暂无场景候选图" aspectRatio={asset.aspectRatio} className="h-[360px]" />
+        )}
+
+        {asset.candidates.length > 0 && (
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {asset.candidates.map((url, index) => {
+              const isPreviewing = previewCandidateIndex === index || (previewCandidateIndex === null && asset.officialIndex === index);
+              return (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setPreviewCandidateIndex(index)}
+                  className={cn(
+                    'overflow-hidden rounded-xl border-2 transition-smooth',
+                    isPreviewing ? 'border-primary shadow-sm' : 'border-transparent hover:border-primary/40'
+                  )}
+                >
+                  <div className={cn(getAspectClass(asset.aspectRatio), 'w-full bg-muted')}>
+                    <img src={url} alt={`${asset.name} 候选图 ${index + 1}`} className="h-full w-full object-cover" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {asset.officialIndex !== null && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-body text-green-600">
+            <Star className="h-3 w-3 fill-current" />
+            已选定正式版本（候选图 {asset.officialIndex + 1}）
+          </p>
+        )}
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button
+            onClick={handleGenerateCandidates}
+            disabled={asset.generating}
+            className="gap-2 font-body gradient-hero text-primary-foreground border-0"
+          >
+            {asset.generating
+              ? <><Loader2 className="w-4 h-4 animate-spin" />生成中…</>
+              : <><Wand2 className="w-4 h-4" />{asset.candidates.length > 0 ? '重新生成候选图' : '生成候选图'}</>}
+          </Button>
+          <Button
+            onClick={() => {
+              if (previewCandidateIndex !== null) handleSetOfficial(previewCandidateIndex);
+            }}
+            disabled={previewCandidateIndex === null || asset.generating}
+            variant="outline"
+            className="gap-2 font-body"
+          >
+            <Check className="w-4 h-4" />
+            设为正式版本
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Stage4Assets() {
   const { state, dispatch, triggerSave } = useStudio();
   const { assets } = state;
-  const { generateBatchCharacterPrompts, generateBatchScenePrompts, generateBatchCharacterBaseImages } = useStudioGenerate();
+  const {
+    generateAssetImage,
+    generateBatchCharacterPrompts,
+    generateBatchScenePrompts,
+    generateBatchCharacterBaseImages,
+    clearError,
+  } = useStudioGenerate();
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [activeTab, setActiveTab] = useState<'characters' | 'scenes'>('characters');
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [batchGeneratingTab, setBatchGeneratingTab] = useState<'characters' | 'scenes' | null>(null);
   const [batchImageGeneratingTab, setBatchImageGeneratingTab] = useState<'characters' | 'scenes' | null>(null);
   const charactersBatchTriggeredRef = useRef(false);
@@ -1011,6 +1537,40 @@ export default function Stage4Assets() {
     () => assets.characters.filter(asset => !asset.baseImageUrl).length,
     [assets.characters]
   );
+  const pendingSceneImageCount = useMemo(
+    () => assets.scenes.filter(asset => asset.candidates.length === 0).length,
+    [assets.scenes]
+  );
+
+  const selectedCharacter = useMemo(
+    () => assets.characters.find(asset => asset.id === selectedCharacterId) ?? assets.characters[0] ?? null,
+    [assets.characters, selectedCharacterId]
+  );
+
+  const selectedScene = useMemo(
+    () => assets.scenes.find(asset => asset.id === selectedSceneId) ?? assets.scenes[0] ?? null,
+    [assets.scenes, selectedSceneId]
+  );
+
+  useEffect(() => {
+    if (assets.characters.length === 0) {
+      setSelectedCharacterId(null);
+      return;
+    }
+    if (!selectedCharacterId || !assets.characters.some(asset => asset.id === selectedCharacterId)) {
+      setSelectedCharacterId(assets.characters[0].id);
+    }
+  }, [assets.characters, selectedCharacterId]);
+
+  useEffect(() => {
+    if (assets.scenes.length === 0) {
+      setSelectedSceneId(null);
+      return;
+    }
+    if (!selectedSceneId || !assets.scenes.some(asset => asset.id === selectedSceneId)) {
+      setSelectedSceneId(assets.scenes[0].id);
+    }
+  }, [assets.scenes, selectedSceneId]);
 
   useEffect(() => {
     if (activeTab !== 'characters' || charactersBatchTriggeredRef.current || assets.characters.length === 0) {
@@ -1097,7 +1657,7 @@ export default function Stage4Assets() {
   }, [activeTab, assets.scenes, dispatch, generateBatchScenePrompts, state.projectInfo, triggerSave]);
 
   const handleBatchGenerateCharacterBaseImages = useCallback(async () => {
-    const targets = assets.characters.filter(asset => !asset.baseImageUrl && !asset.generating);
+    const targets = assets.characters.filter(asset => !asset.generating);
     if (targets.length === 0) return;
 
     setBatchImageGeneratingTab('characters');
@@ -1172,19 +1732,178 @@ export default function Stage4Assets() {
     }
   }, [assets.characters, dispatch, generateBatchCharacterBaseImages, generateBatchCharacterPrompts, state.projectInfo, triggerSave]);
 
+  const handleRegenerateAll = useCallback(async () => {
+    clearError();
+
+    if (activeTab === 'characters') {
+      if (assets.characters.length === 0) return;
+      setBatchGeneratingTab('characters');
+      try {
+        const prompts = await generateBatchCharacterPrompts(assets.characters, state.projectInfo);
+        if (prompts?.length) {
+          prompts.forEach(item => {
+            dispatch({
+              type: 'UPDATE_ASSET_PROMPT',
+              payload: {
+                type: 'characters',
+                id: item.id,
+                prompt: item.prompt,
+                userEdited: false,
+              },
+            });
+          });
+          triggerSave();
+        }
+      } finally {
+        setBatchGeneratingTab(current => (current === 'characters' ? null : current));
+      }
+      return;
+    }
+
+    if (assets.scenes.length === 0) return;
+    setBatchGeneratingTab('scenes');
+    try {
+      const prompts = await generateBatchScenePrompts(assets.scenes, state.projectInfo);
+      if (prompts?.length) {
+        prompts.forEach(item => {
+          dispatch({
+            type: 'UPDATE_ASSET_PROMPT',
+            payload: {
+              type: 'scenes',
+              id: item.id,
+              prompt: item.prompt,
+              userEdited: false,
+            },
+          });
+        });
+        triggerSave();
+      }
+    } finally {
+      setBatchGeneratingTab(current => (current === 'scenes' ? null : current));
+    }
+  }, [activeTab, assets.characters, assets.scenes, clearError, dispatch, generateBatchCharacterPrompts, generateBatchScenePrompts, state.projectInfo, triggerSave]);
+
+  const handleGenerateAllImages = useCallback(async () => {
+    clearError();
+
+    if (activeTab === 'characters') {
+      await handleBatchGenerateCharacterBaseImages();
+      return;
+    }
+
+    const targets = assets.scenes.filter(asset => !asset.generating);
+    if (targets.length === 0) return;
+
+    setBatchImageGeneratingTab('scenes');
+    try {
+      const missingPromptTargets = targets.filter(asset => !(asset.prompt || '').trim() && !asset.promptUserEdited);
+      const promptMap = new Map<string, string>();
+
+      if (missingPromptTargets.length > 0) {
+        const prompts = await generateBatchScenePrompts(missingPromptTargets, state.projectInfo);
+        if (prompts?.length) {
+          prompts.forEach(item => {
+            promptMap.set(item.id, item.prompt);
+            dispatch({
+              type: 'UPDATE_ASSET_PROMPT',
+              payload: {
+                type: 'scenes',
+                id: item.id,
+                prompt: item.prompt,
+                userEdited: false,
+              },
+            });
+          });
+        }
+      }
+
+      for (const asset of targets) {
+        const prompt = (asset.prompt || '').trim() || (promptMap.get(asset.id) || '').trim();
+        if (!prompt) continue;
+
+        dispatch({
+          type: 'SET_ASSET_GENERATING',
+          payload: { type: 'scenes', id: asset.id, generating: true, phase: 'scene_candidates' },
+        });
+
+        const candidatePrompts = [
+          `${prompt}\n\n候选图版本 A：在保持主体一致前提下，突出空间结构与构图层次。`,
+          `${prompt}\n\n候选图版本 B：在保持主体一致前提下，突出光影氛围与色彩情绪。`,
+          `${prompt}\n\n候选图版本 C：在保持主体一致前提下，突出镜头景别与叙事张力。`,
+        ];
+
+        const images: string[] = [];
+        let failed = false;
+
+        for (const candidatePrompt of candidatePrompts) {
+          const imageUrl = await generateAssetImage(
+            {
+              ...asset,
+              prompt: candidatePrompt,
+            },
+            state.projectInfo
+          );
+
+          if (!imageUrl) {
+            failed = true;
+            break;
+          }
+
+          images.push(imageUrl);
+        }
+
+        if (failed || images.length !== candidatePrompts.length) {
+          dispatch({
+            type: 'SET_ASSET_GENERATING',
+            payload: { type: 'scenes', id: asset.id, generating: false, phase: null },
+          });
+          continue;
+        }
+
+        dispatch({ type: 'SET_SCENE_CANDIDATES', payload: { id: asset.id, candidates: images } });
+        triggerSave();
+      }
+    } finally {
+      setBatchImageGeneratingTab(current => (current === 'scenes' ? null : current));
+    }
+  }, [activeTab, assets.scenes, clearError, dispatch, generateAssetImage, generateBatchScenePrompts, handleBatchGenerateCharacterBaseImages, state.projectInfo, triggerSave]);
+
   function handleConfirm() {
     dispatch({ type: 'COMPLETE_STAGE', payload: 3 });
     triggerSave();
   }
 
+  const activeAssetCount = activeTab === 'characters' ? assets.characters.length : assets.scenes.length;
+  const isHeaderRegenerating = batchGeneratingTab === activeTab;
+  const isHeaderGeneratingImages = batchImageGeneratingTab === activeTab;
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <h2 className="font-display text-2xl text-foreground">素材设定</h2>
-        <p className="text-sm font-body text-muted-foreground mt-1">
-          角色基础形象为必填项，场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成
-        </p>
-      </div>
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <StageActionHeader
+        title="素材设定"
+        description="角色基础形象为必填项，场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成"
+        onRegenerate={() => {
+          void handleRegenerateAll();
+        }}
+        onNext={handleConfirm}
+        regenerateDisabled={isBatchGenerating || activeAssetCount === 0}
+        regenerating={isHeaderRegenerating}
+        nextDisabled={!allOfficialSet}
+        extraActions={(
+          <Button
+            type="button"
+            onClick={() => {
+              void handleGenerateAllImages();
+            }}
+            disabled={isBatchGenerating || activeAssetCount === 0}
+            className="gap-2 font-body bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
+            variant="outline"
+          >
+            {isHeaderGeneratingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            {isHeaderGeneratingImages ? '生成中…' : '生成全部图片'}
+          </Button>
+        )}
+      />
 
       {!hasAssets ? (
         <div className="flex-1 flex items-center justify-center">
@@ -1196,93 +1915,114 @@ export default function Stage4Assets() {
           </div>
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={value => setActiveTab(value as 'characters' | 'scenes')} className="flex flex-col flex-1 min-h-0">
-          <TabsList className="w-fit mb-4">
-            <TabsTrigger value="characters" disabled={isBatchGenerating} className="gap-1.5 font-body">
-              <Users className="w-3.5 h-3.5" />
-              角色设定
-              <span className="ml-1 text-xs text-muted-foreground">({assets.characters.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="scenes" disabled={isBatchGenerating} className="gap-1.5 font-body">
-              <MapPin className="w-3.5 h-3.5" />
-              场景设定
-              <span className="ml-1 text-xs text-muted-foreground">({assets.scenes.length})</span>
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={value => setActiveTab(value as 'characters' | 'scenes')} className="flex min-h-0 flex-1 flex-col">
+          <div className="mb-4 self-start rounded-2xl border border-border bg-card/80 p-1 shadow-card">
+            <TabsList className="h-auto bg-transparent p-0">
+              <TabsTrigger value="characters" disabled={isBatchGenerating} className="gap-2 rounded-xl px-4 py-2.5 font-body data-[state=active]:shadow-none">
+                <Users className="w-4 h-4" />
+                角色设定
+                <span className="text-xs text-muted-foreground">({assets.characters.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="scenes" disabled={isBatchGenerating} className="gap-2 rounded-xl px-4 py-2.5 font-body data-[state=active]:shadow-none">
+                <MapPin className="w-4 h-4" />
+                场景设定
+                <span className="text-xs text-muted-foreground">({assets.scenes.length})</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="characters" className="flex-1 min-h-0 mt-0">
+          <TabsContent value="characters" className="mt-0 space-y-4">
             {batchGeneratingTab === 'characters' ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card/60">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full gradient-hero flex items-center justify-center mx-auto animate-pulse-soft">
+              <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-border bg-card/70">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
                     <Wand2 className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <p className="text-sm font-body text-muted-foreground">正在批量生成角色 AI 绘画提示词，请稍候…</p>
                 </div>
               </div>
             ) : batchImageGeneratingTab === 'characters' ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card/60">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full gradient-hero flex items-center justify-center mx-auto animate-pulse-soft">
+              <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-border bg-card/70">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
                     <Wand2 className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <p className="text-sm font-body text-muted-foreground">正在批量生成角色参考图（基础形象），请稍候…</p>
                 </div>
               </div>
-            ) : (
-              <ScrollArea className="h-full -mr-4 pr-4">
-                <div className="pb-4">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="text-xs font-body text-muted-foreground">
-                      待生成参考图：{pendingCharacterBaseCount}
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={handleBatchGenerateCharacterBaseImages}
-                      disabled={isBatchGenerating || pendingCharacterBaseCount === 0}
-                      className="gap-2 font-body text-xs gradient-hero text-primary-foreground border-0"
-                    >
-                      <Wand2 className="w-3.5 h-3.5" />
-                      一键生成角色参考图
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                  {assets.characters.map(asset => (
-                    <CharacterCard
-                      key={asset.id}
-                      asset={asset}
-                      onPreview={setPreview}
-                    />
-                  ))}
-                  </div>
+            ) : selectedCharacter ? (
+              <>
+                <div className="grid items-start gap-4 xl:grid-cols-[200px_minmax(0,1.35fr)_minmax(320px,0.92fr)]">
+                  <WorkbenchListPanel
+                    title="角色分类"
+                    description="选择当前要编辑的角色，右侧面板会聚焦展示该角色的描述、提示词与基础形象。"
+                    items={assets.characters.map(asset => ({ id: asset.id, name: asset.name, status: asset.status }))}
+                    selectedId={selectedCharacter.id}
+                    onSelect={setSelectedCharacterId}
+                    actions={(
+                      <div className="rounded-xl bg-muted/60 px-3 py-2 text-xs font-body text-muted-foreground">
+                        待生成参考图：<span className="font-medium text-foreground">{pendingCharacterBaseCount}</span>
+                      </div>
+                    )}
+                  />
+
+                  <CharacterWorkbenchDetail asset={selectedCharacter} onPreview={setPreview} />
                 </div>
-              </ScrollArea>
-            )}
+
+                <WorkbenchHistoryCard
+                  title="历史版本记录"
+                  description={`查看并切换 ${selectedCharacter.name} 的基础形象历史版本。`}
+                >
+                  <BaseImageHistoryPanel
+                    asset={selectedCharacter}
+                    assetType="characters"
+                    onPreview={setPreview}
+                  />
+                </WorkbenchHistoryCard>
+              </>
+            ) : null}
           </TabsContent>
 
-          <TabsContent value="scenes" className="flex-1 min-h-0 mt-0">
+          <TabsContent value="scenes" className="mt-0 space-y-4">
             {batchGeneratingTab === 'scenes' ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card/60">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full gradient-hero flex items-center justify-center mx-auto animate-pulse-soft">
+              <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-border bg-card/70">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
                     <Wand2 className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <p className="text-sm font-body text-muted-foreground">正在批量生成场景 AI 绘画提示词，请稍候…</p>
                 </div>
               </div>
-            ) : (
-              <ScrollArea className="h-full -mr-4 pr-4">
-                <div className="grid grid-cols-1 gap-4 pb-4">
-                  {assets.scenes.map(asset => (
-                    <SceneCard
-                      key={asset.id}
-                      asset={asset}
-                      onPreview={setPreview}
-                    />
-                  ))}
+            ) : selectedScene ? (
+              <>
+                <div className="grid items-start gap-4 xl:grid-cols-[200px_minmax(0,1.35fr)_minmax(320px,0.92fr)]">
+                  <WorkbenchListPanel
+                    title="场景分类"
+                    description="选择当前要编辑的场景，右侧面板会聚焦展示场景描述、提示词与候选图。"
+                    items={assets.scenes.map(asset => ({ id: asset.id, name: asset.name, status: asset.status }))}
+                    selectedId={selectedScene.id}
+                    onSelect={setSelectedSceneId}
+                    actions={(
+                      <div className="rounded-xl bg-muted/60 px-3 py-2 text-xs font-body text-muted-foreground">
+                        待生成场景图片：<span className="font-medium text-foreground">{pendingSceneImageCount}</span>
+                      </div>
+                    )}
+                  />
+
+                  <SceneWorkbenchDetail asset={selectedScene} onPreview={setPreview} />
                 </div>
-              </ScrollArea>
-            )}
+
+                <WorkbenchHistoryCard
+                  title="历史版本记录"
+                  description={`查看并切换 ${selectedScene.name} 的候选图历史。`}
+                >
+                  <CandidateHistoryPanel
+                    asset={selectedScene}
+                    onPreview={setPreview}
+                  />
+                </WorkbenchHistoryCard>
+              </>
+            ) : null}
           </TabsContent>
         </Tabs>
       )}
@@ -1296,7 +2036,7 @@ export default function Stage4Assets() {
         alt={preview?.alt || '素材预览'}
       />
 
-      <div className="pt-4 mt-auto border-t border-border flex items-center justify-between gap-4">
+      <div className="mt-6 border-t border-border pt-4 flex items-center gap-4">
         <div className="text-xs font-body text-muted-foreground">
           {allOfficialSet ? (
             <span className="text-green-600">所有角色基础形象已生成，可进入逐页生成</span>
@@ -1304,17 +2044,6 @@ export default function Stage4Assets() {
             <span className="text-amber-600">所有角色都需要先生成基础形象；场景视图可稍后补充</span>
           )}
         </div>
-        <Button
-          onClick={handleConfirm}
-          disabled={!allOfficialSet}
-          className={cn(
-            'gap-2 font-body gradient-hero text-primary-foreground border-0',
-            !allOfficialSet && 'opacity-50 cursor-not-allowed'
-          )}
-        >
-          确认素材，进入逐页生成
-          <ArrowRight className="w-4 h-4" />
-        </Button>
       </div>
     </div>
   );

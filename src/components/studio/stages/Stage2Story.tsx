@@ -5,8 +5,9 @@ import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studi
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import StageActionHeader from '@/components/studio/StageActionHeader';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, AlertCircle, ArrowRight, BookOpen, ChevronDown, ChevronUp, FileText, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
+import { AlertTriangle, AlertCircle, BookOpen, ChevronDown, ChevronUp, FileText, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
 import { ProjectInfo, StoryEntry } from '@/types/picturebook';
 import type { StoryPackCheckReport } from '@/prompts/builders/story-pack';
 
@@ -396,146 +397,128 @@ export default function Stage2Story() {
   }, [hasStoryResult, story.generating, storyboard.pages.length, story.characters.length, story.scenes.length]);
 
   return (
-    <div className="flex h-full min-h-0 gap-6">
-      <aside className="w-64 flex-shrink-0">
-        <div className="sticky top-6 rounded-2xl border border-border bg-card/90 p-4 shadow-card">
-          <div className="mb-4">
-            <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              页面目录
-            </p>
-            <h3 className="mt-2 font-display text-lg text-foreground">故事架构</h3>
-            <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">
-              按区块快速跳转并跟随当前阅读位置高亮。
-            </p>
-          </div>
-
-          <nav className="space-y-1.5">
-            {SECTION_ITEMS.map(item => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => scrollToSection(item.id)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-body transition-smooth',
-                    isActive
-                      ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
-                      : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
-                  )}
-                >
-                  <span
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <StageActionHeader
+        title="故事架构与分镜拆页"
+        description="先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程"
+        onRegenerate={handleGenerateAll}
+        onNext={handleConfirm}
+        regenerateDisabled={story.generating || storyboard.generating || cover.generating || checkingReport}
+        regenerating={story.generating || storyboard.generating || cover.generating}
+        nextDisabled={!canConfirm}
+        accessory={(
+          (checkingReport || checkReport) ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
                     className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-lg',
-                      isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-body transition-smooth',
+                      checkingReport && 'border-border bg-card text-muted-foreground',
+                      !checkingReport && checkReport?.overallPass && 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300',
+                      !checkingReport && checkReport && !checkReport.overallPass && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className={cn('font-medium', isActive && 'text-foreground')}>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
+                    {checkingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                    <span>{checkingReport ? '评分中...' : `评分 ${overallScore} / 10`}</span>
+                  </button>
+                </TooltipTrigger>
+                {checkReport && (
+                  <TooltipContent side="bottom" align="end" className="max-w-[360px] space-y-3 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-foreground">总分 {overallScore} / 10</span>
+                      <span className={cn('text-xs font-medium', checkReport.overallPass ? 'text-green-600' : 'text-amber-600')}>
+                        {checkReport.overallPass ? '通过' : '待修复'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                      <div>完整性 {checkReport.completenessScore}/10</div>
+                      <div>连续性 {checkReport.continuityScore}/10</div>
+                      <div>密度 {checkReport.densityScore}/10</div>
+                    </div>
+                    {checkReport.summary && (
+                      <p className="text-xs leading-5 text-muted-foreground">{checkReport.summary}</p>
+                    )}
+                    <div className="space-y-2 text-xs leading-5 text-muted-foreground">
+                      {checkReport.completenessIssues.length > 0 && (
+                        <div>完整性问题：{checkReport.completenessIssues.join('；')}</div>
+                      )}
+                      {checkReport.continuityIssues.length > 0 && (
+                        <div>
+                          连续性问题：
+                          {checkReport.continuityIssues.map(i => `${i.pagePair} ${i.issue}`).join('；')}
+                        </div>
+                      )}
+                      {checkReport.densityIssues.length > 0 && (
+                        <div>
+                          密度问题：
+                          {checkReport.densityIssues.map(i => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`).join('；')}
+                        </div>
+                      )}
+                      {checkReport.completenessIssues.length === 0 &&
+                        checkReport.continuityIssues.length === 0 &&
+                        checkReport.densityIssues.length === 0 && (
+                          <div>未发现明显问题。</div>
+                        )}
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          ) : null
+        )}
+      />
 
-      <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card/40">
-        <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-6">
-          <div className="flex min-h-full flex-col">
-            <div className="mb-6">
-              <h2 className="font-display text-2xl text-foreground">故事架构与分镜拆页</h2>
-              <p className="mt-1 text-sm font-body text-muted-foreground">
-                先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程
+      <div className="flex min-h-0 flex-1 gap-6">
+        <aside className="w-64 flex-shrink-0">
+          <div className="sticky top-6 rounded-2xl border border-border bg-card/90 p-4 shadow-card">
+            <div className="mb-4">
+              <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                页面目录
+              </p>
+              <h3 className="mt-2 font-display text-lg text-foreground">故事架构</h3>
+              <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">
+                按区块快速跳转并跟随当前阅读位置高亮。
               </p>
             </div>
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={handleGenerateAll}
-                  disabled={story.generating || storyboard.generating || cover.generating || checkingReport}
-                  className="gap-2 font-body gradient-hero text-primary-foreground border-0"
-                >
-                  {story.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  {story.generating ? '生成中…' : hasStoryResult || hasStoryboardResult || hasCoverResult ? '重新生成绘本内容' : '一键生成绘本内容'}
-                </Button>
-                {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
-                  <Button
-                    onClick={handleGenerateAll}
-                    disabled={story.generating || storyboard.generating || cover.generating || checkingReport}
-                    variant="outline"
-                    className="gap-2 font-body"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    重新生成
-                  </Button>
-                )}
-              </div>
+            <nav className="space-y-1.5">
+              {SECTION_ITEMS.map(item => {
+                const Icon = item.icon;
+                const isActive = activeSection === item.id;
 
-              {(checkingReport || checkReport) && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-body transition-smooth',
-                          checkingReport && 'border-border bg-card text-muted-foreground',
-                          !checkingReport && checkReport?.overallPass && 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300',
-                          !checkingReport && checkReport && !checkReport.overallPass && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
-                        )}
-                      >
-                        {checkingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertCircle className="h-3.5 w-3.5" />}
-                        <span>{checkingReport ? '评分中...' : `评分 ${overallScore} / 10`}</span>
-                      </button>
-                    </TooltipTrigger>
-                    {checkReport && (
-                      <TooltipContent side="bottom" align="end" className="max-w-[360px] space-y-3 px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-medium text-foreground">总分 {overallScore} / 10</span>
-                          <span className={cn('text-xs font-medium', checkReport.overallPass ? 'text-green-600' : 'text-amber-600')}>
-                            {checkReport.overallPass ? '通过' : '待修复'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                          <div>完整性 {checkReport.completenessScore}/10</div>
-                          <div>连续性 {checkReport.continuityScore}/10</div>
-                          <div>密度 {checkReport.densityScore}/10</div>
-                        </div>
-                        {checkReport.summary && (
-                          <p className="text-xs leading-5 text-muted-foreground">{checkReport.summary}</p>
-                        )}
-                        <div className="space-y-2 text-xs leading-5 text-muted-foreground">
-                          {checkReport.completenessIssues.length > 0 && (
-                            <div>完整性问题：{checkReport.completenessIssues.join('；')}</div>
-                          )}
-                          {checkReport.continuityIssues.length > 0 && (
-                            <div>
-                              连续性问题：
-                              {checkReport.continuityIssues.map(i => `${i.pagePair} ${i.issue}`).join('；')}
-                            </div>
-                          )}
-                          {checkReport.densityIssues.length > 0 && (
-                            <div>
-                              密度问题：
-                              {checkReport.densityIssues.map(i => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`).join('；')}
-                            </div>
-                          )}
-                          {checkReport.completenessIssues.length === 0 &&
-                            checkReport.continuityIssues.length === 0 &&
-                            checkReport.densityIssues.length === 0 && (
-                              <div>未发现明显问题。</div>
-                            )}
-                        </div>
-                      </TooltipContent>
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => scrollToSection(item.id)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-body transition-smooth',
+                      isActive
+                        ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
+                        : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
                     )}
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
+                  >
+                    <span
+                      className={cn(
+                        'flex h-9 w-9 items-center justify-center rounded-lg',
+                        isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className={cn('font-medium', isActive && 'text-foreground')}>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card/40">
+          <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-6">
+            <div className="flex min-h-full flex-col">
 
             {error && !story.generating && !storyboard.generating && !cover.generating && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
@@ -646,25 +629,6 @@ export default function Stage2Story() {
                       分镜拆页
                     </h3>
                     <div className="flex gap-2">
-                      <Button
-                        onClick={handleGenerateAll}
-                        disabled={story.generating || storyboard.generating || cover.generating}
-                        className="gap-2 font-body gradient-hero text-primary-foreground border-0"
-                      >
-                        {storyboard.generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                        {storyboard.generating ? '生成中…' : '重新生成绘本内容'}
-                      </Button>
-                      {(hasStoryResult || hasStoryboardResult || hasCoverResult) && (
-                        <Button
-                          onClick={handleGenerateAll}
-                          disabled={story.generating || storyboard.generating || cover.generating}
-                          variant="outline"
-                          className="gap-2 font-body"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          重新生成
-                        </Button>
-                      )}
                       <Button
                         onClick={handleCheck}
                         disabled={story.generating || storyboard.generating || cover.generating || checkingReport || !(hasStoryResult || hasStoryboardResult || hasCoverResult)}
@@ -855,7 +819,7 @@ export default function Stage2Story() {
             )}
 
             {hasStoryResult && !story.generating && (
-              <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div className="mt-auto flex items-center gap-4 border-t border-border pt-4">
                 <div className="text-xs font-body text-muted-foreground">
                   {canConfirm ? (
                     <span>确认后将进入素材设定阶段</span>
@@ -866,21 +830,11 @@ export default function Stage2Story() {
                     <span className="mt-1 block text-amber-600">修改将使下游素材设定与逐页生成标记为待复查</span>
                   )}
                 </div>
-                <Button
-                  onClick={handleConfirm}
-                  disabled={!canConfirm}
-                  className={cn(
-                    'gap-2 font-body gradient-hero text-primary-foreground border-0',
-                    !canConfirm && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  确认故事与分镜，进入素材设定
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
               </div>
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
