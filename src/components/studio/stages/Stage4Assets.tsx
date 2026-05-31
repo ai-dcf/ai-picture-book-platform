@@ -1539,7 +1539,6 @@ export default function Stage4Assets() {
 
       <StageActionHeader
         title="素材设定"
-        description="角色基础形象为必填项，场景视图为选填项；所有角色完成基础形象生成后即可进入逐页生成"
         onRegenerate={() => {
           void handleRegenerateAll();
         }}

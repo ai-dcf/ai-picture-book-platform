@@ -655,7 +655,6 @@ export default function Stage5Pages() {
     <div className="flex h-full min-h-0 flex-col gap-4">
       <StageActionHeader
         title="逐页生成"
-        description="逐页编辑封面与正文页的文字、提示词和插画内容；完成全部图片生成后进入编辑定稿。"
         onRegenerate={() => {
           void handleRegenerateAll();
         }}

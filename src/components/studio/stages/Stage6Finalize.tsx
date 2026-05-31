@@ -215,16 +215,56 @@ export default function Stage6Finalize() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-6 py-4 border-b-2 border-border/50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent backdrop-blur-sm">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+      <div className="flex w-full items-center justify-between px-6 py-2 border-b-2 border-border/50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent backdrop-blur-sm">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
             <span className="font-display text-primary text-sm">结</span>
           </div>
-          <h2 className="font-display text-2xl text-foreground">编辑定稿与导出</h2>
+          <h2 className="font-display text-2xl text-foreground whitespace-nowrap">编辑定稿与导出</h2>
         </div>
-        <p className="text-sm font-body text-muted-foreground mt-1">
-          所有页面生成后可逐页编辑定稿；同时也支持随时导出已生成页面。
-        </p>
+        
+        <div className="flex items-center gap-2">
+          {!allGenerated && (
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
+              className="h-10 gap-2 whitespace-nowrap font-body rounded-xl border-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              返回逐页生成
+            </Button>
+          )}
+
+          {allGenerated && nextEditablePage >= 0 && !allFinalized && (
+            <Button
+              onClick={() => openEditor(nextEditablePage)}
+              className="h-10 gap-2 whitespace-nowrap font-body btn-ink rounded-xl"
+            >
+              <Pencil className="w-4 h-4" />
+              继续逐页定稿
+            </Button>
+          )}
+
+          {exportableCount > 0 && (
+            <Button
+              onClick={handleExportAllPages}
+              className="h-10 gap-2 whitespace-nowrap font-body btn-ink rounded-xl"
+              disabled={exportingAll || exportingTarget !== null}
+            >
+              <Download className="w-4 h-4" />
+              {exportingAll ? '批量导出中...' : '导出全部页面 ZIP'}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
+            className="h-10 gap-2 whitespace-nowrap font-body rounded-xl border-2"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" />
+            返回逐页生成
+          </Button>
+        </div>
       </div>
 
       <div className="px-6 py-4 border-b-2 border-border/50 bg-background/80 backdrop-blur-sm">
@@ -246,49 +286,6 @@ export default function Stage6Finalize() {
               {projectInfo.projectStatus === 'exportable' ? '可导出' : '待逐页定稿'}
             </p>
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {!allGenerated && (
-            <Button
-              variant="outline"
-              onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-              className="gap-2 font-body rounded-xl border-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              返回逐页生成
-            </Button>
-          )}
-
-          {allGenerated && nextEditablePage >= 0 && !allFinalized && (
-            <Button
-              onClick={() => openEditor(nextEditablePage)}
-              className="gap-2 font-body btn-ink rounded-xl"
-            >
-              <Pencil className="w-4 h-4" />
-              继续逐页定稿
-            </Button>
-          )}
-
-          {exportableCount > 0 && (
-            <Button
-              onClick={handleExportAllPages}
-              className="gap-2 font-body btn-ink rounded-xl"
-              disabled={exportingAll || exportingTarget !== null}
-            >
-              <Download className="w-4 h-4" />
-              {exportingAll ? '批量导出中...' : '导出全部页面 ZIP'}
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-            className="gap-2 font-body rounded-xl border-2"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180" />
-            返回逐页生成
-          </Button>
         </div>
       </div>
 

@@ -400,7 +400,6 @@ export default function Stage2Story() {
 
       <StageActionHeader
         title="故事架构与分镜"
-        description="先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程"
         onRegenerate={handleGenerateAll}
         onNext={handleConfirm}
         regenerateDisabled={story.generating || storyboard.generating || cover.generating || checkingReport}
