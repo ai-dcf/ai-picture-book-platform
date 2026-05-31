@@ -5,7 +5,7 @@ import { useStudioGenerate } from '@/modules/studio/presentation/hooks/use-studi
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import StageActionHeader from '@/components/studio/StageActionHeader';
+import StageActionHeader from '@/modules/studio/presentation/components/StageActionHeader';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, AlertCircle, BookOpen, ChevronDown, ChevronUp, FileText, Loader2, MapPin, RefreshCw, Users, Wand2 } from 'lucide-react';
 import { ProjectInfo, StoryEntry } from '@/types/picturebook';

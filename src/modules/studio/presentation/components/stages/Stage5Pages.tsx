@@ -15,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import StageActionHeader from '@/components/studio/StageActionHeader';
-import PromptEditor from '@/components/studio/PromptEditor';
-import { FixedImagePreview } from '@/components/studio/FixedImagePreview';
+import StageActionHeader from '@/modules/studio/presentation/components/StageActionHeader';
+import PromptEditor from '@/modules/studio/presentation/components/PromptEditor';
+import { FixedImagePreview } from '@/modules/studio/presentation/components/FixedImagePreview';
 import { cn } from '@/lib/utils';
 import { PageStatus, PAGE_STATUS_LABELS, AspectRatio } from '@/types/picturebook';
 import {

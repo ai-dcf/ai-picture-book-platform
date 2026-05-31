@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import StageActionHeader from '@/components/studio/StageActionHeader';
-import { FixedImagePreview } from '@/components/studio/FixedImagePreview';
+import StageActionHeader from '@/modules/studio/presentation/components/StageActionHeader';
+import { FixedImagePreview } from '@/modules/studio/presentation/components/FixedImagePreview';
 import {
   AlertDialog,
   AlertDialogAction,

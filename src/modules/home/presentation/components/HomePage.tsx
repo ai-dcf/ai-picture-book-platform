@@ -580,7 +580,7 @@ function CreationWorkbench({
   );
 }
 
-export default function HeroPage() {
+export default function HomePage() {
   const router = useRouter();
   const { projects, isLoading, deleteProject } = useProjectHistory();
   const { generateStoryPack } = useStudioGenerate();

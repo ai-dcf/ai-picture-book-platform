@@ -2,14 +2,14 @@
 
 import { useStudio } from "@/modules/studio/presentation/hooks/use-studio";
 import { useModelConfig } from "@/modules/model-config/presentation/hooks/use-model-config";
-import TopBar from "@/components/studio/TopBar";
-import ProjectProgress from "@/components/studio/ProjectProgress";
-import { ModelConfigBanner } from "@/components/studio/ModelConfigBanner";
-import Stage1Init from "@/components/studio/stages/Stage1Init";
-import Stage2Story from "@/components/studio/stages/Stage2Story";
-import Stage4Assets from "@/components/studio/stages/Stage4Assets";
-import Stage5Pages from "@/components/studio/stages/Stage5Pages";
-import Stage6Finalize from "@/components/studio/stages/Stage6Finalize";
+import TopBar from "@/modules/studio/presentation/components/TopBar";
+import ProjectProgress from "@/modules/studio/presentation/components/ProjectProgress";
+import { ModelConfigBanner } from "@/modules/studio/presentation/components/ModelConfigBanner";
+import Stage1Init from "@/modules/studio/presentation/components/stages/Stage1Init";
+import Stage2Story from "@/modules/studio/presentation/components/stages/Stage2Story";
+import Stage4Assets from "@/modules/studio/presentation/components/stages/Stage4Assets";
+import Stage5Pages from "@/modules/studio/presentation/components/stages/Stage5Pages";
+import Stage6Finalize from "@/modules/studio/presentation/components/stages/Stage6Finalize";
 
 function StageContent() {
   const { state } = useStudio();
