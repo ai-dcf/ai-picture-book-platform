@@ -215,26 +215,34 @@ export default function Stage6Finalize() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-6 py-4 border-b border-border bg-card">
-        <h2 className="font-display text-2xl text-foreground">编辑定稿与导出</h2>
+      <div className="px-6 py-4 border-b-2 border-border/50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent backdrop-blur-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+            <span className="font-display text-primary text-sm">结</span>
+          </div>
+          <h2 className="font-display text-2xl text-foreground">编辑定稿与导出</h2>
+        </div>
         <p className="text-sm font-body text-muted-foreground mt-1">
           所有页面生成后可逐页编辑定稿；同时也支持随时导出已生成页面。
         </p>
       </div>
 
-      <div className="px-6 py-4 border-b border-border bg-background/80">
+      <div className="px-6 py-4 border-b-2 border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-body text-muted-foreground">生成完成</p>
-            <p className="mt-1 text-2xl font-display text-foreground">{generatedCount} / {pages.length}</p>
+          <div className="card-ink rounded-[1.5rem] p-4 shadow-ink-light flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 text-primary/5 font-display text-8xl pointer-events-none select-none">生</div>
+            <p className="text-xs font-body font-bold text-foreground">生成完成</p>
+            <p className="mt-2 text-3xl font-display text-primary">{generatedCount} <span className="text-lg text-muted-foreground">/ {pages.length}</span></p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-body text-muted-foreground">定稿完成</p>
-            <p className="mt-1 text-2xl font-display text-foreground">{finalizedCount} / {pages.length}</p>
+          <div className="card-ink rounded-[1.5rem] p-4 shadow-ink-light flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 text-primary/5 font-display text-8xl pointer-events-none select-none">定</div>
+            <p className="text-xs font-body font-bold text-foreground">定稿完成</p>
+            <p className="mt-2 text-3xl font-display text-primary">{finalizedCount} <span className="text-lg text-muted-foreground">/ {pages.length}</span></p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-body text-muted-foreground">项目状态</p>
-            <p className="mt-1 text-base font-body font-medium text-foreground">
+          <div className="card-ink rounded-[1.5rem] p-4 shadow-ink-light flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 text-primary/5 font-display text-8xl pointer-events-none select-none">状</div>
+            <p className="text-xs font-body font-bold text-foreground">项目状态</p>
+            <p className="mt-2 text-xl font-body font-bold text-primary">
               {projectInfo.projectStatus === 'exportable' ? '可导出' : '待逐页定稿'}
             </p>
           </div>
@@ -245,7 +253,7 @@ export default function Stage6Finalize() {
             <Button
               variant="outline"
               onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-              className="gap-2 font-body"
+              className="gap-2 font-body rounded-xl border-2"
             >
               <RefreshCw className="w-4 h-4" />
               返回逐页生成
@@ -255,7 +263,7 @@ export default function Stage6Finalize() {
           {allGenerated && nextEditablePage >= 0 && !allFinalized && (
             <Button
               onClick={() => openEditor(nextEditablePage)}
-              className="gap-2 font-body gradient-hero text-primary-foreground border-0"
+              className="gap-2 font-body btn-ink rounded-xl"
             >
               <Pencil className="w-4 h-4" />
               继续逐页定稿
@@ -265,7 +273,7 @@ export default function Stage6Finalize() {
           {exportableCount > 0 && (
             <Button
               onClick={handleExportAllPages}
-              className="gap-2 font-body gradient-hero text-primary-foreground border-0"
+              className="gap-2 font-body btn-ink rounded-xl"
               disabled={exportingAll || exportingTarget !== null}
             >
               <Download className="w-4 h-4" />
@@ -276,7 +284,7 @@ export default function Stage6Finalize() {
           <Button
             variant="outline"
             onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-            className="gap-2 font-body"
+            className="gap-2 font-body rounded-xl border-2"
           >
             <ArrowRight className="w-4 h-4 rotate-180" />
             返回逐页生成
@@ -286,13 +294,18 @@ export default function Stage6Finalize() {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div>
-                <h3 className="font-display text-lg text-foreground">封面</h3>
-                <p className="text-xs font-body text-muted-foreground mt-0.5 line-clamp-2">
-                  {cover.title || cover.visualGoal || projectInfo.title || '暂无封面说明'}
-                </p>
+          <div className="card-ink rounded-[2rem] overflow-hidden shadow-ink-light transition-smooth hover-ink-blur hover:shadow-ink-medium">
+            <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border/50 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                  <span className="font-display text-white text-xs">封</span>
+                </div>
+                <div>
+                  <h3 className="font-display text-lg text-foreground">封面</h3>
+                  <p className="text-xs font-body text-muted-foreground mt-0.5 line-clamp-1">
+                    {cover.title || cover.visualGoal || projectInfo.title || '暂无封面说明'}
+                  </p>
+                </div>
               </div>
               <Badge variant="secondary" className={getStatusBadgeClass(cover.status)}>
                 {PAGE_STATUS_LABELS[cover.status]}
@@ -304,9 +317,9 @@ export default function Stage6Finalize() {
                 type="button"
                 onClick={() => cover.imageUrl && setPreviewState({ open: true, imageUrl: cover.imageUrl, alt: '封面插画' })}
                 className={cn(
-                  'w-36 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border relative group',
+                  'w-36 rounded-xl overflow-hidden bg-muted flex-shrink-0 border-2 border-dashed border-border/80 relative group',
                   getAspectClass(coverAspectRatio),
-                  cover.imageUrl ? 'cursor-pointer' : 'cursor-default'
+                  cover.imageUrl ? 'cursor-pointer border-solid border-border/50' : 'cursor-default'
                 )}
               >
                 {cover.imageUrl ? (
@@ -332,39 +345,44 @@ export default function Stage6Finalize() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {cover.imageUrl ? (
-                    <Button
-                      variant="outline"
-                      onClick={handleExportCover}
-                      disabled={exportingAll || exportingTarget !== null}
-                      className="gap-2 font-body"
-                    >
-                      <Download className="w-4 h-4" />
-                      {exportingTarget === 'cover' ? '导出中...' : '导出封面 PNG'}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-                      className="gap-2 font-body"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      返回阶段 4 生成
-                    </Button>
-                  )}
-                </div>
+                    {cover.imageUrl ? (
+                      <Button
+                        variant="outline"
+                        onClick={handleExportCover}
+                        disabled={exportingAll || exportingTarget !== null}
+                        className="gap-2 font-body rounded-xl border-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        {exportingTarget === 'cover' ? '导出中...' : '导出封面 PNG'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
+                        className="gap-2 font-body rounded-xl border-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        返回阶段 4 生成
+                      </Button>
+                    )}
+                  </div>
               </div>
             </div>
           </div>
 
           {pages.map(page => (
-            <div key={page.index} className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <div>
-                  <h3 className="font-display text-lg text-foreground">第 {page.index + 1} 页</h3>
-                  <p className="text-xs font-body text-muted-foreground mt-0.5 line-clamp-2">
-                    {page.storyText || '暂无页面文字'}
-                  </p>
+            <div key={page.index} className="card-ink rounded-[2rem] overflow-hidden shadow-ink-light transition-smooth hover-ink-blur hover:shadow-ink-medium">
+              <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                    <span className="font-display text-white text-xs">{page.index + 1}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg text-foreground">第 {page.index + 1} 页</h3>
+                    <p className="text-xs font-body text-muted-foreground mt-0.5 line-clamp-1">
+                      {page.storyText || '暂无页面文字'}
+                    </p>
+                  </div>
                 </div>
                 <Badge variant="secondary" className={getStatusBadgeClass(page.pageStatus)}>
                   {PAGE_STATUS_LABELS[page.pageStatus]}
@@ -376,9 +394,9 @@ export default function Stage6Finalize() {
                   type="button"
                   onClick={() => page.imageUrl && setPreviewState({ open: true, imageUrl: page.imageUrl, alt: `第 ${page.index + 1} 页插画` })}
                   className={cn(
-                    'w-36 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border relative group',
+                    'w-36 rounded-xl overflow-hidden bg-muted flex-shrink-0 border-2 border-dashed border-border/80 relative group',
                     getAspectClass(page.aspectRatio || projectInfo.aspectRatio || '16:9'),
-                    page.imageUrl ? 'cursor-pointer' : 'cursor-default'
+                    page.imageUrl ? 'cursor-pointer border-solid border-border/50' : 'cursor-default'
                   )}
                 >
                   {page.imageUrl ? (
@@ -414,8 +432,8 @@ export default function Stage6Finalize() {
                           onClick={() => openEditor(page.index)}
                           variant={page.pageStatus === 'finalized' ? 'outline' : 'default'}
                           className={cn(
-                            'gap-2 font-body',
-                            page.pageStatus !== 'finalized' && 'gradient-hero text-primary-foreground border-0'
+                            'gap-2 font-body rounded-xl',
+                            page.pageStatus !== 'finalized' ? 'btn-ink border-0' : 'border-2'
                           )}
                         >
                           <Pencil className="w-4 h-4" />
@@ -425,7 +443,7 @@ export default function Stage6Finalize() {
                           variant="outline"
                           onClick={() => handleExportSinglePage(page.index)}
                           disabled={exportingAll || exportingTarget !== null}
-                          className="gap-2 font-body"
+                          className="gap-2 font-body rounded-xl border-2"
                         >
                           <Download className="w-4 h-4" />
                           {exportingTarget === `page:${page.index}` ? '导出中...' : '导出本页 PNG'}
@@ -435,7 +453,7 @@ export default function Stage6Finalize() {
                       <Button
                         variant="outline"
                         onClick={() => dispatch({ type: 'SET_STAGE', payload: 4 })}
-                        className="gap-2 font-body"
+                        className="gap-2 font-body rounded-xl border-2"
                       >
                         <RefreshCw className="w-4 h-4" />
                         返回阶段 4 生成

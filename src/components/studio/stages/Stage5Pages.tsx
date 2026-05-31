@@ -681,12 +681,14 @@ export default function Stage5Pages() {
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 xl:flex-row">
         <aside className="w-full flex-shrink-0 xl:w-64">
-          <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card/90 p-4 shadow-card xl:sticky xl:top-6 xl:max-h-[calc(100vh-1.5rem)]">
-            <div className="mb-4">
-              <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="flex flex-col overflow-hidden card-ink rounded-[2rem] p-4 shadow-ink-light xl:sticky xl:top-6 xl:max-h-[calc(100vh-1.5rem)] backdrop-blur-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                <span className="font-display text-white text-xs">录</span>
+              </div>
+              <p className="text-sm font-body font-bold text-foreground">
                 页面目录
               </p>
-
             </div>
 
             <div className="mb-4 rounded-xl bg-muted/50 px-3 py-2 text-xs font-body text-muted-foreground">
@@ -701,21 +703,21 @@ export default function Stage5Pages() {
                 <button
                   onClick={() => setCurrentTarget('cover')}
                   className={cn(
-                    'w-full rounded-xl border px-3 py-3 text-left transition-smooth',
+                    'w-full rounded-[1.5rem] border-2 px-3 py-3 text-left transition-smooth hover-ink-blur group',
                     isCoverSelected
-                      ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
-                      : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
+                      ? 'border-primary bg-primary/5 text-primary shadow-ink-light'
+                      : 'border-transparent text-muted-foreground hover:border-primary/20 hover:bg-muted/60 hover:text-foreground'
                   )}
                 >
                   <div className="flex items-center gap-2">
                     <span className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-lg',
-                      isCoverSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                      isCoverSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                     )}>
                       <BookOpen className={cn('h-4 w-4', cover.status === 'generating' && 'animate-spin')} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className={cn('text-sm font-body font-medium', isCoverSelected && 'text-foreground')}>
+                      <p className={cn('text-sm font-body font-bold', isCoverSelected && 'text-foreground')}>
                         封面
                       </p>
                       <p className={cn('text-[11px] font-body', coverMeta.color)}>
@@ -735,21 +737,21 @@ export default function Stage5Pages() {
                       key={p.index}
                       onClick={() => setCurrentTarget(p.index)}
                       className={cn(
-                        'w-full rounded-xl border px-3 py-3 text-left transition-smooth',
+                        'w-full rounded-[1.5rem] border-2 px-3 py-3 text-left transition-smooth hover-ink-blur group',
                         isActive
-                          ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
-                          : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
+                          ? 'border-primary bg-primary/5 text-primary shadow-ink-light'
+                          : 'border-transparent text-muted-foreground hover:border-primary/20 hover:bg-muted/60 hover:text-foreground'
                       )}
                     >
                       <div className="flex items-center gap-2">
                         <span className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-lg',
-                          isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                          'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                          isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                         )}>
                           <M className={cn('h-4 w-4', p.pageStatus === 'generating' && 'animate-spin')} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className={cn('text-sm font-body font-medium', isActive && 'text-foreground')}>
+                          <p className={cn('text-sm font-body font-bold', isActive && 'text-foreground')}>
                             第 {p.index + 1} 页
                           </p>
                           <p className={cn('text-[11px] font-body', m.color)}>
@@ -766,11 +768,16 @@ export default function Stage5Pages() {
         </aside>
 
         <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex h-full min-h-0 flex-col gap-5 rounded-[28px] border border-border/70 bg-card/70 p-3 shadow-card xl:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-border/60 bg-background/70">
-              <div className="border-b border-border/60 px-6 py-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-lg text-foreground">
+          <div className="flex h-full min-h-0 flex-col gap-5 card-ink rounded-[2.5rem] p-4 shadow-ink-medium xl:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[2rem] border-2 border-border/50 bg-background/80 backdrop-blur-sm">
+              <div className="border-b-2 border-border/50 px-6 py-5 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <span className="font-display text-primary text-sm">
+                      {isCoverSelected ? '封' : `第${currentPage + 1}`}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-2xl text-foreground">
                     {currentPanelTitle}
                   </h3>
                   <Badge
@@ -788,42 +795,40 @@ export default function Stage5Pages() {
 
               <ScrollArea className="min-h-0 flex-1">
                 <div className="space-y-5 px-6 py-6">
-                  <section className="rounded-[24px] border border-border/70 bg-card/90 p-5 shadow-sm">
-                    <div className="mb-5 flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                          内容输入区
-                        </p>
-                        <h4 className="font-body text-sm font-semibold text-foreground">
-                          {isCoverSelected ? '封面信息' : '画面内容'}
-                        </h4>
+                  <section className="card-ink rounded-[2rem] p-5 shadow-ink-light">
+                    <div className="mb-5 flex items-center gap-2">
+                      <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                        <span className="font-display text-white text-xs">文</span>
                       </div>
+                      <h4 className="font-body text-sm font-bold text-foreground">
+                        {isCoverSelected ? '封面信息' : '画面内容'}
+                      </h4>
                     </div>
 
                     <div className="space-y-5">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-body font-medium uppercase tracking-wide text-foreground">
+                        <label className="text-xs font-body font-bold text-foreground">
                           {isCoverSelected ? '封面标题' : '画面文字'}
                         </label>
                         <Textarea
                           value={effectivePageText}
                           onChange={e => handleTextChange(e.target.value)}
-                          className="min-h-[88px] resize-none rounded-2xl border-border/80 bg-background/80 font-body text-sm"
+                          className="ink-textarea min-h-[88px] text-sm"
                           placeholder={isCoverSelected
                             ? '请输入封面标题，可基于项目标题继续微调为更适合绘本封面的展示标题'
                             : '请输入本页呈现的文字内容，需匹配目标儿童年龄段的认知水平和文字复杂度要求'}
                         />
                       </div>
 
-                      <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+                      <div className="rounded-[1.5rem] border-2 border-border/50 bg-muted/30 p-4">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-body font-medium uppercase tracking-wide text-foreground">
+                          <label className="text-xs font-body font-bold text-foreground">
                             {isCoverSelected ? '封面画面描述' : '画面内容描述'}
                           </label>
                           <Textarea
                             value={effectiveVisualGoal}
                             onChange={e => handleVisualGoalChange(e.target.value)}
-                            className="min-h-[144px] resize-none rounded-2xl border-border/80 bg-background/90 font-body text-sm"
+                            className="ink-textarea min-h-[144px] text-sm"
                             placeholder={isCoverSelected
                               ? '请输入封面插画的主体、动作、场景、构图、光影、色彩和标题留白区域；封面只生成纯插画，不要要求直接把标题画进图里'
                               : '请输入具体、可量化、纯视觉化的画面描述：默认直接写角色名称；只有当页造型、装束、道具状态或形体有变化时再补充变化点，同时写清眼睛和嘴巴形态、姿势动作、场景物体及位置/材质、光线方向与色温、具体颜色、景别/构图/视角；不要写开心、温暖、活泼等抽象词，也不要新增第 2 步之外的角色'}
@@ -838,13 +843,13 @@ export default function Stage5Pages() {
                     </div>
                   </section>
 
-                  <section className="rounded-[24px] border border-primary/15 bg-card/95 p-5 shadow-sm ring-1 ring-primary/5">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-primary/80">
-                          核心提示词区
-                        </p>
-                        <h4 className="font-body text-sm font-semibold text-foreground">AI 绘画提示词</h4>
+                  <section className="card-ink rounded-[2rem] p-5 shadow-ink-light border-primary/20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                          <span className="font-display text-white text-xs">词</span>
+                        </div>
+                        <h4 className="font-body text-sm font-bold text-foreground">AI 绘画提示词</h4>
                       </div>
                       <Button
                         type="button"
@@ -879,7 +884,7 @@ export default function Stage5Pages() {
                       </div>
                     )}
 
-                    <div className="rounded-[20px] border border-border/70 bg-background/80 p-3">
+                    <div className="rounded-[1.5rem] border-2 border-border/50 bg-background/80 p-3">
                       <PromptEditor
                         value={currentPrompt}
                         imageRefs={currentImageRefs}
@@ -895,18 +900,18 @@ export default function Stage5Pages() {
                     </div>
                   </section>
 
-                  <section className="rounded-[24px] border border-border/70 bg-card/90 p-5 shadow-sm">
-                    <div className="mb-4 space-y-1">
-                      <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                        素材引用卡
-                      </p>
-                      <h4 className="font-body text-sm font-semibold text-foreground">引用素材</h4>
+                  <section className="card-ink rounded-[2rem] p-5 shadow-ink-light">
+                    <div className="mb-4 flex items-center gap-2">
+                      <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                        <span className="font-display text-white text-xs">材</span>
+                      </div>
+                      <h4 className="font-body text-sm font-bold text-foreground">引用素材</h4>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+                      <div className="rounded-[1.5rem] border-2 border-border/50 bg-muted/30 p-4">
                         <div className="mb-3 flex items-center justify-between gap-3">
-                          <span className="text-xs font-body font-medium uppercase tracking-wide text-foreground">引用角色</span>
+                          <span className="text-xs font-body font-bold text-foreground">引用角色</span>
                           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-body text-primary">
                             {currentCharacterRefs.length} 个
                           </span>
@@ -938,9 +943,9 @@ export default function Stage5Pages() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+                      <div className="rounded-[1.5rem] border-2 border-border/50 bg-muted/30 p-4">
                         <div className="mb-3 flex items-center justify-between gap-3">
-                          <span className="text-xs font-body font-medium uppercase tracking-wide text-foreground">引用场景</span>
+                          <span className="text-xs font-body font-bold text-foreground">引用场景</span>
                           <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-body text-accent-foreground">
                             {currentSceneRefs.length} 个
                           </span>
@@ -984,14 +989,16 @@ export default function Stage5Pages() {
               </ScrollArea>
             </div>
 
-            <aside className="flex w-full flex-shrink-0 flex-col gap-4 xl:w-[440px]">
-              <div className="rounded-[24px] border border-border/70 bg-card/95 p-4 shadow-sm">
+            <aside className="flex w-full flex-shrink-0 flex-col xl:w-[440px] min-h-0">
+              <ScrollArea className="h-full pr-3 -mr-3">
+                <div className="flex flex-col gap-4 pb-2">
+                  <div className="card-ink rounded-[2rem] p-4 shadow-ink-light">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      预览主视图
-                    </p>
-                    <h4 className="mt-1 text-sm font-body font-semibold text-foreground">{currentPreviewTitle}</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                      <span className="font-display text-white text-xs">览</span>
+                    </div>
+                    <h4 className="text-sm font-body font-bold text-foreground">{currentPreviewTitle}</h4>
                   </div>
                   <Badge
                     variant="secondary"
@@ -1002,7 +1009,7 @@ export default function Stage5Pages() {
                   </Badge>
                 </div>
 
-                <div className={cn('group relative w-full overflow-hidden rounded-[22px] border border-border/70 bg-muted', getAspectClass(currentAspectRatio))}>
+                <div className={cn('group relative w-full overflow-hidden rounded-[2rem] border-2 border-dashed border-border/80 bg-muted/50', getAspectClass(currentAspectRatio))}>
                   <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
                     <span className="rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-body text-white">
                       {isCoverSelected ? '封面' : `第 ${currentPage + 1} 页`}
@@ -1057,11 +1064,11 @@ export default function Stage5Pages() {
                   ) : null}
                 </div>
 
-                <div className="mt-4 rounded-[22px] border border-border/70 bg-background/80 p-3">
+                <div className="mt-4 rounded-[1.5rem] border-2 border-border/50 bg-background/80 p-3">
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="min-w-0 flex-1">
                       <Select value={currentAspectRatio} onValueChange={handleAspectRatioChange}>
-                        <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-card/90 text-sm font-body">
+                        <SelectTrigger className="h-10 w-full rounded-xl border-2 border-border/70 bg-card text-sm font-body">
                           <SelectValue placeholder="选择画面比例" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1074,7 +1081,7 @@ export default function Stage5Pages() {
                     <Button
                       onClick={handleGenerate}
                       disabled={currentGenerating}
-                      className="h-10 min-w-[160px] gap-2 rounded-xl border-0 font-body text-sm gradient-hero text-primary-foreground"
+                      className="h-10 min-w-[160px] gap-2 rounded-xl border-0 font-body text-sm btn-ink"
                     >
                       {currentGenerating
                         ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />生成中…</>
@@ -1087,13 +1094,13 @@ export default function Stage5Pages() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm">
+              <div className="card-ink rounded-[2rem] p-4 shadow-ink-light">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      历史记录带
-                    </p>
-                    <h4 className="mt-1 text-sm font-body font-semibold text-foreground">图片历史</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                      <span className="font-display text-white text-xs">史</span>
+                    </div>
+                    <h4 className="text-sm font-body font-bold text-foreground">图片历史</h4>
                   </div>
                   <span className="text-[11px] font-body text-muted-foreground">
                     {previewHistoryItems.length > 0 ? `${previewHistoryItems.length} 条` : '待生成'}
@@ -1116,8 +1123,8 @@ export default function Stage5Pages() {
                           }
                         }}
                         className={cn(
-                          'group min-w-[104px] rounded-2xl border bg-background/80 p-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm',
-                          item.active ? 'border-primary/40 ring-1 ring-primary/15' : 'border-border/70'
+                          'group min-w-[104px] rounded-2xl border-2 bg-background/80 p-2 text-left transition-all hover-ink-blur',
+                          item.active ? 'border-primary shadow-ink-light' : 'border-transparent hover:border-primary/40'
                         )}
                       >
                         <div className={cn('overflow-hidden rounded-xl bg-muted', getAspectClass(currentAspectRatio))}>
@@ -1149,12 +1156,12 @@ export default function Stage5Pages() {
                 )}
               </div>
 
-              <div className="rounded-[24px] border border-border/70 bg-card/95 p-4 shadow-sm">
-                <div className="mb-4">
-                  <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    编辑区
-                  </p>
-                  <h4 className="mt-1 text-sm font-body font-semibold text-foreground">编辑与定稿</h4>
+              <div className="card-ink rounded-[2rem] p-4 shadow-ink-light">
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="seal-pattern w-6 h-6 rounded flex items-center justify-center -rotate-3">
+                    <span className="font-display text-white text-xs">修</span>
+                  </div>
+                  <h4 className="text-sm font-body font-bold text-foreground">编辑与定稿</h4>
                 </div>
 
                 <div className="space-y-4">
@@ -1184,7 +1191,7 @@ export default function Stage5Pages() {
                 </div>
               )}
 
-              <div className="rounded-[24px] border border-border/60 bg-card/70 p-4 shadow-sm">
+              <div className="card-ink rounded-[2rem] border-2 border-border/50 bg-card/70 p-4 shadow-ink-light backdrop-blur-sm">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-body">
                     <span className="text-muted-foreground">正文页生成进度</span>
@@ -1209,6 +1216,8 @@ export default function Stage5Pages() {
                   )}
                 </div>
               </div>
+                </div>
+              </ScrollArea>
             </aside>
           </div>
         </div>

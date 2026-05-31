@@ -11,8 +11,6 @@ import { AlertTriangle, AlertCircle, BookOpen, ChevronDown, ChevronUp, FileText,
 import { ProjectInfo, StoryEntry } from '@/types/picturebook';
 import type { StoryPackCheckReport } from '@/prompts/builders/story-pack';
 
-
-
 interface EntryCardProps {
   entry: StoryEntry;
   onDescChange: (desc: string) => void;
@@ -22,37 +20,37 @@ interface EntryCardProps {
 function EntryCard({ entry, onDescChange, colorClass }: EntryCardProps) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className={cn('border rounded-lg overflow-hidden bg-card', colorClass)}>
-      <div className="flex items-center gap-2 px-3 py-2">
+    <div className={cn('border-2 rounded-2xl overflow-hidden bg-background/80 backdrop-blur-sm transition-smooth hover:shadow-ink-light', colorClass)}>
+      <div className="flex items-center gap-2 px-4 py-3">
         <button
           onClick={() => setExpanded(v => !v)}
-          className="flex-1 flex items-center gap-2 text-left min-w-0"
+          className="flex-1 flex items-center gap-3 text-left min-w-0"
         >
-          <span className="text-sm font-body font-medium text-foreground truncate">{entry.name}</span>
+          <span className="text-sm font-body font-bold text-foreground truncate">{entry.name}</span>
           {entry.userModified && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-body">已修改</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-body">已修改</span>
           )}
           {expanded
-            ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-            : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
         </button>
       </div>
       {expanded && (
-        <div className="px-3 pb-3">
+        <div className="px-4 pb-4">
           <Textarea
             value={entry.description}
             onChange={e => onDescChange(e.target.value)}
             placeholder="输入描述（外貌特征、性格等）…"
-            className="font-body text-xs resize-none min-h-[64px]"
+            className="ink-textarea text-xs min-h-[80px]"
           />
-          <p className="text-xs text-muted-foreground font-body mt-1.5 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
+          <p className="text-xs text-muted-foreground font-body mt-2 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
             修改描述可能影响后续素材设定与逐页生成
           </p>
         </div>
       )}
       {!expanded && entry.description && (
-        <p className="px-3 pb-2 text-xs font-body text-muted-foreground truncate">{entry.description}</p>
+        <p className="px-4 pb-3 text-xs font-body text-muted-foreground truncate">{entry.description}</p>
       )}
     </div>
   );
@@ -100,8 +98,8 @@ type SectionId = 'story-outline' | 'characters' | 'scenes' | 'storyboard';
 
 const SECTION_ITEMS = [
   { id: 'story-outline', label: '故事大纲', icon: FileText },
-  { id: 'characters', label: '角色', icon: Users },
-  { id: 'scenes', label: '场景', icon: MapPin },
+  { id: 'characters', label: '角色设定', icon: Users },
+  { id: 'scenes', label: '场景清单', icon: MapPin },
   { id: 'storyboard', label: '分镜拆页', icon: BookOpen },
 ] as const satisfies ReadonlyArray<{
   id: SectionId;
@@ -397,9 +395,11 @@ export default function Stage2Story() {
   }, [hasStoryResult, story.generating, storyboard.pages.length, story.characters.length, story.scenes.length]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-4 relative">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-primary/5 to-transparent pointer-events-none" />
+
       <StageActionHeader
-        title="故事架构与分镜拆页"
+        title="故事架构与分镜"
         description="先生成可编辑的故事结构，再将故事拆成逐页分镜与封面描述，进入后续素材设定与逐页生成流程"
         onRegenerate={handleGenerateAll}
         onNext={handleConfirm}
@@ -414,52 +414,52 @@ export default function Stage2Story() {
                   <button
                     type="button"
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-body transition-smooth',
+                      'inline-flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-body transition-smooth',
                       checkingReport && 'border-border bg-card text-muted-foreground',
-                      !checkingReport && checkReport?.overallPass && 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300',
-                      !checkingReport && checkReport && !checkReport.overallPass && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
+                      !checkingReport && checkReport?.overallPass && 'border-green-200 bg-green-50 text-green-700 shadow-sm',
+                      !checkingReport && checkReport && !checkReport.overallPass && 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm'
                     )}
                   >
-                    {checkingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertCircle className="h-3.5 w-3.5" />}
-                    <span>{checkingReport ? '评分中...' : `评分 ${overallScore} / 10`}</span>
+                    {checkingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertCircle className="h-4 w-4" />}
+                    <span className="font-bold">{checkingReport ? '评分中...' : `评分 ${overallScore} / 10`}</span>
                   </button>
                 </TooltipTrigger>
                 {checkReport && (
-                  <TooltipContent side="bottom" align="end" className="max-w-[360px] space-y-3 px-4 py-3">
+                  <TooltipContent side="bottom" align="end" className="max-w-[360px] space-y-3 px-4 py-3 card-ink rounded-2xl">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-foreground">总分 {overallScore} / 10</span>
-                      <span className={cn('text-xs font-medium', checkReport.overallPass ? 'text-green-600' : 'text-amber-600')}>
+                      <span className="text-sm font-bold text-foreground">总分 {overallScore} / 10</span>
+                      <span className={cn('text-xs font-bold px-2 py-1 rounded-full', checkReport.overallPass ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}>
                         {checkReport.overallPass ? '通过' : '待修复'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                      <div>完整性 {checkReport.completenessScore}/10</div>
-                      <div>连续性 {checkReport.continuityScore}/10</div>
-                      <div>密度 {checkReport.densityScore}/10</div>
+                    <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground bg-background/50 rounded-lg p-2">
+                      <div className="text-center">完整性 {checkReport.completenessScore}</div>
+                      <div className="text-center">连续性 {checkReport.continuityScore}</div>
+                      <div className="text-center">密度 {checkReport.densityScore}</div>
                     </div>
                     {checkReport.summary && (
-                      <p className="text-xs leading-5 text-muted-foreground">{checkReport.summary}</p>
+                      <p className="text-xs leading-5 text-muted-foreground/90">{checkReport.summary}</p>
                     )}
-                    <div className="space-y-2 text-xs leading-5 text-muted-foreground">
+                    <div className="space-y-2 text-xs leading-5 text-muted-foreground/90">
                       {checkReport.completenessIssues.length > 0 && (
-                        <div>完整性问题：{checkReport.completenessIssues.join('；')}</div>
+                        <div><span className="font-bold text-foreground">完整性问题：</span>{checkReport.completenessIssues.join('；')}</div>
                       )}
                       {checkReport.continuityIssues.length > 0 && (
                         <div>
-                          连续性问题：
+                          <span className="font-bold text-foreground">连续性问题：</span>
                           {checkReport.continuityIssues.map(i => `${i.pagePair} ${i.issue}`).join('；')}
                         </div>
                       )}
                       {checkReport.densityIssues.length > 0 && (
                         <div>
-                          密度问题：
+                          <span className="font-bold text-foreground">密度问题：</span>
                           {checkReport.densityIssues.map(i => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`).join('；')}
                         </div>
                       )}
                       {checkReport.completenessIssues.length === 0 &&
                         checkReport.continuityIssues.length === 0 &&
                         checkReport.densityIssues.length === 0 && (
-                          <div>未发现明显问题。</div>
+                          <div className="text-green-600 font-medium">未发现明显问题，可直接继续。</div>
                         )}
                     </div>
                   </TooltipContent>
@@ -470,16 +470,17 @@ export default function Stage2Story() {
         )}
       />
 
-      <div className="flex min-h-0 flex-1 gap-6">
+      <div className="flex min-h-0 flex-1 gap-6 relative z-10">
         <aside className="w-64 flex-shrink-0">
-          <div className="sticky top-6 rounded-2xl border border-border bg-card/90 p-4 shadow-card">
-            <div className="mb-4">
-              <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                页面目录
+          <div className="sticky top-6 rounded-[2rem] card-ink p-6 shadow-ink-light">
+            <div className="mb-6 flex items-center gap-2">
+              <div className="w-1.5 h-4 bg-primary rounded-full" />
+              <p className="text-xs font-body font-bold uppercase tracking-[0.2em] text-foreground">
+                卷宗目录
               </p>
             </div>
 
-            <nav className="space-y-1.5">
+            <nav className="space-y-2">
               {SECTION_ITEMS.map(item => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.id;
@@ -490,21 +491,21 @@ export default function Stage2Story() {
                     type="button"
                     onClick={() => scrollToSection(item.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-body transition-smooth',
+                      'flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-sm font-body transition-smooth',
                       isActive
-                        ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
-                        : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
+                        ? 'border-primary/50 bg-primary/10 text-primary shadow-sm font-bold'
+                        : 'border-transparent text-muted-foreground hover:border-primary/20 hover:bg-primary/5 hover:text-foreground'
                     )}
                   >
                     <span
                       className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-lg',
-                        isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        'flex h-8 w-8 items-center justify-center rounded-xl shadow-sm',
+                        isActive ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'
                       )}
                     >
                       <Icon className="h-4 w-4" />
                     </span>
-                    <span className={cn('font-medium', isActive && 'text-foreground')}>{item.label}</span>
+                    <span>{item.label}</span>
                   </button>
                 );
               })}
@@ -512,21 +513,21 @@ export default function Stage2Story() {
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card/40">
-          <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-6">
+        <div className="min-w-0 flex-1 overflow-hidden rounded-[2rem] card-ink shadow-ink-light relative">
+          <div ref={contentScrollRef} className="h-full overflow-y-auto px-8 py-8">
             <div className="flex min-h-full flex-col">
 
             {error && !story.generating && !storyboard.generating && !cover.generating && (
-              <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span className="flex-1">{getErrorMessage(error)}</span>
+              <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-200/50 bg-red-50/50 px-5 py-4 text-sm text-red-700 backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <span className="flex-1 font-body">{getErrorMessage(error)}</span>
                 <Button
                   onClick={handleGenerateAll}
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 font-body text-xs h-7 border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+                  className="gap-1.5 font-body text-xs h-8 border-red-200 text-red-700 hover:bg-red-100 rounded-lg"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   重试
                 </Button>
               </div>
@@ -534,22 +535,22 @@ export default function Stage2Story() {
 
             {story.generating && (
               <div className="flex min-h-[420px] flex-1 items-center justify-center">
-                <div className="space-y-3 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
-                    <Wand2 className="w-6 h-6 text-primary-foreground" />
+                <div className="space-y-4 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 shadow-glow animate-pulse">
+                    <Wand2 className="w-8 h-8 text-primary" />
                   </div>
-                  <p className="text-sm font-body text-muted-foreground">正在构思故事架构，请稍候…</p>
+                  <p className="text-base font-body font-medium text-muted-foreground tracking-wide">构思故事架构中…</p>
                 </div>
               </div>
             )}
 
             {!story.generating && !hasStoryResult && (
               <div className="flex min-h-[420px] flex-1 items-center justify-center">
-                <div className="max-w-sm space-y-3 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                    <BookOpen className="w-8 h-8 text-muted-foreground" />
+                <div className="max-w-md space-y-4 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-muted/50 border-2 border-border border-dashed">
+                    <BookOpen className="w-8 h-8 text-muted-foreground/50" />
                   </div>
-                  <p className="text-sm font-body text-muted-foreground">
+                  <p className="text-sm font-body text-muted-foreground leading-relaxed">
                     首次进入本阶段会自动生成故事架构；如需重试，也可以手动触发生成
                   </p>
                 </div>
@@ -557,31 +558,40 @@ export default function Stage2Story() {
             )}
 
             {!story.generating && hasStoryResult && (
-              <div className="space-y-8 pb-6">
-                <section ref={storyOutlineRef} id="story-outline" className="scroll-mt-6">
-                  <h3 className="mb-2 flex items-center gap-1.5 text-sm font-body font-semibold text-foreground">
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-xs font-display text-primary">1</span>
-                    故事大纲
-                  </h3>
+              <div className="space-y-12 pb-8">
+                <section ref={storyOutlineRef} id="story-outline" className="scroll-mt-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="seal-pattern w-8 h-8 rounded flex items-center justify-center -rotate-3">
+                      <span className="font-display text-white text-sm">一</span>
+                    </div>
+                    <h3 className="text-lg font-body font-bold text-foreground tracking-wide">
+                      故事大纲
+                    </h3>
+                  </div>
                   <Textarea
                     value={story.storyOutline}
                     onChange={e => {
                       dispatch({ type: 'SET_STORY', payload: { storyOutline: e.target.value } });
                       triggerSave();
                     }}
-                    className="font-body text-sm resize-none min-h-[120px]"
+                    className="ink-textarea"
                     placeholder="输入故事大纲…"
                   />
                 </section>
 
-                <section ref={charactersRef} id="characters" className="scroll-mt-6">
-                  <h3 className="mb-2 flex items-center gap-1.5 text-sm font-body font-semibold text-foreground">
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-xs font-display text-primary">2</span>
-                    <Users className="w-3.5 h-3.5" />
-                    角色设定
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">（可编辑描述，不可新增/删除）</span>
-                  </h3>
-                  <div className="space-y-2">
+                <div className="divider-ink w-full opacity-50" />
+
+                <section ref={charactersRef} id="characters" className="scroll-mt-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="seal-pattern w-8 h-8 rounded flex items-center justify-center rotate-2">
+                      <span className="font-display text-white text-sm">二</span>
+                    </div>
+                    <h3 className="text-lg font-body font-bold text-foreground tracking-wide flex items-center gap-2">
+                      角色设定
+                      <span className="text-xs font-normal text-muted-foreground">（可编辑描述，不可新增/删除）</span>
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {story.characters.map(c => (
                       <EntryCard
                         key={c.name}
@@ -596,14 +606,19 @@ export default function Stage2Story() {
                   </div>
                 </section>
 
-                <section ref={scenesRef} id="scenes" className="scroll-mt-6">
-                  <h3 className="mb-2 flex items-center gap-1.5 text-sm font-body font-semibold text-foreground">
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-xs font-display text-primary">3</span>
-                    <MapPin className="w-3.5 h-3.5" />
-                    场景清单
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">（可编辑描述，不可新增/删除）</span>
-                  </h3>
-                  <div className="space-y-2">
+                <div className="divider-ink w-full opacity-50" />
+
+                <section ref={scenesRef} id="scenes" className="scroll-mt-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="seal-pattern w-8 h-8 rounded flex items-center justify-center -rotate-2">
+                      <span className="font-display text-white text-sm">三</span>
+                    </div>
+                    <h3 className="text-lg font-body font-bold text-foreground tracking-wide flex items-center gap-2">
+                      场景清单
+                      <span className="text-xs font-normal text-muted-foreground">（可编辑描述，不可新增/删除）</span>
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {story.scenes.map(s => (
                       <EntryCard
                         key={s.name}
@@ -618,189 +633,153 @@ export default function Stage2Story() {
                   </div>
                 </section>
 
-                <section ref={storyboardRef} id="storyboard" className="scroll-mt-6 space-y-3 border-t border-border pt-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="flex items-center gap-1.5 text-sm font-body font-semibold text-foreground">
-                      <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-xs font-display text-primary">4</span>
-                      分镜拆页
-                    </h3>
+                <div className="divider-ink w-full opacity-50" />
+
+                <section ref={storyboardRef} id="storyboard" className="scroll-mt-8 space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="seal-pattern w-8 h-8 rounded flex items-center justify-center rotate-3">
+                        <span className="font-display text-white text-sm">四</span>
+                      </div>
+                      <h3 className="text-lg font-body font-bold text-foreground tracking-wide">
+                        分镜拆页
+                      </h3>
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         onClick={handleCheck}
                         disabled={story.generating || storyboard.generating || cover.generating || checkingReport || !(hasStoryResult || hasStoryboardResult || hasCoverResult)}
                         variant="outline"
-                        className="font-body"
+                        className="font-body rounded-full px-5 border-2"
                       >
-                        {checkingReport ? '评分中…' : '检查'}
+                        {checkingReport ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2"/> 评分中…</> : '质量检查'}
                       </Button>
                       <Button
                         onClick={handleRepair}
                         disabled={story.generating || storyboard.generating || cover.generating || !checkReport}
-                        variant="outline"
-                        className="font-body"
+                        className="font-body rounded-full px-5 btn-ink border-0"
                       >
-                        修复
+                        <Wand2 className="w-3.5 h-3.5 mr-2" />
+                        一键修复
                       </Button>
                     </div>
                   </div>
 
                   {storyboard.generating && (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="space-y-3 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full gradient-hero animate-pulse-soft">
-                          <Wand2 className="w-6 h-6 text-primary-foreground" />
+                    <div className="flex items-center justify-center py-12">
+                      <div className="space-y-4 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 shadow-glow animate-pulse">
+                          <Wand2 className="w-8 h-8 text-primary" />
                         </div>
-                        <p className="text-sm font-body text-muted-foreground">正在生成逐页分镜，请稍候…</p>
+                        <p className="text-base font-body font-medium text-muted-foreground tracking-wide">生成逐页分镜中…</p>
                       </div>
                     </div>
                   )}
 
                   {!storyboard.generating && !hasStoryboardResult && !hasCoverResult && (
-                    <div className="rounded-lg border border-border bg-card p-4 text-sm font-body text-muted-foreground">
+                    <div className="rounded-2xl border-2 border-dashed border-border bg-muted/30 p-8 text-center text-sm font-body text-muted-foreground">
                       首次进入本阶段会自动生成正文分镜和封面内容；如需重试，也可以手动触发生成
                     </div>
                   )}
 
                   {!storyboard.generating && (hasStoryboardResult || hasCoverResult) && (
-                    <div className="space-y-3">
-                      <div className="overflow-hidden rounded-lg border border-border">
-                        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">封面设置</span>
+                    <div className="space-y-4">
+                      {/* Cover Setup */}
+                      <div className="overflow-hidden rounded-2xl border-2 border-primary/20 bg-background/50 shadow-sm transition-all hover:border-primary/40">
+                        <div className="flex items-center justify-between border-b-2 border-primary/10 bg-primary/5 px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold text-foreground">封面设置</span>
                             {cover.userModified && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-body">已修改</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-body font-bold">已修改</span>
                             )}
                           </div>
                           <Button
                             onClick={handleGenerateAll}
                             disabled={story.generating || cover.generating || storyboard.generating}
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="gap-1.5 font-body text-xs"
+                            className="gap-1.5 font-body text-xs text-primary hover:bg-primary/10 rounded-full"
                           >
-                            {cover.generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                            {cover.generating ? '生成中…' : '重新生成封面内容'}
+                            {cover.generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            {cover.generating ? '生成中…' : '重新生成'}
                           </Button>
                         </div>
-                        <div className="space-y-3 px-3 py-3">
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-body font-medium text-muted-foreground">封面标题</label>
+                        <div className="space-y-4 px-5 py-5">
+                          <div className="space-y-2">
+                            <label className="text-xs font-body font-bold text-muted-foreground">封面标题</label>
                             <Textarea
                               value={cover.title}
                               onChange={e => {
                                 dispatch({ type: 'UPDATE_COVER_STORYBOARD_FIELDS', payload: { title: e.target.value } });
                                 triggerSave();
                               }}
-                              className="font-body text-sm resize-none min-h-[64px]"
-                              placeholder="请输入封面标题，可基于项目标题继续微调为更适合绘本封面的展示标题"
+                              className="ink-textarea min-h-[64px]"
+                              placeholder="请输入封面标题，可基于项目标题继续微调"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-body font-medium text-muted-foreground">封面画面描述</label>
+                          <div className="space-y-2">
+                            <label className="text-xs font-body font-bold text-muted-foreground">封面画面描述</label>
                             <Textarea
                               value={cover.visualGoal}
                               onChange={e => {
                                 dispatch({ type: 'UPDATE_COVER_STORYBOARD_FIELDS', payload: { visualGoal: e.target.value } });
                                 triggerSave();
                               }}
-                              className="font-body text-sm resize-none min-h-[120px]"
-                              placeholder="请输入封面插画的主体、动作、场景、构图、光影、色彩和标题留白区域；封面只生成纯插画，不要要求直接把标题画进图里"
+                              className="ink-textarea min-h-[120px]"
+                              placeholder="请输入封面插画的主体、动作、场景、构图、光影、色彩和标题留白区域"
                             />
-                            <p className="text-[10px] text-muted-foreground">
-                              提示：封面描述同样只写“看得见的东西”，可补充主角、关键道具、场景关系、光影方向、主色调和标题留白位置。
-                            </p>
                           </div>
                         </div>
                       </div>
 
-                      {checkReport && (
-                        <div className="rounded-lg border border-border bg-card px-3 py-3 text-sm font-body">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-foreground">检查结果</span>
-                            <span className="text-xs text-muted-foreground">完整性 {checkReport.completenessScore}/10</span>
-                            <span className="text-xs text-muted-foreground">连续性 {checkReport.continuityScore}/10</span>
-                            <span className="text-xs text-muted-foreground">密度 {checkReport.densityScore}/10</span>
-                            <span className={cn('text-xs font-medium', checkReport.overallPass ? 'text-green-600' : 'text-amber-600')}>
-                              {checkReport.overallPass ? '通过' : '待修复'}
-                            </span>
-                          </div>
-                          {checkReport.summary && (
-                            <p className="mt-2 text-xs text-muted-foreground">{checkReport.summary}</p>
-                          )}
-                          {(checkReport.completenessIssues.length > 0 ||
-                            checkReport.continuityIssues.length > 0 ||
-                            checkReport.densityIssues.length > 0) && (
-                            <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-                              {checkReport.completenessIssues.length > 0 && (
-                                <div>完整性问题：{checkReport.completenessIssues.join('；')}</div>
-                              )}
-                              {checkReport.continuityIssues.length > 0 && (
-                                <div>
-                                  连续性问题：
-                                  {checkReport.continuityIssues.map(i => `${i.pagePair} ${i.issue}`).join('；')}
-                                </div>
-                              )}
-                              {checkReport.densityIssues.length > 0 && (
-                                <div>
-                                  密度问题：
-                                  {checkReport.densityIssues.map(i => `第${i.page}页 ${i.issue} 建议：${i.suggestion}`).join('；')}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
+                      {/* Pages List */}
                       {storyboard.pages.map(page => {
                         const isExpanded = expandedPage === page.pageIndex;
                         return (
-                          <div key={page.pageIndex} className="overflow-hidden rounded-lg border border-border">
+                          <div key={page.pageIndex} className="overflow-hidden rounded-2xl border-2 border-border bg-background/50 transition-all hover:border-primary/30">
                             <button
-                              className="flex w-full items-center justify-between px-3 py-2 text-sm font-body hover:bg-muted/50 transition-smooth"
+                              className="flex w-full items-center justify-between px-5 py-4 text-sm font-body hover:bg-muted/50 transition-smooth"
                               onClick={() => setExpandedPage(isExpanded ? null : page.pageIndex)}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-foreground">第 {page.pageIndex + 1} 页</span>
+                              <div className="flex items-center gap-3">
+                                <span className="font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-lg">第 {page.pageIndex + 1} 页</span>
                                 {page.userModified && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-body">已修改</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-body font-bold">已修改</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-4">
                                 {page.text && (
-                                  <span className="max-w-[160px] truncate text-xs text-muted-foreground">{page.text}</span>
+                                  <span className="max-w-[200px] truncate text-xs text-muted-foreground/80">{page.text}</span>
                                 )}
                                 {isExpanded
-                                  ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                                  : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                                  ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                                  : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                               </div>
                             </button>
                             {isExpanded && (
-                              <div className="space-y-3 px-3 pb-3">
-                                <div className="space-y-1.5">
-                                  <label className="text-xs font-body font-medium text-muted-foreground">画面内容描述</label>
+                              <div className="space-y-4 px-5 pb-5 border-t-2 border-border/50 pt-4">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-body font-bold text-muted-foreground">画面内容描述</label>
                                   <Textarea
                                     value={page.visualGoal}
                                     onChange={e => {
                                       dispatch({ type: 'UPDATE_STORYBOARD_PAGE', payload: { pageIndex: page.pageIndex, data: { visualGoal: e.target.value } } });
                                       triggerSave();
                                     }}
-                                    className="font-body text-sm resize-none min-h-[100px]"
-                                    placeholder="请输入具体、可量化、纯视觉化的画面描述：默认直接写角色名称；只有当页造型、装束、道具状态或形体有变化时再补充变化点，同时写清眼睛和嘴巴形态、姿势动作、场景物体及位置/材质、光线方向与色温、具体颜色、景别/构图/视角；不要写开心、温暖、活泼等抽象词，也不要新增第 2 步之外的角色"
+                                    className="ink-textarea min-h-[100px]"
+                                    placeholder="请输入具体、可量化、纯视觉化的画面描述..."
                                   />
-                                  <p className="text-[10px] text-muted-foreground">
-                                    提示：角色默认继承第 2 步设定，无变化时写名称即可；只描述“看得见的东西”，不要解释角色感受。可写“嘴巴咧开露齿，眼睛弯成月牙形”，不要直接写“很开心”；可写“左侧暖黄色侧光照在木桌上”，不要只写“温暖的氛围”
-                                  </p>
                                 </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-xs font-body font-medium text-muted-foreground">画面文字</label>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-body font-bold text-muted-foreground">画面文字</label>
                                   <Textarea
                                     value={page.text}
                                     onChange={e => {
                                       dispatch({ type: 'UPDATE_STORYBOARD_PAGE', payload: { pageIndex: page.pageIndex, data: { text: e.target.value } } });
                                       triggerSave();
                                     }}
-                                    className="font-body text-sm resize-none min-h-[60px]"
-                                    placeholder="请输入本页呈现的文字内容，需匹配目标儿童年龄段的认知水平和文字复杂度要求"
+                                    className="ink-textarea min-h-[80px]"
+                                    placeholder="请输入本页呈现的文字内容..."
                                   />
                                 </div>
                               </div>
@@ -815,15 +794,15 @@ export default function Stage2Story() {
             )}
 
             {hasStoryResult && !story.generating && (
-              <div className="mt-auto flex items-center gap-4 border-t border-border pt-4">
-                <div className="text-xs font-body text-muted-foreground">
+              <div className="mt-auto flex items-center gap-4 border-t-2 border-border/50 pt-6">
+                <div className="text-sm font-body">
                   {canConfirm ? (
-                    <span>确认后将进入素材设定阶段</span>
+                    <span className="text-muted-foreground">确认后将进入素材设定阶段</span>
                   ) : (
-                    <span className="text-amber-600">请确保故事架构与分镜内容已完成</span>
+                    <span className="text-amber-600 font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4"/>请确保故事架构与分镜内容已完成</span>
                   )}
                   {hasDownstream && (
-                    <span className="mt-1 block text-amber-600">修改将使下游素材设定与逐页生成标记为待复查</span>
+                    <span className="mt-1.5 block text-amber-600/80 text-xs">修改将使下游素材设定与逐页生成标记为待复查</span>
                   )}
                 </div>
               </div>

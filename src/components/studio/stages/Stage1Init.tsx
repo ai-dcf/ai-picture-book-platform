@@ -20,6 +20,7 @@ import {
   PageCount,
   ArtStyle,
 } from '@/types/picturebook';
+import { cn } from '@/lib/utils';
 
 export default function Stage1Init() {
   const { state, dispatch, triggerSave } = useStudio();
@@ -109,143 +110,154 @@ export default function Stage1Init() {
   const canCreate = form.title.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded gradient-hero flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+    <div className="flex flex-col h-full max-w-3xl mx-auto px-6 py-8 relative">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-primary/5 to-transparent pointer-events-none" />
+      <div className="absolute bottom-1/4 left-0 w-72 h-72 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-accent/10 via-accent/5 to-transparent pointer-events-none" />
+
+      <div className="mb-10 text-center relative z-10">
+        <div className="inline-flex items-center justify-center mb-6">
+          <div className="seal-pattern w-12 h-12 rounded-sm flex items-center justify-center -rotate-6 mr-4 shadow-ink-medium">
+            <span className="font-display text-white text-xl leading-none">壹</span>
           </div>
-          <span className="text-xs font-body text-muted-foreground uppercase tracking-wider">
-            阶段 1 · 项目初始化
+          <span className="text-sm font-body text-muted-foreground uppercase tracking-[0.3em]">
+            起笔 · 构思
           </span>
         </div>
-        <h2 className="font-display text-3xl text-foreground mt-2">开始创建你的绘本</h2>
-        <p className="text-sm font-body text-muted-foreground mt-1">
-          先确认基础参数，系统会自动创建草稿并保存
+        <h2 className="font-display text-5xl text-foreground tracking-widest">描绘你的绘本世界</h2>
+        <div className="divider-ink w-32 mx-auto my-6" />
+        <p className="text-sm font-body text-muted-foreground/80">
+          落笔无悔，意在笔先。写下你的故事大纲，我们将为你铺陈画卷。
         </p>
       </div>
 
-      <div className="flex-1 space-y-6 max-w-2xl">
+      <div className="flex-1 space-y-8 relative z-10 card-ink rounded-[2rem] p-8 lg:p-12 shadow-ink-light">
         {createError && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl border border-red-200/50 bg-red-50/50 px-5 py-4 text-sm text-red-700 backdrop-blur-sm">
+            <AlertCircle className="h-5 w-5 shrink-0" />
             <span className="flex-1 font-body">{createError}</span>
           </div>
         )}
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">
-            绘本主题/故事概要
-            <span className="text-destructive ml-0.5">*</span>
+
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-base font-body font-bold text-foreground">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            绘本主题与故事概要
+            <span className="text-primary ml-0.5">*</span>
           </label>
-          <div className="relative">
+          <div className="relative group">
             <Textarea
               ref={textareaRef}
               value={form.title}
               onChange={e => handleChange('title', e.target.value)}
-              placeholder="输入绘本主题、故事情节或者完整的故事概要，例如：小兔子学会分享的故事..."
-              className="font-body pr-24 resize-none min-h-[80px] max-h-[240px] overflow-y-auto"
-              rows={3}
+              placeholder="请输入绘本主题、故事情节或者完整的故事概要，例如：小兔子学会分享的故事..."
+              className="ink-textarea pr-28 w-full font-body text-base"
+              rows={4}
             />
             <Button
               size="sm"
-              variant="secondary"
-              className="absolute right-2 bottom-2 h-7 text-xs gap-1"
+              className="absolute right-3 bottom-3 h-8 text-xs gap-1.5 btn-ink rounded-lg px-4 shadow-none"
               onClick={handleOptimize}
               disabled={isOptimizing || !form.title.trim()}
             >
               {isOptimizing ? (
-                <><Loader2 className="w-3 h-3 animate-spin" /> 优化中</>
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 润色中</>
               ) : (
-                <><Sparkles className="w-3 h-3" /> 一键优化</>
+                <><Sparkles className="w-3.5 h-3.5" /> 妙笔生花</>
               )}
             </Button>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">目标年龄</label>
-          <Select
-            value={form.targetAge}
-            onValueChange={v => handleChange('targetAge', v as TargetAge)}
-          >
-            <SelectTrigger className="font-body h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TARGET_AGES.map(a => (
-                <SelectItem key={a} value={a} className="font-body">{a === 'auto' ? '自动' : a}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-body font-bold text-foreground">
+              <span className="w-1 h-1 rounded-full bg-accent" />
+              目标受众
+            </label>
+            <Select
+              value={form.targetAge}
+              onValueChange={v => handleChange('targetAge', v as TargetAge)}
+            >
+              <SelectTrigger className="ink-input h-12 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-body">
+                {TARGET_AGES.map(a => (
+                  <SelectItem key={a} value={a}>{a === 'auto' ? '自动推演' : a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-body font-bold text-foreground">
+              <span className="w-1 h-1 rounded-full bg-accent" />
+              画卷风格
+            </label>
+            <Select
+              value={form.artStyle}
+              onValueChange={v => handleChange('artStyle', v as ArtStyle)}
+            >
+              <SelectTrigger className="ink-input h-12 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-body">
+                {ART_STYLES.map(s => (
+                  <SelectItem key={s} value={s}>{s === 'auto' ? '自动推演' : s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">页数</label>
-          <div className="flex gap-2 flex-wrap">
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-body font-bold text-foreground">
+            <span className="w-1 h-1 rounded-full bg-accent" />
+            绘本页数
+          </label>
+          <div className="flex gap-3 flex-wrap">
             {PAGE_COUNTS.map(p => (
               <button
                 key={p}
                 onClick={() => handleChange('pageCount', p as PageCount)}
-                className={`px-4 py-2 rounded-lg text-sm font-body border transition-smooth ${
+                className={cn(
+                  "px-5 py-2.5 rounded-xl text-sm font-body border-2 transition-smooth",
                   form.pageCount === p
-                    ? 'bg-primary text-primary-foreground border-primary shadow-glow'
-                    : 'bg-card border-border text-foreground hover:border-primary/50'
-                }`}
+                    ? "border-primary bg-primary/5 text-primary font-medium shadow-ink-light"
+                    : "border-border bg-background/50 text-foreground hover:border-primary/40 hover:bg-primary/5"
+                )}
               >
-                {p === 'auto' ? '自动' : `${p} 页`}
+                {p === 'auto' ? '自动推演' : `${p} 页`}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-body font-medium text-foreground">绘本风格</label>
-          <Select
-            value={form.artStyle}
-            onValueChange={v => handleChange('artStyle', v as ArtStyle)}
-          >
-            <SelectTrigger className="font-body h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ART_STYLES.map(s => (
-                <SelectItem key={s} value={s} className="font-body">{s === 'auto' ? '自动' : s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-
-
         {showImpact && hasDownstream && (
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs font-body text-amber-800 dark:text-amber-200">
-              <p className="font-medium mb-1">修改参数将影响已生成的内容</p>
-              <p>修改「主题/年龄/页数」将使故事架构和分镜拆页标记为已失效</p>
-              <p>修改「风格/比例」将使素材设定和逐页生成结果标记为待复查</p>
+          <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/60 flex gap-3 mt-6 backdrop-blur-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm font-body text-amber-800">
+              <p className="font-bold mb-1.5">修改参数将影响已生成的内容</p>
+              <ul className="space-y-1 text-amber-700/80 list-disc list-inside ml-2">
+                <li>修改「主题/受众/页数」将使故事架构和分镜拆页标记为已失效</li>
+                <li>修改「风格」将使素材设定和逐页生成结果标记为待复查</li>
+              </ul>
             </div>
           </div>
         )}
-
-        <div className="p-3 rounded-lg bg-muted/60 border border-border">
-          <p className="text-xs font-body text-muted-foreground">
-            提示：修改这些参数可能影响后续故事、分镜、素材与页面结果
-          </p>
-        </div>
       </div>
 
-      <div className="pt-6 mt-auto border-t border-border">
+      <div className="pt-10 pb-6 mt-auto text-center relative z-10">
         <Button
           onClick={handleCreate}
           disabled={!canCreate || isAnalyzing || isOptimizing}
           size="lg"
-          className="gap-2 font-body text-base gradient-hero text-primary-foreground border-0 shadow-elevated hover:shadow-glow transition-smooth"
+          className="btn-ink h-14 px-10 rounded-2xl text-lg font-body font-medium shadow-ink-heavy seal-press gap-3"
         >
           {isAnalyzing ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> 分析中...</>
+            <><Loader2 className="w-5 h-5 animate-spin" /> 推演中...</>
           ) : (
-            <>创建项目并继续 <ArrowRight className="w-4 h-4" /></>
+            <>落笔成卷 <ArrowRight className="w-5 h-5" /></>
           )}
         </Button>
       </div>
