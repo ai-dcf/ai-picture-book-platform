@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
   ArrowRight,
   BookOpen,
   Clock3,
+  Cpu,
   LogOut,
   MoreHorizontal,
   Plus,
@@ -141,7 +143,14 @@ function TopNav() {
 
         <div className="ml-auto flex items-center gap-2">
           {session?.user ? (
-            <DropdownMenu>
+            <>
+              <Link href="/settings/models">
+                <Button variant="ghost" className="h-10 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-white hover:bg-white/10 hover:text-white">
+                  <Cpu className="mr-2 h-4 w-4" />
+                  <span>大模型配置</span>
+                </Button>
+              </Link>
+              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-10 rounded-full border border-white/10 bg-white/5 px-2 text-white hover:bg-white/10 hover:text-white">
                   <Avatar className="h-8 w-8">
@@ -179,6 +188,7 @@ function TopNav() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             <Button asChild className="btn-ink">
               <Link href="/login">登录</Link>
