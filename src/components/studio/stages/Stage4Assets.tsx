@@ -24,6 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { buildUserFriendlyAssetPrompt } from '@/prompts';
 import { cn } from '@/lib/utils';
 import {
   AssetItem,

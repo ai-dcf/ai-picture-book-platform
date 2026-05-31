@@ -2,8 +2,14 @@ import { buildImageRefsFromAssets } from "@/lib/prompt-ref-parser";
 import { promptEnhancer } from "@/prompts/prompt-enhancer";
 import { buildPromptRuleBundle } from "@/prompts/specs";
 import type { BuildPagePromptParams, BuildPagePromptResult, PromptCustomParams } from "@/prompts/types";
-import type { AssetsData, PageItem, StoryboardPageData } from "@/types/picturebook";
+import type { AssetsData, CoverData, PageItem, StoryboardPageData } from "@/types/picturebook";
 import { buildRuleSummary, findAssetDescriptions, formatRefs, formatRuleBlock, formatRulesAsSentence } from "@/prompts/builders/shared";
+
+type ResolvablePageSource =
+  Pick<PageItem, "visualGoal">
+  & Partial<Pick<PageItem, "storyText" | "pageText">>
+  & Partial<Pick<PageItem, "characterRefs" | "sceneRefs">>
+  & Partial<Pick<CoverData, "title">>;
 
 function trimTrailingPunctuation(text: string): string {
   return text.trim().replace(/[，。,；、\s]+$/g, "").trim();
@@ -12,7 +18,10 @@ function trimTrailingPunctuation(text: string): string {
 function resolvePageText({
   page,
   storyboardPage,
-}: Pick<BuildPagePromptParams, "page" | "storyboardPage">): string {
+}: {
+  page: ResolvablePageSource;
+  storyboardPage?: StoryboardPageData;
+}): string {
   if ("title" in page) {
     return page.title?.trim() || "";
   }
@@ -22,7 +31,10 @@ function resolvePageText({
 function resolveVisualGoal({
   page,
   storyboardPage,
-}: Pick<BuildPagePromptParams, "page" | "storyboardPage">): string {
+}: {
+  page: ResolvablePageSource;
+  storyboardPage?: StoryboardPageData;
+}): string {
   return page.visualGoal?.trim() || storyboardPage?.visualGoal || "";
 }
 

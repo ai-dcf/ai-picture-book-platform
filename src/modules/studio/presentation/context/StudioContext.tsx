@@ -43,6 +43,7 @@ function buildInitialPages(count: number): PageItem[] {
     prompt: '',
     promptUserEdited: false,
     imageUrl: null,
+    imageHistory: [],
     pageStatus: 'idle' as PageStatus,
     generating: false,
     imageRefs: [],
@@ -79,11 +80,25 @@ function buildInitialCover(projectInfo: ProjectInfo): CoverData {
     prompt: '',
     promptUserEdited: false,
     imageUrl: null,
+    imageHistory: [],
     status: 'idle' as PageStatus,
     generating: false,
     imageRefs: [],
     aspectRatio: projectInfo.aspectRatio,
   };
+}
+
+function pushImageHistory(
+  history: BaseImageHistoryEntry[],
+  currentImageUrl: string | null,
+  nextImageUrl?: string | null
+): BaseImageHistoryEntry[] {
+  if (!currentImageUrl) return history;
+  const nextHistory = [
+    { imageUrl: currentImageUrl, timestamp: Date.now() } as BaseImageHistoryEntry,
+    ...history.filter(entry => entry.imageUrl !== currentImageUrl && entry.imageUrl !== nextImageUrl),
+  ];
+  return nextHistory.slice(0, BASE_IMAGE_HISTORY_LIMIT);
 }
 
 function generateProjectId(): string {
@@ -312,6 +327,7 @@ type Action =
   | { type: 'UPDATE_COVER_CONFIG'; payload: Partial<CoverData> }
   | { type: 'SET_COVER_GENERATING'; payload: boolean }
   | { type: 'SET_COVER_IMAGE'; payload: { imageUrl: string } }
+  | { type: 'SELECT_COVER_IMAGE_FROM_HISTORY'; payload: { historyIndex: number } }
   | { type: 'SET_COVER_STATUS'; payload: PageStatus }
   | { type: 'INIT_ASSETS' }
   | { type: 'SET_ASSET_GENERATING'; payload: { type: 'characters' | 'scenes'; id: string; generating: boolean; phase: AssetItem['generatingPhase'] } }
@@ -324,6 +340,7 @@ type Action =
   | { type: 'UPDATE_ASSET_PROMPT'; payload: { type: 'characters' | 'scenes'; id: string; prompt: string; userEdited?: boolean } }
   | { type: 'SET_PAGE_GENERATING'; payload: { index: number; generating: boolean } }
   | { type: 'SET_PAGE_IMAGE'; payload: { index: number; imageUrl: string } }
+  | { type: 'SELECT_PAGE_IMAGE_FROM_HISTORY'; payload: { index: number; historyIndex: number } }
   | { type: 'SET_PAGE_STATUS'; payload: { index: number; status: PageStatus } }
   | { type: 'UPDATE_PAGE_STORYBOARD_FIELDS'; payload: { index: number; pageText?: string; visualGoal?: string } }
   | { type: 'UPDATE_PAGE_CONFIG'; payload: Partial<PageItem> & { index: number } }
@@ -347,12 +364,14 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
       const pages = loaded.pages.map(p => ({
         ...p,
         imageRefs: p.imageRefs || [],
+        imageHistory: p.imageHistory || [],
         generating: false,
         pageStatus: p.pageStatus === 'generating' ? 'pending' as PageStatus : p.pageStatus,
       }));
       const cover = {
         ...loaded.cover,
         imageRefs: loaded.cover.imageRefs || [],
+        imageHistory: loaded.cover.imageHistory || [],
         generating: false,
         status: loaded.cover.status === 'generating' ? 'pending' as PageStatus : loaded.cover.status,
       };
@@ -597,10 +616,36 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
         cover: {
           ...state.cover,
           imageUrl: action.payload.imageUrl,
+          imageHistory: pushImageHistory(state.cover.imageHistory, state.cover.imageUrl, action.payload.imageUrl),
           status: 'generated' as PageStatus,
           generating: false,
         },
       };
+
+    case 'SELECT_COVER_IMAGE_FROM_HISTORY': {
+      if (
+        action.payload.historyIndex < 0 ||
+        action.payload.historyIndex >= state.cover.imageHistory.length
+      ) {
+        return state;
+      }
+      const selectedEntry = state.cover.imageHistory[action.payload.historyIndex];
+      const nextHistory = pushImageHistory(
+        state.cover.imageHistory.filter((_, index) => index !== action.payload.historyIndex),
+        state.cover.imageUrl,
+        selectedEntry.imageUrl
+      );
+      return {
+        ...state,
+        cover: {
+          ...state.cover,
+          imageUrl: selectedEntry.imageUrl,
+          imageHistory: nextHistory,
+          status: state.cover.status === 'finalized' ? 'review' as PageStatus : 'generated' as PageStatus,
+          generating: false,
+        },
+      };
+    }
 
     case 'SET_COVER_STATUS':
       return { ...state, cover: { ...state.cover, status: action.payload } };
@@ -851,7 +896,13 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
     case 'SET_PAGE_IMAGE': {
       const pages = state.pages.map(p =>
         p.index === action.payload.index
-          ? { ...p, imageUrl: action.payload.imageUrl, pageStatus: 'generated' as PageStatus, generating: false }
+          ? {
+              ...p,
+              imageUrl: action.payload.imageUrl,
+              imageHistory: pushImageHistory(p.imageHistory, p.imageUrl, action.payload.imageUrl),
+              pageStatus: 'generated' as PageStatus,
+              generating: false,
+            }
           : p
       );
       const editorStates = [...state.editorStates];
@@ -865,6 +916,32 @@ function reducer(state: PictureBookState, action: Action): PictureBookState {
           '',
       };
       return { ...state, pages, editorStates };
+    }
+
+    case 'SELECT_PAGE_IMAGE_FROM_HISTORY': {
+      const pages = state.pages.map(p => {
+        if (p.index !== action.payload.index) return p;
+        if (
+          action.payload.historyIndex < 0 ||
+          action.payload.historyIndex >= p.imageHistory.length
+        ) {
+          return p;
+        }
+        const selectedEntry = p.imageHistory[action.payload.historyIndex];
+        const nextHistory = pushImageHistory(
+          p.imageHistory.filter((_, historyIndex) => historyIndex !== action.payload.historyIndex),
+          p.imageUrl,
+          selectedEntry.imageUrl
+        );
+        return {
+          ...p,
+          imageUrl: selectedEntry.imageUrl,
+          imageHistory: nextHistory,
+          pageStatus: p.pageStatus === 'finalized' ? 'review' as PageStatus : 'generated' as PageStatus,
+          generating: false,
+        };
+      });
+      return { ...state, pages };
     }
 
     case 'SET_PAGE_STATUS': {

@@ -112,6 +112,7 @@ function createPageItem(page: StoryboardPageData, projectInfo: ProjectInfo): Pag
     prompt: "",
     promptUserEdited: false,
     imageUrl: null,
+    imageHistory: [],
     pageStatus: "idle",
     generating: false,
     imageRefs: [],

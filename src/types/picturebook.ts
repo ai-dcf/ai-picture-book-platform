@@ -203,6 +203,7 @@ export interface CoverData {
   prompt: string;
   promptUserEdited: boolean;
   imageUrl: string | null;
+  imageHistory: BaseImageHistoryEntry[];
   status: PageStatus;
   generating: boolean;
   imageRefs: ImageRef[];
@@ -221,6 +222,7 @@ export interface PageItem {
   prompt: string;
   promptUserEdited: boolean;
   imageUrl: string | null;
+  imageHistory: BaseImageHistoryEntry[];
   pageStatus: PageStatus;
   generating: boolean;
   imageRefs: ImageRef[];
