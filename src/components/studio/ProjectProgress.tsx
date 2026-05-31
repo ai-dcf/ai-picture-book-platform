@@ -12,11 +12,10 @@ import {
   StageNumber,
   StageStatus,
   PageStatus,
-  PAGE_STATUS_LABELS,
   STAGE_LABELS,
 } from '@/types/picturebook';
 
-const STAGES: StageNumber[] = [1, 2, 3, 4, 5];
+const STAGES: StageNumber[] = [2, 3, 4, 5];
 
 function StageIcon({ status }: { status: StageStatus }) {
   if (status === 'done') return <CheckCircle2 className="w-4 h-4 text-green-500" />;
