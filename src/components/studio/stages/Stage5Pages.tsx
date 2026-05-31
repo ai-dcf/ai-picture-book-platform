@@ -613,15 +613,12 @@ export default function Stage5Pages() {
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 xl:flex-row">
         <aside className="w-full flex-shrink-0 xl:w-64">
-          <div className="rounded-2xl border border-border bg-card/90 p-4 shadow-card xl:sticky xl:top-6">
+          <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card/90 p-4 shadow-card xl:sticky xl:top-6 xl:max-h-[calc(100vh-1.5rem)]">
             <div className="mb-4">
               <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 页面目录
               </p>
-              <h3 className="mt-2 font-display text-lg text-foreground">逐页工作台</h3>
-              <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">
-                在这里切换封面和正文页，右侧工作区会同步展示当前页的编辑与预览内容。
-              </p>
+
             </div>
 
             <div className="mb-4 rounded-xl bg-muted/50 px-3 py-2 text-xs font-body text-muted-foreground">
@@ -631,8 +628,8 @@ export default function Stage5Pages() {
               </span>
             </div>
 
-            <ScrollArea className="max-h-[420px] xl:max-h-[calc(100vh-280px)]">
-              <nav className="space-y-1.5 pr-1">
+            <div className="max-h-[420px] overflow-y-auto pr-1 xl:max-h-[calc(100vh-220px)]">
+              <nav className="space-y-1.5">
                 <button
                   onClick={() => setCurrentTarget('cover')}
                   className={cn(
@@ -696,7 +693,7 @@ export default function Stage5Pages() {
                   );
                 })}
               </nav>
-            </ScrollArea>
+            </div>
           </div>
         </aside>
 

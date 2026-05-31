@@ -1006,8 +1006,6 @@ function WorkbenchListPanel({
         <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
           素材列表
         </p>
-        <h3 className="mt-2 font-display text-lg text-foreground">{title}</h3>
-        <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">{description}</p>
         {actions ? <div className="mt-4">{actions}</div> : null}
       </div>
 
@@ -1164,8 +1162,6 @@ function CharacterWorkbenchDetail({
             <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
               编辑面板
             </p>
-            <h3 className="mt-2 font-display text-lg text-foreground">{asset.name}</h3>
-            <p className="mt-1 text-xs font-body text-muted-foreground">编辑当前角色的描述与提示词。</p>
           </div>
           <AssetStatusBadge asset={asset} />
         </div>
@@ -1375,8 +1371,6 @@ function SceneWorkbenchDetail({
             <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
               编辑面板
             </p>
-            <h3 className="mt-2 font-display text-lg text-foreground">{asset.name}</h3>
-            <p className="mt-1 text-xs font-body text-muted-foreground">编辑当前场景的描述与提示词。</p>
           </div>
           <AssetStatusBadge asset={asset} />
         </div>
@@ -2036,15 +2030,6 @@ export default function Stage4Assets() {
         alt={preview?.alt || '素材预览'}
       />
 
-      <div className="mt-6 border-t border-border pt-4 flex items-center gap-4">
-        <div className="text-xs font-body text-muted-foreground">
-          {allOfficialSet ? (
-            <span className="text-green-600">所有角色基础形象已生成，可进入逐页生成</span>
-          ) : (
-            <span className="text-amber-600">所有角色都需要先生成基础形象；场景视图可稍后补充</span>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

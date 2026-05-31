@@ -477,10 +477,6 @@ export default function Stage2Story() {
               <p className="text-[11px] font-body font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 页面目录
               </p>
-              <h3 className="mt-2 font-display text-lg text-foreground">故事架构</h3>
-              <p className="mt-1 text-xs font-body leading-5 text-muted-foreground">
-                按区块快速跳转并跟随当前阅读位置高亮。
-              </p>
             </div>
 
             <nav className="space-y-1.5">
